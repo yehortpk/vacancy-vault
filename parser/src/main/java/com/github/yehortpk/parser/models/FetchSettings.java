@@ -15,8 +15,8 @@ import java.util.regex.Pattern;
 
 /**
  * How one page is requested. A crawler describes it per page in
- * {@code DefaultCompanyCrawler.configureFetchSettings}, leaving {@code null} whatever should come from the company
- * config. Immutable: every change goes through {@link #toBuilder()} or {@link #fillPlaceholders(Map)}, which return a
+ * {@code DefaultCompanyCrawler.configureFetchSettings}, leaving {@code null} the data, headers or cookies that
+ * should come from the company config. Immutable: every change goes through {@link #toBuilder()} or {@link #fillPlaceholders(Map)}, which return a
  * new instance.
  */
 @Getter
@@ -34,7 +34,7 @@ public class FetchSettings {
      */
     private final int pageId;
     /**
-     * {@code null} until filled from the company's vacancies URL
+     * Always set by the crawler; never filled from the company
      */
     private final String pageURL;
     /**

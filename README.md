@@ -193,8 +193,11 @@ The app needs the client to create parsing information for both sides - in the c
 Every company is crawled by a Spring bean that extends the abstract class <code>DefaultCompanyCrawler</code>. The base
 class runs the whole fetch flow, so a company crawler only describes its site. It implements two methods:
 - <code>configureFetchSettings(company, pageId)</code> - how the page is requested, as a <code>FetchSettings</code>.
-  Leave a field unset to take it from the company's config; most crawlers return <code>FetchSettings.builder().build()</code>.
-  A crawler that reads the site's API sets <code>pageURL(company.getApiVacanciesURL())</code>, and <code>connectionMethod(POST)</code> when the API needs it.
+  The crawler always sets <code>pageURL</code>: it is never taken from the company's config. Leave data, headers or
+  cookies unset to take them from the company's config. A crawler that reads the company's <code>vacancies_url</code>
+  as is extends <code>VacanciesUrlCompanyCrawler</code> (in the companies' <code>common</code> package) instead of
+  implementing this method. A crawler that reads the site's API sets <code>pageURL(company.getApiVacanciesURL())</code>,
+  and <code>connectionMethod(POST)</code> when the API needs it.
 - <code>parseVacancies(page, company)</code> - turns a fetched page into vacancies. Read HTML with <code>Jsoup.parse(page.getBody())</code>
   and JSON with Gson.
 

@@ -208,8 +208,11 @@ class DefaultCompanyCrawlerTest {
                 .headers(Map.of("X-Token", "{nonce}"))
                 .cookies(Map.of())
                 .build();
-        TestCrawler crawler = createCrawler(createMetadataCrawler(
-                MetadataParams.builder().pagesCount(2).placeholders(Map.of("nonce", "abc")).build()));
+        TestCrawler crawler = createCrawler(
+                (configuredCompany, pageId) -> FetchSettings.builder()
+                        .pageURL(configuredCompany.getVacanciesURL())
+                        .build(),
+                createMetadataCrawler(MetadataParams.builder().pagesCount(2).placeholders(Map.of("nonce", "abc")).build()));
 
         joinPages(crawler.scrapeCompanyVacancies(company));
 
@@ -314,7 +317,6 @@ class DefaultCompanyCrawlerTest {
         joinPages(createCrawler(null).scrapeCompanyVacancies(createCompany()));
 
         FetchSettings settings = scrapedSettings.getFirst();
-        assertEquals("https://example.com/vacancies/1", settings.getPageURL());
         assertEquals(Map.of("page", "1", "city", "Kyiv"), settings.getData());
         assertEquals(Map.of("Accept", "text/html", "User-Agent", "configured"), settings.getHeaders());
         assertEquals(Map.of("session", "configured", "locale", "en"), settings.getCookies());

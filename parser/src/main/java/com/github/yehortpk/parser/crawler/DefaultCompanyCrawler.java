@@ -49,8 +49,8 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
     private ParsingProgressService parsingProgressService;
 
     /**
-     * How the page is requested. Fields left {@code null} (page URL, data, headers, cookies) are filled from the
-     * company; {@code pageId} is set by the caller.
+     * How the page is requested. The page URL is used as set here and never filled from the company; data, headers
+     * and cookies left {@code null} are filled from the company. {@code pageId} is set by the caller.
      *
      * @param company the company to crawl
      * @param pageId the page, starting from 1
