@@ -6,7 +6,7 @@ import com.github.yehortpk.parser.exceptions.MetadataFetchException;
 import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
 import com.github.yehortpk.parser.exceptions.UnresolvedPlaceholderException;
-import com.github.yehortpk.parser.exceptions.VacanciesFetchException;
+import com.github.yehortpk.parser.exceptions.VacancyPageFetchException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.FetchSettings;
 import com.github.yehortpk.parser.models.MetadataParams;
@@ -196,7 +196,7 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         try {
             response = configurePageScraper(pageId).scrapePage(settings);
         } catch (IOException e) {
-            throw new VacanciesFetchException(String.format("Page %d of %s can't be fetched: %s",
+            throw new VacancyPageFetchException(String.format("Page %d of %s can't be fetched: %s",
                     pageId, company.getTitle(), e.getMessage()), e);
         }
 

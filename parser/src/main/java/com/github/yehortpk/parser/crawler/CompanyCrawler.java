@@ -1,6 +1,6 @@
 package com.github.yehortpk.parser.crawler;
 
-import com.github.yehortpk.parser.exceptions.VacanciesParseException;
+import com.github.yehortpk.parser.exceptions.VacancyPageParseException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.scraper.PageScraperResponse;
@@ -21,7 +21,7 @@ public interface CompanyCrawler {
      * @param page the fetched page
      * @param company the company the page belongs to
      * @return the page's vacancies
-     * @throws VacanciesParseException when the page can't be parsed
+     * @throws VacancyPageParseException when the page can't be parsed
      */
     List<VacancyDTO> parseVacancies(PageScraperResponse page, CompanyDTO company);
 

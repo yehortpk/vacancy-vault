@@ -5,7 +5,7 @@ import com.github.yehortpk.parser.exceptions.MetadataFetchException;
 import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
 import com.github.yehortpk.parser.exceptions.UnresolvedPlaceholderException;
-import com.github.yehortpk.parser.exceptions.VacanciesFetchException;
+import com.github.yehortpk.parser.exceptions.VacancyPageFetchException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.FetchSettings;
 import com.github.yehortpk.parser.models.MetadataParams;
@@ -350,7 +350,7 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ScrapeCompanyVacancies_PageScraperThrowsIOException_ShouldFailPageWithVacanciesFetchException() {
+    void ScrapeCompanyVacancies_PageScraperThrowsIOException_ShouldFailPageWithVacancyPageFetchException() {
         IOException cause = new IOException("Connection reset");
         TestCrawler crawler = new TestCrawler((company, pageId) -> FetchSettings.builder().build(),
                 settings -> {
@@ -362,7 +362,7 @@ class DefaultCompanyCrawlerTest {
 
         ExecutionException exception = assertThrows(ExecutionException.class,
                 () -> page.get(TIMEOUT_SEC, TimeUnit.SECONDS));
-        assertInstanceOf(VacanciesFetchException.class, exception.getCause());
+        assertInstanceOf(VacancyPageFetchException.class, exception.getCause());
         assertSame(cause, exception.getCause().getCause());
     }
 }
