@@ -5,9 +5,10 @@ import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute, ParamMap, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { PageEvent } from '@angular/material/paginator';
 import { TruncatePipe } from '../pipe/truncate.pipe';
-import { describeCountry, describePostedAt, formatCountries, formatSalary } from '../vacancy-display';
+import { describeCountry } from '../vacancy-display';
+import { VacancyListComponent } from '../vacancy-list/vacancy-list.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -16,9 +17,9 @@ import { describeCountry, describePostedAt, formatCountries, formatSalary } from
   standalone: true,
   imports: [
     CommonModule,
-    MatPaginatorModule,
     TruncatePipe,
-    RouterModule
+    RouterModule,
+    VacancyListComponent
   ]
 })
 export class DashboardComponent implements OnInit {
@@ -86,10 +87,7 @@ export class DashboardComponent implements OnInit {
     this.totalVacancies = response.totalVacancies;
   }
 
-  readonly formatSalary = formatSalary;
-  readonly describePostedAt = describePostedAt;
   readonly describeCountry = describeCountry;
-  readonly formatCountries = formatCountries;
 
   onPageChange(event: PageEvent) {
     this.router.navigate(["/dashboard"], {

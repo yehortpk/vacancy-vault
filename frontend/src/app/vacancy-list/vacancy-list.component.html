@@ -1,0 +1,93 @@
+<!-- Loading skeleton -->
+<div *ngIf="isLoading" class="space-y-3" aria-busy="true">
+  @for (placeholder of [1, 2, 3, 4, 5]; track placeholder) {
+  <div class="flex items-center gap-4 rounded-2xl bg-white dark:bg-slate-800/60 p-5 ring-1 ring-slate-200/70 dark:ring-slate-700/60 animate-pulse">
+    <div class="h-12 w-12 rounded-xl bg-slate-200 dark:bg-slate-700"></div>
+    <div class="flex-1 space-y-2">
+      <div class="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-700"></div>
+      <div class="h-3 w-1/4 rounded bg-slate-200 dark:bg-slate-700"></div>
+    </div>
+    <div class="hidden sm:block h-7 w-28 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+  </div>
+  }
+</div>
+
+<!-- Vacancy list -->
+@if (!isLoading) {
+  @if (vacancies.length > 0) {
+  <ul class="space-y-3">
+    @for (vacancy of vacancies; track vacancy.id) {
+    <li class="group relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-2xl bg-white dark:bg-slate-800/60 p-4 sm:p-5 ring-1 ring-slate-200/70 dark:ring-slate-700/60 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/60 dark:hover:shadow-black/20 hover:ring-blue-300 dark:hover:ring-blue-500/50">
+      <div class="min-w-0 flex-1">
+        <a
+          [routerLink]="['/vacancy', vacancy.id]"
+          class="block truncate text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 after:absolute after:inset-0 after:rounded-2xl"
+          [title]="vacancy.title">
+          {{ vacancy.title }}
+        </a>
+
+        <!-- Each detail renders only when the source provided it -->
+        <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+          <span *ngIf="vacancy.company.title" class="inline-flex items-center gap-1.5">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+            </svg>
+            <a *ngIf="vacancy.company.company_url; else plainCompany"
+              [href]="vacancy.company.company_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="relative z-10 font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+              {{ vacancy.company.title }}
+            </a>
+            <ng-template #plainCompany>
+              <span class="font-medium text-slate-700 dark:text-slate-300">{{ vacancy.company.title }}</span>
+            </ng-template>
+          </span>
+
+          <span *ngIf="formatCountries(vacancy) as countries" class="inline-flex items-center gap-1.5">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+            {{ countries }}
+          </span>
+
+          <span *ngIf="vacancy.crawledAt" class="inline-flex items-center gap-1.5">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <time [attr.datetime]="vacancy.crawledAt">{{ describePostedAt(vacancy.crawledAt) }}</time>
+          </span>
+        </div>
+      </div>
+
+      <!-- Badges: only the facts the source provided -->
+      <div *ngIf="vacancy.remote || formatSalary(vacancy)" class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+        <span *ngIf="vacancy.remote"
+          class="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-sm font-medium text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2.5-2.5 3.75-5.5 3.75-9S14.5 5.5 12 3m0 18c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3M3.6 9h16.8M3.6 15h16.8" />
+          </svg>
+          Remote
+        </span>
+        <span *ngIf="formatSalary(vacancy) as salary"
+          class="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20">
+          {{ salary }}
+        </span>
+      </div>
+
+      <svg class="hidden sm:block h-5 w-5 flex-shrink-0 text-slate-300 dark:text-slate-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </li>
+    }
+  </ul>
+
+  <div class="vv-paginator mt-6 rounded-2xl bg-white dark:bg-slate-800/60 ring-1 ring-slate-200/70 dark:ring-slate-700/60 shadow-sm">
+    <mat-paginator [pageSizeOptions]="[5, 10, 25, 100]" [pageSize]="pageSize" [length]="totalVacancies" [pageIndex]="currentPage" (page)="pageChange.emit($event)" showFirstLastButtons></mat-paginator>
+  </div>
+  } @else {
+  <!-- The page using the list says why it is empty -->
+  <ng-content></ng-content>
+  }
+}
