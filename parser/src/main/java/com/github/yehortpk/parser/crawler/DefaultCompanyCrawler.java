@@ -1,7 +1,7 @@
 package com.github.yehortpk.parser.crawler;
 
 import com.github.yehortpk.parser.crawler.metadata.CompanyMetadataCrawler;
-import com.github.yehortpk.parser.crawler.metadata.NoMetadataCrawler;
+import com.github.yehortpk.parser.crawler.metadata.NoCallMetadataCrawler;
 import com.github.yehortpk.parser.exceptions.MetadataFetchException;
 import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
@@ -69,13 +69,13 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
     }
 
     /**
-     * The call made before the pages, {@link NoMetadataCrawler} unless overridden: one page and no placeholders
+     * The call made before the pages, {@link NoCallMetadataCrawler} unless overridden: one page and no placeholders
      * besides {@code {page}}
      *
      * @return a new metadata crawler, never {@code null}
      */
     protected CompanyMetadataCrawler configureMetadataCrawler() {
-        return new NoMetadataCrawler();
+        return new NoCallMetadataCrawler();
     }
 
     /**

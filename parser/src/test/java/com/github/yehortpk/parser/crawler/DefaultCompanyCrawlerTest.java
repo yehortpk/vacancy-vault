@@ -135,7 +135,7 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ScrapeCompanyVacancies_NoMetadataCrawler_ShouldScrapeOnePage() {
+    void ScrapeCompanyVacancies_NoCallMetadataCrawler_ShouldScrapeOnePage() {
         List<PageScraperResponse> pages = joinPages(createCrawler(null).scrapeCompanyVacancies(createCompany()));
 
         assertEquals(1, pages.size());

@@ -13,7 +13,7 @@ import java.io.IOException;
  * needs a metadata call implements this interface in a private nested class and returns a new instance of it from
  * {@code configureMetadataCrawler()}.
  *
- * @see NoMetadataCrawler
+ * @see NoCallMetadataCrawler
  */
 public interface CompanyMetadataCrawler {
     /**

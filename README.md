@@ -203,7 +203,7 @@ It may also override two hooks:
   Return <code>new DynamicPageScraper(browserPool, readySelector)</code> for a site whose vacancies a browser has to render
   (inject the <code>BrowserPool</code> bean into the crawler). See [Scraper structure](#scraper-structure) for choosing one.
 - <code>configureMetadataCrawler()</code> - the call made before the pages, to learn the page count or values the requests
-  need. Defaults to <code>NoMetadataCrawler</code>: no request, one page. See [Dynamic request parameters](#dynamic-request-parameters).
+  need. Defaults to <code>NoCallMetadataCrawler</code>: no request, one page. See [Dynamic request parameters](#dynamic-request-parameters).
 
 The delay between pages defaults to 0, so every page of a company is sent at once. A site that needs pacing sets it per page
 in <code>configureFetchSettings</code>, e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.

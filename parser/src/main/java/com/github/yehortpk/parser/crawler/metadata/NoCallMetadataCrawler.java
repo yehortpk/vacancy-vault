@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Makes no request: the company has a single page and no placeholders besides {@code {page}}.
  */
-public class NoMetadataCrawler implements CompanyMetadataCrawler {
+public class NoCallMetadataCrawler implements CompanyMetadataCrawler {
     @Override
     public PageScraperResponse extractMetadata(CompanyDTO company) {
         return new PageScraperResponse(0, null, Map.of(), Map.of(), "");
