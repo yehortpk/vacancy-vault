@@ -2,13 +2,13 @@ package com.github.yehortpk.crawler.crawler;
 
 import com.github.yehortpk.crawler.crawler.metadata.CompanyMetadataCrawler;
 import com.github.yehortpk.crawler.crawler.vacancy.VacancyCrawler;
-import com.github.yehortpk.crawler.exceptions.MetadataFetchException;
+import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
 import com.github.yehortpk.crawler.exceptions.CrawlingStoppedException;
 import com.github.yehortpk.crawler.exceptions.UnresolvedPlaceholderException;
-import com.github.yehortpk.crawler.exceptions.VacancyPageFetchException;
+import com.github.yehortpk.crawler.exceptions.VacancyPageScrapeException;
 import com.github.yehortpk.crawler.models.CompanyDTO;
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.MetadataParams;
 import com.github.yehortpk.crawler.models.VacancyDTO;
 import com.github.yehortpk.crawler.progress.CrawlerProgress;
@@ -43,7 +43,7 @@ class DefaultCompanyCrawlerTest {
     private static final int TIMEOUT_SEC = 5;
 
     private final CrawlingProgressService crawlingProgressService = new CrawlingProgressService();
-    private final List<FetchSettings> scrapedSettings = new CopyOnWriteArrayList<>();
+    private final List<ScrapeSettings> scrapedSettings = new CopyOnWriteArrayList<>();
     private final PageScraper stubPageScraper = settings -> {
         scrapedSettings.add(settings);
         return new PageScraperResponse(settings.getPageId(), settings.getPageURL(), Map.of(), Map.of(), "body");
@@ -53,16 +53,16 @@ class DefaultCompanyCrawlerTest {
      * A company crawler built from the parts each test needs
      */
     private static class TestCrawler extends DefaultCompanyCrawler {
-        private final BiFunction<CompanyDTO, Integer, FetchSettings> fetchSettingsFactory;
+        private final BiFunction<CompanyDTO, Integer, ScrapeSettings> scrapeSettingsFactory;
         private final PageScraper pageScraper;
         private final CompanyMetadataCrawler metadataCrawler;
         private final List<VacancyDTO> previewVacancies;
         private final VacancyCrawler vacancyCrawler;
 
-        TestCrawler(BiFunction<CompanyDTO, Integer, FetchSettings> fetchSettingsFactory, PageScraper pageScraper,
+        TestCrawler(BiFunction<CompanyDTO, Integer, ScrapeSettings> scrapeSettingsFactory, PageScraper pageScraper,
                     CompanyMetadataCrawler metadataCrawler, List<VacancyDTO> previewVacancies,
                     VacancyCrawler vacancyCrawler) {
-            this.fetchSettingsFactory = fetchSettingsFactory;
+            this.scrapeSettingsFactory = scrapeSettingsFactory;
             this.pageScraper = pageScraper;
             this.metadataCrawler = metadataCrawler;
             this.previewVacancies = previewVacancies;
@@ -70,8 +70,8 @@ class DefaultCompanyCrawlerTest {
         }
 
         @Override
-        protected FetchSettings configureFetchSettings(CompanyDTO company, int pageId) {
-            return fetchSettingsFactory.apply(company, pageId);
+        protected ScrapeSettings configureScrapeSettings(CompanyDTO company, int pageId) {
+            return scrapeSettingsFactory.apply(company, pageId);
         }
 
         @Override
@@ -108,8 +108,8 @@ class DefaultCompanyCrawlerTest {
     private static CompanyMetadataCrawler createMetadataCrawler(PageScraper metadataScraper, MetadataParams metadata) {
         return new CompanyMetadataCrawler() {
             @Override
-            public FetchSettings configureFetchSettings(CompanyDTO company) {
-                return FetchSettings.builder().pageURL("https://example.com/metadata").build();
+            public ScrapeSettings configureScrapeSettings(CompanyDTO company) {
+                return ScrapeSettings.builder().pageURL("https://example.com/metadata").build();
             }
 
             @Override
@@ -131,9 +131,9 @@ class DefaultCompanyCrawlerTest {
     private static VacancyCrawler createVacancyCrawler(PageScraper vacancyScraper) {
         return new VacancyCrawler() {
             @Override
-            public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company,
+            public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company,
                                                         int vacancyOrderOnPage) {
-                return FetchSettings.builder().pageURL(previewVacancy.getLink()).build();
+                return ScrapeSettings.builder().pageURL(previewVacancy.getLink()).build();
             }
 
             @Override
@@ -148,13 +148,13 @@ class DefaultCompanyCrawlerTest {
         };
     }
 
-    private TestCrawler createCrawler(BiFunction<CompanyDTO, Integer, FetchSettings> fetchSettingsFactory,
+    private TestCrawler createCrawler(BiFunction<CompanyDTO, Integer, ScrapeSettings> scrapeSettingsFactory,
                                       CompanyMetadataCrawler metadataCrawler) {
-        return initCrawler(new TestCrawler(fetchSettingsFactory, stubPageScraper, metadataCrawler, List.of(), null));
+        return initCrawler(new TestCrawler(scrapeSettingsFactory, stubPageScraper, metadataCrawler, List.of(), null));
     }
 
     private TestCrawler createCrawler(CompanyMetadataCrawler metadataCrawler) {
-        return createCrawler((company, pageId) -> FetchSettings.builder().build(), metadataCrawler);
+        return createCrawler((company, pageId) -> ScrapeSettings.builder().build(), metadataCrawler);
     }
 
     /**
@@ -162,7 +162,7 @@ class DefaultCompanyCrawlerTest {
      */
     private TestCrawler createVacanciesCrawler(List<VacancyDTO> previewVacancies, VacancyCrawler vacancyCrawler) {
         crawlingProgressService.getCrawlers().get(1).initPages(1);
-        return initCrawler(new TestCrawler((company, pageId) -> FetchSettings.builder().build(), stubPageScraper,
+        return initCrawler(new TestCrawler((company, pageId) -> ScrapeSettings.builder().build(), stubPageScraper,
                 null, previewVacancies, vacancyCrawler));
     }
 
@@ -194,8 +194,8 @@ class DefaultCompanyCrawlerTest {
         return pages.stream().map(page -> page.orTimeout(TIMEOUT_SEC, TimeUnit.SECONDS).join()).toList();
     }
 
-    private List<FetchSettings> getScrapedSettingsInPageOrder() {
-        return scrapedSettings.stream().sorted(Comparator.comparingInt(FetchSettings::getPageId)).toList();
+    private List<ScrapeSettings> getScrapedSettingsInPageOrder() {
+        return scrapedSettings.stream().sorted(Comparator.comparingInt(ScrapeSettings::getPageId)).toList();
     }
 
     private List<CrawlerProgress.PageProgress.PageLog> getFirstPageLogs() {
@@ -219,7 +219,7 @@ class DefaultCompanyCrawlerTest {
 
     @Test
     void ScrapeCompanyVacancies_MetadataCrawler_ShouldScrapeWithItsSettingsAndScraper() {
-        List<FetchSettings> metadataSettings = new CopyOnWriteArrayList<>();
+        List<ScrapeSettings> metadataSettings = new CopyOnWriteArrayList<>();
         TestCrawler crawler = createCrawler(createMetadataCrawler(settings -> {
             metadataSettings.add(settings);
             return new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(), "");
@@ -245,7 +245,7 @@ class DefaultCompanyCrawlerTest {
     @Test
     void ScrapeCompanyVacancies_SettingsPerPage_ShouldScrapeEachPageWithItsSettings() {
         TestCrawler crawler = createCrawler(
-                (company, pageId) -> FetchSettings.builder()
+                (company, pageId) -> ScrapeSettings.builder()
                         .pageURL("https://example.com/api/" + pageId)
                         .timeoutSec(10 * pageId)
                         .build(),
@@ -253,7 +253,7 @@ class DefaultCompanyCrawlerTest {
 
         joinPages(crawler.scrapeCompanyVacancies(createCompany()));
 
-        List<FetchSettings> settings = getScrapedSettingsInPageOrder();
+        List<ScrapeSettings> settings = getScrapedSettingsInPageOrder();
         assertEquals("https://example.com/api/1", settings.get(0).getPageURL());
         assertEquals(10, settings.get(0).getTimeoutSec());
         assertEquals("https://example.com/api/2", settings.get(1).getPageURL());
@@ -271,14 +271,14 @@ class DefaultCompanyCrawlerTest {
                 .cookies(Map.of())
                 .build();
         TestCrawler crawler = createCrawler(
-                (configuredCompany, pageId) -> FetchSettings.builder()
+                (configuredCompany, pageId) -> ScrapeSettings.builder()
                         .pageURL(configuredCompany.getVacanciesURL())
                         .build(),
                 createMetadataCrawler(MetadataParams.builder().pagesCount(2).placeholders(Map.of("nonce", "abc")).build()));
 
         joinPages(crawler.scrapeCompanyVacancies(company));
 
-        FetchSettings secondPage = getScrapedSettingsInPageOrder().get(1);
+        ScrapeSettings secondPage = getScrapedSettingsInPageOrder().get(1);
         assertEquals("https://example.com/vacancies/2", secondPage.getPageURL());
         assertEquals(Map.of("page", "2", "nonce", "abc"), secondPage.getData());
         assertEquals(Map.of("X-Token", "abc"), secondPage.getHeaders());
@@ -298,13 +298,13 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ScrapeCompanyVacancies_MetadataScraperThrowsIOException_ShouldWrapInMetadataFetchException() {
+    void ScrapeCompanyVacancies_MetadataScraperThrowsIOException_ShouldWrapInMetadataScrapeException() {
         IOException cause = new IOException("Connection refused");
         TestCrawler crawler = createCrawler(createMetadataCrawler(settings -> {
             throw cause;
         }, MetadataParams.builder().build()));
 
-        MetadataFetchException exception = assertThrows(MetadataFetchException.class,
+        MetadataScrapeException exception = assertThrows(MetadataScrapeException.class,
                 () -> crawler.scrapeCompanyVacancies(createCompany()));
 
         assertSame(cause, exception.getCause());
@@ -312,12 +312,12 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ScrapeCompanyVacancies_MetadataScraperThrowsRuntimeException_ShouldWrapInMetadataFetchException() {
+    void ScrapeCompanyVacancies_MetadataScraperThrowsRuntimeException_ShouldWrapInMetadataScrapeException() {
         TestCrawler crawler = createCrawler(createMetadataCrawler(settings -> {
             throw new IllegalStateException("Browser crashed");
         }, MetadataParams.builder().build()));
 
-        MetadataFetchException exception = assertThrows(MetadataFetchException.class,
+        MetadataScrapeException exception = assertThrows(MetadataScrapeException.class,
                 () -> crawler.scrapeCompanyVacancies(createCompany()));
 
         assertInstanceOf(IllegalStateException.class, exception.getCause());
@@ -327,8 +327,8 @@ class DefaultCompanyCrawlerTest {
     void ScrapeCompanyVacancies_ParseMetadataFails_ShouldWrapInMetadataParseException() {
         TestCrawler crawler = createCrawler(new CompanyMetadataCrawler() {
             @Override
-            public FetchSettings configureFetchSettings(CompanyDTO company) {
-                return FetchSettings.builder().build();
+            public ScrapeSettings configureScrapeSettings(CompanyDTO company) {
+                return ScrapeSettings.builder().build();
             }
 
             @Override
@@ -359,7 +359,7 @@ class DefaultCompanyCrawlerTest {
     @Test
     void ScrapeCompanyVacancies_StopRequestedDuringDelay_ShouldFailWaitingPageAtOnce() {
         TestCrawler crawler = createCrawler(
-                (company, pageId) -> FetchSettings.builder().delay(Duration.ofHours(pageId - 1)).build(),
+                (company, pageId) -> ScrapeSettings.builder().delay(Duration.ofHours(pageId - 1)).build(),
                 createMetadataCrawler(MetadataParams.builder().pagesCount(2).build()));
 
         List<CompletableFuture<PageScraperResponse>> pages = crawler.scrapeCompanyVacancies(createCompany());
@@ -378,7 +378,7 @@ class DefaultCompanyCrawlerTest {
     void ScrapeCompanyVacancies_UnsetFields_ShouldFillThemFromCompany() {
         joinPages(createCrawler(null).scrapeCompanyVacancies(createCompany()));
 
-        FetchSettings settings = scrapedSettings.getFirst();
+        ScrapeSettings settings = scrapedSettings.getFirst();
         assertEquals(Map.of("page", "1", "city", "Kyiv"), settings.getData());
         assertEquals(Map.of("Accept", "text/html", "User-Agent", "configured"), settings.getHeaders());
         assertEquals(Map.of("session", "configured", "locale", "en"), settings.getCookies());
@@ -387,12 +387,12 @@ class DefaultCompanyCrawlerTest {
     @Test
     void ScrapeCompanyVacancies_EmptyMapsSetByCrawler_ShouldKeepThemEmpty() {
         TestCrawler crawler = createCrawler(
-                (company, pageId) -> FetchSettings.builder().data(Map.of()).headers(Map.of()).cookies(Map.of()).build(),
+                (company, pageId) -> ScrapeSettings.builder().data(Map.of()).headers(Map.of()).cookies(Map.of()).build(),
                 null);
 
         joinPages(crawler.scrapeCompanyVacancies(createCompany()));
 
-        FetchSettings settings = scrapedSettings.getFirst();
+        ScrapeSettings settings = scrapedSettings.getFirst();
         assertEquals(Map.of(), settings.getData());
         assertEquals(Map.of(), settings.getHeaders());
         assertEquals(Map.of(), settings.getCookies());
@@ -407,16 +407,16 @@ class DefaultCompanyCrawlerTest {
 
         joinPages(crawler.scrapeCompanyVacancies(createCompany()));
 
-        FetchSettings settings = scrapedSettings.getFirst();
+        ScrapeSettings settings = scrapedSettings.getFirst();
         assertEquals(Map.of("Accept", "text/html", "user-agent", "from metadata", "X-Csrf", "token"),
                 settings.getHeaders());
         assertEquals(Map.of("session", "from metadata", "locale", "en"), settings.getCookies());
     }
 
     @Test
-    void ScrapeCompanyVacancies_PageScraperThrowsIOException_ShouldFailPageWithVacancyPageFetchException() {
+    void ScrapeCompanyVacancies_PageScraperThrowsIOException_ShouldFailPageWithVacancyPageScrapeException() {
         IOException cause = new IOException("Connection reset");
-        TestCrawler crawler = initCrawler(new TestCrawler((company, pageId) -> FetchSettings.builder().build(),
+        TestCrawler crawler = initCrawler(new TestCrawler((company, pageId) -> ScrapeSettings.builder().build(),
                 settings -> {
                     throw cause;
                 }, null, List.of(), null));
@@ -425,7 +425,7 @@ class DefaultCompanyCrawlerTest {
 
         ExecutionException exception = assertThrows(ExecutionException.class,
                 () -> page.get(TIMEOUT_SEC, TimeUnit.SECONDS));
-        assertInstanceOf(VacancyPageFetchException.class, exception.getCause());
+        assertInstanceOf(VacancyPageScrapeException.class, exception.getCause());
         assertSame(cause, exception.getCause().getCause());
     }
 
@@ -463,7 +463,7 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ParseVacancies_FetchFails_ShouldKeepPreview() {
+    void ParseVacancies_ScrapeFails_ShouldKeepPreview() {
         VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
         TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyCrawler(settings -> {
             throw new IOException("Connection reset");
@@ -481,9 +481,9 @@ class DefaultCompanyCrawlerTest {
         VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
         TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), new VacancyCrawler() {
             @Override
-            public FetchSettings configureFetchSettings(VacancyDTO preview, CompanyDTO company,
+            public ScrapeSettings configureScrapeSettings(VacancyDTO preview, CompanyDTO company,
                                                         int vacancyOrderOnPage) {
-                return FetchSettings.builder().pageURL(preview.getLink()).build();
+                return ScrapeSettings.builder().pageURL(preview.getLink()).build();
             }
 
             @Override
@@ -504,7 +504,7 @@ class DefaultCompanyCrawlerTest {
 
     @Test
     void ParseVacancies_StopRequested_ShouldKeepPreviews() {
-        List<FetchSettings> vacancySettings = new CopyOnWriteArrayList<>();
+        List<ScrapeSettings> vacancySettings = new CopyOnWriteArrayList<>();
         VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
         TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyCrawler(settings -> {
             vacancySettings.add(settings);
@@ -523,10 +523,10 @@ class DefaultCompanyCrawlerTest {
         Map<String, Integer> ordersByLink = new ConcurrentHashMap<>();
         VacancyCrawler orderRecordingCrawler = new VacancyCrawler() {
             @Override
-            public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company,
+            public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company,
                                                         int vacancyOrderOnPage) {
                 ordersByLink.put(previewVacancy.getLink(), vacancyOrderOnPage);
-                return FetchSettings.builder().pageURL(previewVacancy.getLink()).build();
+                return ScrapeSettings.builder().pageURL(previewVacancy.getLink()).build();
             }
 
             @Override

@@ -2,18 +2,18 @@ package com.github.yehortpk.crawler.crawler;
 
 import com.github.yehortpk.crawler.crawler.metadata.CompanyMetadataCrawler;
 import com.github.yehortpk.crawler.crawler.metadata.NoCallMetadataCrawler;
-import com.github.yehortpk.crawler.exceptions.MetadataFetchException;
+import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
 import com.github.yehortpk.crawler.exceptions.CrawlingStoppedException;
 import com.github.yehortpk.crawler.exceptions.UnresolvedPlaceholderException;
 import com.github.yehortpk.crawler.crawler.vacancy.NoCallVacancyCrawler;
 import com.github.yehortpk.crawler.crawler.vacancy.VacancyCrawler;
-import com.github.yehortpk.crawler.exceptions.VacancyFetchException;
-import com.github.yehortpk.crawler.exceptions.VacancyPageFetchException;
+import com.github.yehortpk.crawler.exceptions.VacancyScrapeException;
+import com.github.yehortpk.crawler.exceptions.VacancyPageScrapeException;
 import com.github.yehortpk.crawler.exceptions.VacancyPageParseException;
 import com.github.yehortpk.crawler.exceptions.VacancyParseException;
 import com.github.yehortpk.crawler.models.CompanyDTO;
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.MetadataParams;
 import com.github.yehortpk.crawler.models.VacancyDTO;
 import com.github.yehortpk.crawler.progress.CrawlerProgress;
@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Runs the whole fetch flow of a company: the metadata call, every page, then the call of every vacancy. A company
- * crawler extends it and only describes its site: how each page is requested ({@link #configureFetchSettings}, plus
+ * crawler extends it and only describes its site: how each page is requested ({@link #configureScrapeSettings}, plus
  * the {@link #configurePageScraper} and {@link #configureMetadataCrawler} hooks), how a page turns into vacancies
  * ({@link #parsePreviewVacancies}) and how each vacancy's own page is read ({@link #configureVacancyCrawler} hook).
  * Holds no state of a run.
@@ -64,7 +64,7 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
      * @param pageId the page, starting from 1
      * @return the page's fetch settings
      */
-    protected abstract FetchSettings configureFetchSettings(CompanyDTO company, int pageId);
+    protected abstract ScrapeSettings configureScrapeSettings(CompanyDTO company, int pageId);
 
     /**
      * The scraper the page is fetched with, {@link StaticPageScraper} unless overridden
@@ -133,7 +133,7 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
     /**
      * Makes the metadata call, builds the settings of every page and schedules the pages.
      *
-     * @throws MetadataFetchException when the metadata call fails
+     * @throws MetadataScrapeException when the metadata call fails
      * @throws MetadataParseException when the metadata call's response can't be parsed
      * @throws UnresolvedPlaceholderException when a page has a placeholder without a value; no page is fetched then
      */
@@ -145,9 +145,9 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         crawlerProgress.initPages(metadata.getPagesCount());
 
         // Every page is built before any is sent, so a placeholder error sends no request at all
-        List<FetchSettings> pagesSettings = new ArrayList<>();
+        List<ScrapeSettings> pagesSettings = new ArrayList<>();
         for (int pageId = 1; pageId <= metadata.getPagesCount(); pageId++) {
-            pagesSettings.add(createFetchSettings(company, pageId, metadata));
+            pagesSettings.add(createScrapeSettings(company, pageId, metadata));
         }
 
         return pagesSettings.stream()
@@ -161,9 +161,9 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         PageScraperResponse response;
         try {
             response = metadataCrawler.configurePageScraper()
-                    .scrapePage(metadataCrawler.configureFetchSettings(company));
+                    .scrapePage(metadataCrawler.configureScrapeSettings(company));
         } catch (IOException | RuntimeException e) {
-            throw new MetadataFetchException(
+            throw new MetadataScrapeException(
                     String.format("Metadata call of %s failed: %s", company.getTitle(), e.getMessage()), e);
         }
 
@@ -183,10 +183,10 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         return metadata;
     }
 
-    private FetchSettings createFetchSettings(CompanyDTO company, int pageId, MetadataParams metadata) {
-        FetchSettings configuredSettings = configureFetchSettings(company, pageId);
+    private ScrapeSettings createScrapeSettings(CompanyDTO company, int pageId, MetadataParams metadata) {
+        ScrapeSettings configuredSettings = configureScrapeSettings(company, pageId);
 
-        FetchSettings settings = configuredSettings.toBuilder()
+        ScrapeSettings settings = configuredSettings.toBuilder()
                 .pageId(pageId)
                 .data(copyValues(configuredSettings.getData() != null
                         ? configuredSettings.getData()
@@ -231,14 +231,14 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
      * Starts the page once its delay is over. A stop request ends the wait at once, so the page is skipped right
      * away.
      */
-    private CompletableFuture<PageScraperResponse> schedulePage(FetchSettings settings, CompanyDTO company,
+    private CompletableFuture<PageScraperResponse> schedulePage(ScrapeSettings settings, CompanyDTO company,
                                                                 CrawlerProgress crawlerProgress) {
         return crawlingProgressService.getStopSignal().copy()
                 .completeOnTimeout(null, settings.getDelay().toMillis(), TimeUnit.MILLISECONDS)
                 .thenApplyAsync(ignored -> scrapePage(settings, company, crawlerProgress), PAGE_EXECUTOR);
     }
 
-    private PageScraperResponse scrapePage(FetchSettings settings, CompanyDTO company, CrawlerProgress crawlerProgress) {
+    private PageScraperResponse scrapePage(ScrapeSettings settings, CompanyDTO company, CrawlerProgress crawlerProgress) {
         if (crawlingProgressService.isStopRequested()) {
             throw new CrawlingStoppedException();
         }
@@ -248,7 +248,7 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         try {
             response = configurePageScraper(pageId).scrapePage(settings);
         } catch (IOException e) {
-            throw new VacancyPageFetchException(String.format("Page %d of %s can't be fetched: %s",
+            throw new VacancyPageScrapeException(String.format("Page %d of %s can't be fetched: %s",
                     pageId, company.getTitle(), e.getMessage()), e);
         }
 
@@ -267,11 +267,11 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
                                                           CompanyDTO company, CrawlerProgress crawlerProgress) {
         VacancyCrawler vacancyCrawler = configureVacancyCrawler();
 
-        FetchSettings settings;
+        ScrapeSettings settings;
         try {
-            settings = vacancyCrawler.configureFetchSettings(previewVacancy, company, vacancyOrderOnPage);
+            settings = vacancyCrawler.configureScrapeSettings(previewVacancy, company, vacancyOrderOnPage);
         } catch (RuntimeException e) {
-            VacancyFetchException exception = new VacancyFetchException(String.format(
+            VacancyScrapeException exception = new VacancyScrapeException(String.format(
                     "Vacancy %d of page %d of %s can't be configured: %s",
                     vacancyOrderOnPage, pageId, company.getTitle(), e.getMessage()), e);
             return CompletableFuture.completedFuture(
@@ -286,7 +286,7 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
                         crawlerProgress));
     }
 
-    private VacancyDTO scrapeVacancy(VacancyCrawler vacancyCrawler, FetchSettings settings, VacancyDTO previewVacancy,
+    private VacancyDTO scrapeVacancy(VacancyCrawler vacancyCrawler, ScrapeSettings settings, VacancyDTO previewVacancy,
                                      int vacancyOrderOnPage, int pageId, CompanyDTO company,
                                      CrawlerProgress crawlerProgress) {
         if (crawlingProgressService.isStopRequested()) {
@@ -297,7 +297,7 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         try {
             response = vacancyCrawler.configurePageScraper().scrapePage(settings);
         } catch (IOException | RuntimeException e) {
-            throw new VacancyFetchException(String.format("Vacancy %d of page %d of %s can't be fetched: %s",
+            throw new VacancyScrapeException(String.format("Vacancy %d of page %d of %s can't be fetched: %s",
                     vacancyOrderOnPage, pageId, company.getTitle(), e.getMessage()), e);
         }
 

@@ -1,7 +1,7 @@
 package com.github.yehortpk.crawler.services;
 
 import com.github.yehortpk.crawler.crawler.CompanyCrawler;
-import com.github.yehortpk.crawler.exceptions.MetadataFetchException;
+import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
 import com.github.yehortpk.crawler.exceptions.UnresolvedPlaceholderException;
 import com.github.yehortpk.crawler.models.CompanyDTO;
@@ -125,8 +125,8 @@ class CrawlerRunnerServiceTest {
     }
 
     @Test
-    void RunCrawling_MetadataFetchFails_ShouldMarkCompanyError() {
-        CrawlerProgress company = runCompanyFailingWith(new MetadataFetchException("Connection refused", null));
+    void RunCrawling_MetadataScrapeFails_ShouldMarkCompanyError() {
+        CrawlerProgress company = runCompanyFailingWith(new MetadataScrapeException("Connection refused", null));
 
         assertEquals(CrawlerProgressStatusEnum.ERROR, company.getStatus());
         assertEquals(PageProgressStatusEnum.STEP_ERROR, company.getPages().getFirst().getStatus());

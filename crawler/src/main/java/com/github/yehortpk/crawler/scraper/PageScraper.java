@@ -1,6 +1,6 @@
 package com.github.yehortpk.crawler.scraper;
 
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 
 import java.io.IOException;
 
@@ -20,5 +20,5 @@ public interface PageScraper {
      * @param settings how the page is requested, with every placeholder already filled
      * @return the response, carrying the settings' page id and URL
      */
-    PageScraperResponse scrapePage(FetchSettings settings) throws IOException;
+    PageScraperResponse scrapePage(ScrapeSettings settings) throws IOException;
 }

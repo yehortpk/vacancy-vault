@@ -1,7 +1,7 @@
 package com.github.yehortpk.crawler.crawler.metadata;
 
 import com.github.yehortpk.crawler.models.CompanyDTO;
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.MetadataParams;
 import com.github.yehortpk.crawler.scraper.PageScraper;
 import com.github.yehortpk.crawler.scraper.PageScraperResponse;
@@ -14,8 +14,8 @@ import java.util.Map;
  */
 public class NoCallMetadataCrawler implements CompanyMetadataCrawler {
     @Override
-    public FetchSettings configureFetchSettings(CompanyDTO company) {
-        return FetchSettings.builder().build();
+    public ScrapeSettings configureScrapeSettings(CompanyDTO company) {
+        return ScrapeSettings.builder().build();
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.github.yehortpk.crawler.scraper;
 
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.utils.browser.BrowserPool;
 import com.github.yehortpk.crawler.services.BrowserService;
 import com.google.gson.GsonBuilder;
@@ -33,7 +33,7 @@ public class DynamicPageScraper implements PageScraper {
     private final String readySelector;
 
     @Override
-    public PageScraperResponse scrapePage(FetchSettings settings) throws IOException {
+    public PageScraperResponse scrapePage(ScrapeSettings settings) throws IOException {
         Map<String, String> data = Optional.ofNullable(settings.getData()).orElse(Map.of());
         Map<String, String> headers = Optional.ofNullable(settings.getHeaders()).orElse(Map.of());
         Map<String, String> cookies = Optional.ofNullable(settings.getCookies()).orElse(Map.of());

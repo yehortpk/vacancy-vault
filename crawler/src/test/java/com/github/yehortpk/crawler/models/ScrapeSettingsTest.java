@@ -11,9 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class FetchSettingsTest {
-    private static FetchSettings createSettings() {
-        return FetchSettings.builder()
+class ScrapeSettingsTest {
+    private static ScrapeSettings createSettings() {
+        return ScrapeSettings.builder()
                 .pageId(2)
                 .pageURL("https://example.com/jobs/page-{page}")
                 .data(Map.of("page", "{page}", "token", "{token}", "city", "Kyiv"))
@@ -24,7 +24,7 @@ class FetchSettingsTest {
 
     @Test
     void FillPlaceholders_PlaceholdersInUrlDataAndHeaders_ShouldReplaceAll() {
-        FetchSettings filled = createSettings().fillPlaceholders(Map.of("page", "2", "token", "abc"));
+        ScrapeSettings filled = createSettings().fillPlaceholders(Map.of("page", "2", "token", "abc"));
 
         assertEquals("https://example.com/jobs/page-2", filled.getPageURL());
         assertEquals(Map.of("page", "2", "token", "abc", "city", "Kyiv"), filled.getData());
@@ -33,7 +33,7 @@ class FetchSettingsTest {
 
     @Test
     void FillPlaceholders_Cookies_ShouldLeaveThemUnchanged() {
-        FetchSettings filled = createSettings().fillPlaceholders(Map.of("page", "2", "token", "abc"));
+        ScrapeSettings filled = createSettings().fillPlaceholders(Map.of("page", "2", "token", "abc"));
 
         assertEquals(Map.of("session", "{token}"), filled.getCookies());
     }
@@ -49,25 +49,25 @@ class FetchSettingsTest {
 
     @Test
     void FillPlaceholders_ValueWithRegexSpecialCharacters_ShouldInsertItLiterally() {
-        FetchSettings settings = FetchSettings.builder().pageURL("https://example.com/{token}").build();
+        ScrapeSettings settings = ScrapeSettings.builder().pageURL("https://example.com/{token}").build();
 
-        FetchSettings filled = settings.fillPlaceholders(Map.of("token", "a$1\\b"));
+        ScrapeSettings filled = settings.fillPlaceholders(Map.of("token", "a$1\\b"));
 
         assertEquals("https://example.com/a$1\\b", filled.getPageURL());
     }
 
     @Test
     void FillPlaceholders_JsonLikeValue_ShouldNotTakeItForPlaceholder() {
-        FetchSettings settings = FetchSettings.builder().data(Map.of("filter", "{\"city\": \"Kyiv\"}")).build();
+        ScrapeSettings settings = ScrapeSettings.builder().data(Map.of("filter", "{\"city\": \"Kyiv\"}")).build();
 
-        FetchSettings filled = settings.fillPlaceholders(Map.of());
+        ScrapeSettings filled = settings.fillPlaceholders(Map.of());
 
         assertEquals(Map.of("filter", "{\"city\": \"Kyiv\"}"), filled.getData());
     }
 
     @Test
     void FillPlaceholders_UnsetFields_ShouldStayNull() {
-        FetchSettings filled = FetchSettings.builder().build().fillPlaceholders(Map.of("page", "1"));
+        ScrapeSettings filled = ScrapeSettings.builder().build().fillPlaceholders(Map.of("page", "1"));
 
         assertNull(filled.getPageURL());
         assertNull(filled.getData());
@@ -77,9 +77,9 @@ class FetchSettingsTest {
 
     @Test
     void FillPlaceholders_AnySettings_ShouldKeepOriginalAndOtherFields() {
-        FetchSettings settings = createSettings().toBuilder().timeoutSec(10).followRedirects(false).build();
+        ScrapeSettings settings = createSettings().toBuilder().timeoutSec(10).followRedirects(false).build();
 
-        FetchSettings filled = settings.fillPlaceholders(Map.of("page", "2", "token", "abc"));
+        ScrapeSettings filled = settings.fillPlaceholders(Map.of("page", "2", "token", "abc"));
 
         assertEquals("https://example.com/jobs/page-{page}", settings.getPageURL());
         assertEquals(2, filled.getPageId());
@@ -89,8 +89,8 @@ class FetchSettingsTest {
 
     @Test
     void HasPlaceholder_ValueWithAndWithoutPlaceholder_ShouldTellThemApart() {
-        assertTrue(FetchSettings.hasPlaceholder("page-{page}"));
-        assertFalse(FetchSettings.hasPlaceholder("{\"city\": \"Kyiv\"}"));
-        assertFalse(FetchSettings.hasPlaceholder(null));
+        assertTrue(ScrapeSettings.hasPlaceholder("page-{page}"));
+        assertFalse(ScrapeSettings.hasPlaceholder("{\"city\": \"Kyiv\"}"));
+        assertFalse(ScrapeSettings.hasPlaceholder(null));
     }
 }

@@ -15,14 +15,14 @@ import java.util.regex.Pattern;
 
 /**
  * How one page is requested. A crawler describes it per page in
- * {@code DefaultCompanyCrawler.configureFetchSettings}, leaving {@code null} the data, headers or cookies that
+ * {@code DefaultCompanyCrawler.configureScrapeSettings}, leaving {@code null} the data, headers or cookies that
  * should come from the company config. Immutable: every change goes through {@link #toBuilder()} or {@link #fillPlaceholders(Map)}, which return a
  * new instance.
  */
 @Getter
 @ToString
 @Builder(toBuilder = true)
-public class FetchSettings {
+public class ScrapeSettings {
     /**
      * A {@code {name}} placeholder. Names hold no whitespace, quotes or braces, so JSON-like values are not taken
      * for placeholders.
@@ -76,7 +76,7 @@ public class FetchSettings {
      * @return a new instance with every placeholder filled
      * @throws UnresolvedPlaceholderException if a placeholder has no value
      */
-    public FetchSettings fillPlaceholders(Map<String, String> placeholders) {
+    public ScrapeSettings fillPlaceholders(Map<String, String> placeholders) {
         return toBuilder()
                 .pageURL(fillValue(pageURL, placeholders, "page URL"))
                 .data(fillValues(data, placeholders, "data"))

@@ -6,7 +6,7 @@ import lombok.Getter;
 import java.util.Map;
 
 /**
- * A fetched page. {@code pageId} and {@code pageURL} are copied from the {@link com.github.yehortpk.crawler.models.FetchSettings}
+ * A fetched page. {@code pageId} and {@code pageURL} are copied from the {@link com.github.yehortpk.crawler.models.ScrapeSettings}
  * the page was requested with; headers and cookies are the response's.
  */
 @Getter

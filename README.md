@@ -193,7 +193,7 @@ The app needs the client to create crawling information for both sides - in the 
 ### Code usage
 Every company is crawled by a Spring bean that extends the abstract class <code>DefaultCompanyCrawler</code>. The base
 class runs the whole fetch flow, so a company crawler only describes its site. It implements two methods:
-- <code>configureFetchSettings(company, pageId)</code> - how the page is requested, as a <code>FetchSettings</code>.
+- <code>configureScrapeSettings(company, pageId)</code> - how the page is requested, as a <code>ScrapeSettings</code>.
   The crawler always sets <code>pageURL</code>: it is never taken from the company's config. Leave data, headers or
   cookies unset to take them from the company's config. A crawler that reads the company's <code>vacancies_url</code>
   as is extends <code>VacanciesUrlCompanyCrawler</code> (in the companies' <code>common</code> package) instead of
@@ -213,14 +213,14 @@ It may also override three hooks:
   See [Vacancy pages](#vacancy-pages).
 
 The delay between pages defaults to 0, so every page of a company is sent at once. A site that needs pacing sets it per page
-in <code>configureFetchSettings</code>, e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.
+in <code>configureScrapeSettings</code>, e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.
 
 ```java
 @Component("acme-company")
 public class AcmeCrawler extends DefaultCompanyCrawler {
     @Override
-    protected FetchSettings configureFetchSettings(CompanyDTO company, int pageId) {
-        return FetchSettings.builder().build();
+    protected ScrapeSettings configureScrapeSettings(CompanyDTO company, int pageId) {
+        return ScrapeSettings.builder().build();
     }
 
     @Override
@@ -241,10 +241,10 @@ Crawlers hold no state of a run, so one bean may serve several companies.
 <code>CrawlerRunnerService</code> receives every crawler bean as a map by bean name and looks up each company's crawler
 once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>DefaultCompanyCrawler</code> implements as:
 1. <b>Metadata call.</b> The crawler's <code>CompanyMetadataCrawler</code> describes its request
-   (<code>configureFetchSettings(company)</code>, <code>configurePageScraper()</code>); the base class makes it, and the metadata
+   (<code>configureScrapeSettings(company)</code>, <code>configurePageScraper()</code>); the base class makes it, and the metadata
    crawler reads the <code>MetadataParams</code> from the response (<code>parseMetadata</code>): the page count, placeholder values, and
    headers and cookies to add to every page.
-2. <b>Every page's settings</b>, built before any page is sent: <code>configureFetchSettings(company, pageId)</code>, unset fields
+2. <b>Every page's settings</b>, built before any page is sent: <code>configureScrapeSettings(company, pageId)</code>, unset fields
    filled from the company, the metadata headers and cookies added, and the placeholders filled.
 3. <b>Every page</b> waits out its <code>delay</code>, then is fetched on a virtual thread of its own with
    <code>configurePageScraper(pageId)</code>. A stop request ends the wait at once.
@@ -253,7 +253,7 @@ The runner then parses each fetched page with <code>parseVacancies(page, company
 implements (it is final) as:
 1. <b>Preview vacancies.</b> <code>parsePreviewVacancies(page, company)</code> turns the page into vacancies.
 2. <b>Vacancy calls.</b> Every vacancy gets a virtual thread of its own: the crawler's <code>VacancyCrawler</code> describes the
-   request (<code>configureFetchSettings(previewVacancy, company, vacancyOrderOnPage)</code>, <code>configurePageScraper()</code>), the
+   request (<code>configureScrapeSettings(previewVacancy, company, vacancyOrderOnPage)</code>, <code>configurePageScraper()</code>), the
    call waits out its <code>delay</code>, is made, and <code>parseVacancy(previewVacancy, response)</code> returns the vacancy that
    replaces the preview one. All calls are waited for before the page's vacancies are returned.
 
@@ -261,7 +261,7 @@ It then publishes the new vacancies and, once every page was parsed, marks the v
 
 A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> in a private nested class
 (e.g. <code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>. Its
-<code>configureFetchSettings</code> describes the request, used as returned (nothing is filled from the company), and its
+<code>configureScrapeSettings</code> describes the request, used as returned (nothing is filled from the company), and its
 <code>configurePageScraper</code> creates the scraper with <code>new</code>.
 
 A metadata call that fails, or whose response can't be parsed, marks the company ERROR.
@@ -284,8 +284,8 @@ protected VacancyCrawler configureVacancyCrawler() {
 
 private static class AcmeVacancyCrawler implements VacancyCrawler {
     @Override
-    public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
-        return FetchSettings.builder()
+    public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
+        return ScrapeSettings.builder()
                 .pageURL(previewVacancy.getLink())
                 .delay(VACANCY_DELAY.multipliedBy(vacancyOrderOnPage - 1L))
                 .build();
@@ -311,11 +311,11 @@ private static class AcmeVacancyCrawler implements VacancyCrawler {
   calls of different pages can overlap.
 - The returned vacancy replaces the preview one. Start from <code>previewVacancy.toBuilder()</code> and set only what the page adds,
   and keep the <code>link</code>: it is the vacancy's identity, and a different link makes it another vacancy.
-- A call that fails (<code>VacancyFetchException</code>), can't be parsed or returns <code>null</code> (<code>VacancyParseException</code>), or is
+- A call that fails (<code>VacancyScrapeException</code>), can't be parsed or returns <code>null</code> (<code>VacancyParseException</code>), or is
   skipped by a stop request keeps the preview vacancy and is logged on its page. The page itself doesn't fail.
 
 ### Scraper structure
-A <code>PageScraper</code> fetches one page from a <code>FetchSettings</code> and returns a <code>PageScraperResponse</code>
+A <code>PageScraper</code> fetches one page from a <code>ScrapeSettings</code> and returns a <code>PageScraperResponse</code>
 (the page's id and URL, the response headers and cookies, and the body). It does I/O only: no waiting and no retries.
 Both scrapers are plain classes created with <code>new</code>:
 - <code>StaticPageScraper</code> - the default. Based on Java's <code>HttpClient</code>, for pages whose vacancies are in the HTML or the
@@ -329,7 +329,7 @@ Both scrapers are plain classes created with <code>new</code>:
 
 ### Class diagram
 The detailed view of the same structure, as a UML 2 class diagram: attributes, operations, visibility, defaults and thrown
-exceptions, including the data classes (<code>FetchSettings</code>, <code>MetadataParams</code>,
+exceptions, including the data classes (<code>ScrapeSettings</code>, <code>MetadataParams</code>,
 <code>PageScraperResponse</code>, <code>VacancyDTO</code>).
 
 ![Crawler class diagram](docs/crawler-class-diagram.svg)

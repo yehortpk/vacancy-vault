@@ -1,7 +1,7 @@
 package com.github.yehortpk.crawler.services;
 
 import com.github.yehortpk.crawler.crawler.CompanyCrawler;
-import com.github.yehortpk.crawler.exceptions.MetadataFetchException;
+import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
 import com.github.yehortpk.crawler.exceptions.NoVacanciesOnPageException;
 import com.github.yehortpk.crawler.exceptions.CrawlingAlreadyStartedException;
@@ -237,7 +237,7 @@ public class CrawlerRunnerService {
                 company.getTitle(), createStepErrorMessage(ex));
         log.error(errorLog);
 
-        if (cause instanceof MetadataFetchException || cause instanceof MetadataParseException) {
+        if (cause instanceof MetadataScrapeException || cause instanceof MetadataParseException) {
             crawlerProgress.setStatus(CrawlerProgressStatusEnum.ERROR);
             crawlerProgress.markPageError(1);
         } else {

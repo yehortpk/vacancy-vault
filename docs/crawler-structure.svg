@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 910" width="1240" height="910" role="img" aria-label="Crawler structure. Implementations are green, interfaces grey, value types blue in their own panel. CrawlerRunnerService resolves a CompanyCrawler once. DefaultCompanyCrawler implements it, configures FetchSettings and the PageScraper for each page, uses a CompanyMetadataCrawler, NoCallMetadataCrawler by default, which returns MetadataParams, and implements parseVacancies as parsePreviewVacancies followed by a call per vacancy through a VacancyCrawler, NoCallVacancyCrawler by default, which returns the VacancyDTO that replaces the preview one. Company crawlers extend DefaultCompanyCrawler. PageScraper takes FetchSettings and returns PageScraperResponse; StaticPageScraper is the default, DynamicPageScraper renders pages in a browser borrowed from the BrowserPool.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 910" width="1240" height="910" role="img" aria-label="Crawler structure. Implementations are green, interfaces grey, value types blue in their own panel. CrawlerRunnerService resolves a CompanyCrawler once. DefaultCompanyCrawler implements it, configures ScrapeSettings and the PageScraper for each page, uses a CompanyMetadataCrawler, NoCallMetadataCrawler by default, which returns MetadataParams, and implements parseVacancies as parsePreviewVacancies followed by a call per vacancy through a VacancyCrawler, NoCallVacancyCrawler by default, which returns the VacancyDTO that replaces the preview one. Company crawlers extend DefaultCompanyCrawler. PageScraper takes ScrapeSettings and returns PageScraperResponse; StaticPageScraper is the default, DynamicPageScraper renders pages in a browser borrowed from the BrowserPool.">
   <style>
     svg {
       --panel: #fdfdfe; --box: #eef1f6; --fg: #1b2230; --muted: #5d6778; --line: #3a4456;
@@ -51,7 +51,7 @@
   <polyline points="305,280 340,280 340,85 1115,85 1115,128" class="d-edge" marker-end="url(#arr2)"/>
   <text x="720" y="79" class="d-lbl d-mid">configurePageScraper(pageId), then scrapePage(settings)</text>
   <line x1="305" y1="300" x2="690" y2="300" class="d-edge d-dash" marker-end="url(#arr2)"/>
-  <text x="500" y="292" class="d-lbl d-mid">configureFetchSettings(company, pageId)</text>
+  <text x="500" y="292" class="d-lbl d-mid">configureScrapeSettings(company, pageId)</text>
   <line x1="305" y1="360" x2="375" y2="360" class="d-edge" marker-end="url(#arr2)"/>
   <text x="340" y="352" class="d-lbl d-mid">uses</text>
   <line x1="500" y1="465" x2="500" y2="435" class="d-edge d-dash" marker-end="url(#tri2)"/>
@@ -92,7 +92,7 @@
   <text x="32" y="321" class="d-mem">scrapeCompanyVacancies(company)</text>
   <text x="32" y="336" class="d-mem">parseVacancies(page, company)  final</text>
   <text x="32" y="356" class="d-sec">ABSTRACT</text>
-  <text x="32" y="372" class="d-mem">configureFetchSettings(company, pageId)</text>
+  <text x="32" y="372" class="d-mem">configureScrapeSettings(company, pageId)</text>
   <text x="32" y="387" class="d-mem">parsePreviewVacancies(page, company)</text>
   <text x="32" y="407" class="d-sec">HOOKS, WITH DEFAULTS</text>
   <text x="32" y="423" class="d-mem">configurePageScraper(pageId)  Static</text>
@@ -109,7 +109,7 @@
   <text x="162" y="597" class="d-st">@Component · extends DefaultCompanyCrawler</text>
   <line x1="20" y1="607" x2="305" y2="607" class="d-div"/>
   <text x="32" y="625" class="d-note">implement parsePreviewVacancies,</text>
-  <text x="32" y="641" class="d-note">configureFetchSettings</text>
+  <text x="32" y="641" class="d-note">configureScrapeSettings</text>
   <text x="32" y="657" class="d-note">may override the three configure hooks</text>
   <text x="32" y="673" class="d-note">create scrapers with new</text>
 
@@ -118,7 +118,7 @@
   <text x="500" y="348" class="d-st">«interface»</text>
   <text x="500" y="364" class="d-name">CompanyMetadataCrawler</text>
   <line x1="375" y1="374" x2="625" y2="374" class="d-div"/>
-  <text x="387" y="391" class="d-mem">configureFetchSettings(company)</text>
+  <text x="387" y="391" class="d-mem">configureScrapeSettings(company)</text>
   <text x="387" y="406" class="d-mem">configurePageScraper()</text>
   <text x="387" y="421" class="d-mem">parseMetadata(response)</text>
 
@@ -134,7 +134,7 @@
   <text x="500" y="618" class="d-st">«interface» · one call per vacancy</text>
   <text x="500" y="634" class="d-name">VacancyCrawler</text>
   <line x1="375" y1="644" x2="625" y2="644" class="d-div"/>
-  <text x="387" y="661" class="d-mem">configureFetchSettings(preview,</text>
+  <text x="387" y="661" class="d-mem">configureScrapeSettings(preview,</text>
   <text x="387" y="676" class="d-mem">    company, vacancyOrderOnPage)</text>
   <text x="387" y="691" class="d-mem">configurePageScraper()</text>
   <text x="387" y="706" class="d-mem">parseVacancy(preview, response)</text>
@@ -149,10 +149,10 @@
   <text x="387" y="865" class="d-note">nested class that implements</text>
   <text x="387" y="880" class="d-note">CompanyMetadataCrawler or VacancyCrawler</text>
 
-  <!-- ===== FetchSettings ===== -->
+  <!-- ===== ScrapeSettings ===== -->
   <rect x="690" y="128" width="260" height="220" rx="3" class="d-type"/>
   <text x="820" y="146" class="d-st">«type» · immutable · one per page or call</text>
-  <text x="820" y="162" class="d-name">FetchSettings</text>
+  <text x="820" y="162" class="d-name">ScrapeSettings</text>
   <line x1="690" y1="172" x2="950" y2="172" class="d-div"/>
   <text x="702" y="189" class="d-mem">pageId</text>
   <text x="702" y="204" class="d-mem">pageURL           set by the crawler</text>

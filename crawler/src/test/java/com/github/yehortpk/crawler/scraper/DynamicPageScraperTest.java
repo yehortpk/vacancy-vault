@@ -1,6 +1,6 @@
 package com.github.yehortpk.crawler.scraper;
 
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.utils.browser.BrowserPool;
 import com.github.yehortpk.crawler.services.CrawlingProgressService;
 import com.sun.net.httpserver.HttpExchange;
@@ -121,7 +121,7 @@ class DynamicPageScraperTest {
     void ScrapePage_PostWithoutContentType_ShouldSendDataAsFormBody() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        PageScraperResponse response = pageScraper.scrapePage(FetchSettings.builder()
+        PageScraperResponse response = pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageId(2)
                 .pageURL(createPageURL())
                 .connectionMethod(Connection.Method.POST)
@@ -142,7 +142,7 @@ class DynamicPageScraperTest {
     void ScrapePage_PostWithJsonContentType_ShouldSendDataAsJsonBody() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        pageScraper.scrapePage(FetchSettings.builder()
+        pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL())
                 .connectionMethod(Connection.Method.POST)
                 .headers(Map.of("Content-Type", "application/json"))
@@ -160,7 +160,7 @@ class DynamicPageScraperTest {
     void ScrapePage_Get_ShouldSendDataAsQueryParams() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        pageScraper.scrapePage(FetchSettings.builder()
+        pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL())
                 .data(Map.of("page", "2"))
                 .timeoutSec(20)
@@ -175,7 +175,7 @@ class DynamicPageScraperTest {
     void ScrapePage_GetWithQueryInURL_ShouldAppendEncodedData() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        pageScraper.scrapePage(FetchSettings.builder()
+        pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL("/jobs?sort=new"))
                 .data(Map.of("city", "Київ"))
                 .timeoutSec(20)
@@ -188,7 +188,7 @@ class DynamicPageScraperTest {
     void ScrapePage_Cookies_ShouldSendCookies() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        pageScraper.scrapePage(FetchSettings.builder()
+        pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL())
                 .cookies(Map.of("session", "abc"))
                 .timeoutSec(20)
@@ -201,7 +201,7 @@ class DynamicPageScraperTest {
     void ScrapePage_UserAgentHeader_ShouldSendGivenUserAgent() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        pageScraper.scrapePage(FetchSettings.builder()
+        pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL())
                 .headers(Map.of("user-agent", "VacancyVaultTest/1.0"))
                 .timeoutSec(20)
@@ -214,7 +214,7 @@ class DynamicPageScraperTest {
     void ScrapePage_RedirectWithFollowRedirects_ShouldRenderTarget() throws IOException {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        PageScraperResponse response = pageScraper.scrapePage(FetchSettings.builder()
+        PageScraperResponse response = pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL("/moved"))
                 .timeoutSec(20)
                 .build());
@@ -226,7 +226,7 @@ class DynamicPageScraperTest {
     void ScrapePage_RedirectWithoutFollowRedirects_ShouldFail() {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        assertThrows(IOException.class, () -> pageScraper.scrapePage(FetchSettings.builder()
+        assertThrows(IOException.class, () -> pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL("/moved"))
                 .followRedirects(false)
                 .timeoutSec(20)
@@ -237,7 +237,7 @@ class DynamicPageScraperTest {
     void ScrapePage_NavigationSlowerThanTimeout_ShouldFail() {
         DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
 
-        assertThrows(IOException.class, () -> pageScraper.scrapePage(FetchSettings.builder()
+        assertThrows(IOException.class, () -> pageScraper.scrapePage(ScrapeSettings.builder()
                 .pageURL(createPageURL("/slow"))
                 .timeoutSec(1)
                 .build()));

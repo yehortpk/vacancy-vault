@@ -1,7 +1,7 @@
 package com.github.yehortpk.crawler.crawler.vacancy;
 
 import com.github.yehortpk.crawler.models.CompanyDTO;
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.VacancyDTO;
 import com.github.yehortpk.crawler.scraper.PageScraper;
 import com.github.yehortpk.crawler.scraper.PageScraperResponse;
@@ -14,8 +14,8 @@ import java.util.Map;
  */
 public class NoCallVacancyCrawler implements VacancyCrawler {
     @Override
-    public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
-        return FetchSettings.builder().build();
+    public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
+        return ScrapeSettings.builder().build();
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.github.yehortpk.crawler.scraper;
 
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -83,8 +83,8 @@ class StaticPageScraperTest {
         return bytes.toByteArray();
     }
 
-    private static FetchSettings.FetchSettingsBuilder createParams(String url) {
-        return FetchSettings.builder().pageURL(url).timeoutSec(5);
+    private static ScrapeSettings.ScrapeSettingsBuilder createParams(String url) {
+        return ScrapeSettings.builder().pageURL(url).timeoutSec(5);
     }
 
     @Test

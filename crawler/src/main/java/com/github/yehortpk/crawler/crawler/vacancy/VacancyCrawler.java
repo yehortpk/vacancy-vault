@@ -1,16 +1,16 @@
 package com.github.yehortpk.crawler.crawler.vacancy;
 
-import com.github.yehortpk.crawler.exceptions.VacancyFetchException;
+import com.github.yehortpk.crawler.exceptions.VacancyScrapeException;
 import com.github.yehortpk.crawler.exceptions.VacancyParseException;
 import com.github.yehortpk.crawler.models.CompanyDTO;
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.VacancyDTO;
 import com.github.yehortpk.crawler.scraper.PageScraper;
 import com.github.yehortpk.crawler.scraper.PageScraperResponse;
 
 /**
  * The call a company crawler makes for every vacancy of a parsed page, to read the vacancy's own page. It only
- * describes the call: {@code DefaultCompanyCrawler} fetches {@link #configureFetchSettings} with
+ * describes the call: {@code DefaultCompanyCrawler} fetches {@link #configureScrapeSettings} with
  * {@link #configurePageScraper} and reads the response with {@link #parseVacancy}. A company crawler that needs it
  * implements this interface in a private nested class and returns a new instance of it from
  * {@code configureVacancyCrawler()}.
@@ -29,11 +29,11 @@ public interface VacancyCrawler {
      * @param vacancyOrderOnPage the vacancy's place on its page, starting from 1
      * @return the vacancy page's fetch settings
      */
-    FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage);
+    ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage);
 
     /**
      * The scraper the vacancy's page is fetched with. When it fails, {@code DefaultCompanyCrawler} wraps the failure
-     * in {@link VacancyFetchException} and keeps the preview vacancy.
+     * in {@link VacancyScrapeException} and keeps the preview vacancy.
      *
      * @return a new scraper
      */

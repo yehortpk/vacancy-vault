@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1560" width="1240" height="1560" role="img" aria-label="UML class diagram of the crawler design. CrawlerRunnerService holds a map of CompanyCrawler beans and a CrawlingProgressService. DefaultCompanyCrawler realizes CompanyCrawler, implements parseVacancies as a final method over the abstract parsePreviewVacancies, uses CompanyMetadataCrawler and VacancyCrawler, and by default creates NoCallMetadataCrawler, NoCallVacancyCrawler and StaticPageScraper; it throws MetadataFetchException and MetadataParseException. NoCallMetadataCrawler realizes CompanyMetadataCrawler and NoCallVacancyCrawler realizes VacancyCrawler. StaticPageScraper and DynamicPageScraper realize PageScraper; DynamicPageScraper holds a BrowserPool. The models package holds FetchSettings, MetadataParams, PageScraperResponse and VacancyDTO. A page that fails to be fetched fails with VacancyPageFetchException, and parsePreviewVacancies throws VacancyPageParseException. A vacancy call fails with VacancyFetchException or VacancyParseException and keeps the preview vacancy. MetadataFetchException, MetadataParseException, VacancyPageFetchException, VacancyPageParseException, VacancyFetchException, VacancyParseException and UnresolvedPlaceholderException extend RuntimeException.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1560" width="1240" height="1560" role="img" aria-label="UML class diagram of the crawler design. CrawlerRunnerService holds a map of CompanyCrawler beans and a CrawlingProgressService. DefaultCompanyCrawler realizes CompanyCrawler, implements parseVacancies as a final method over the abstract parsePreviewVacancies, uses CompanyMetadataCrawler and VacancyCrawler, and by default creates NoCallMetadataCrawler, NoCallVacancyCrawler and StaticPageScraper; it throws MetadataScrapeException and MetadataParseException. NoCallMetadataCrawler realizes CompanyMetadataCrawler and NoCallVacancyCrawler realizes VacancyCrawler. StaticPageScraper and DynamicPageScraper realize PageScraper; DynamicPageScraper holds a BrowserPool. The models package holds ScrapeSettings, MetadataParams, PageScraperResponse and VacancyDTO. A page that fails to be fetched fails with VacancyPageScrapeException, and parsePreviewVacancies throws VacancyPageParseException. A vacancy call fails with VacancyScrapeException or VacancyParseException and keeps the preview vacancy. MetadataScrapeException, MetadataParseException, VacancyPageScrapeException, VacancyPageParseException, VacancyScrapeException, VacancyParseException and UnresolvedPlaceholderException extend RuntimeException.">
   <style>
     svg {
       --panel: #fdfdfe; --fg: #1b2230; --muted: #5d6778; --line: #3a4456;
@@ -115,12 +115,12 @@
 <line x1="40" y1="468" x2="372" y2="468" class="u-div"/>
 <text x="50" y="484" class="u-mem" xml:space="preserve">+ scrapeCompanyVacancies(company: CompanyDTO):</text>
 <text x="50" y="498" class="u-mem" xml:space="preserve">      List&lt;CompletableFuture&lt;PageScraperResponse&gt;&gt;</text>
-<text x="50" y="512" class="u-mem" xml:space="preserve">      {throws MetadataFetchException,</text>
+<text x="50" y="512" class="u-mem" xml:space="preserve">      {throws MetadataScrapeException,</text>
 <text x="50" y="526" class="u-mem" xml:space="preserve">              MetadataParseException}</text>
 <text x="50" y="540" class="u-mem" xml:space="preserve">+ parseVacancies(page: PageScraperResponse,</text>
 <text x="50" y="554" class="u-mem" xml:space="preserve">      company: CompanyDTO): List&lt;VacancyDTO&gt; {leaf}</text>
-<text x="50" y="568" class="u-mem u-italic" xml:space="preserve"># configureFetchSettings(company: CompanyDTO,</text>
-<text x="50" y="582" class="u-mem u-italic" xml:space="preserve">      pageId: int): FetchSettings</text>
+<text x="50" y="568" class="u-mem u-italic" xml:space="preserve"># configureScrapeSettings(company: CompanyDTO,</text>
+<text x="50" y="582" class="u-mem u-italic" xml:space="preserve">      pageId: int): ScrapeSettings</text>
 <text x="50" y="596" class="u-mem u-italic" xml:space="preserve"># parsePreviewVacancies(page: PageScraperResponse,</text>
 <text x="50" y="610" class="u-mem u-italic" xml:space="preserve">      company: CompanyDTO): List&lt;VacancyDTO&gt;</text>
 <text x="50" y="624" class="u-mem" xml:space="preserve"># configurePageScraper(pageId: int): PageScraper</text>
@@ -131,8 +131,8 @@
 <text x="611.0" y="415" class="u-stereo">«interface»</text>
 <text x="611.0" y="431" class="u-name">CompanyMetadataCrawler</text>
 <line x1="460" y1="444" x2="762" y2="444" class="u-div"/>
-<text x="470" y="460" class="u-mem" xml:space="preserve">+ configureFetchSettings(company: CompanyDTO):</text>
-<text x="470" y="474" class="u-mem" xml:space="preserve">      FetchSettings</text>
+<text x="470" y="460" class="u-mem" xml:space="preserve">+ configureScrapeSettings(company: CompanyDTO):</text>
+<text x="470" y="474" class="u-mem" xml:space="preserve">      ScrapeSettings</text>
 <text x="470" y="488" class="u-mem" xml:space="preserve">+ configurePageScraper(): PageScraper</text>
 <text x="470" y="502" class="u-mem" xml:space="preserve">+ parseMetadata(response: PageScraperResponse):</text>
 <text x="470" y="516" class="u-mem" xml:space="preserve">      MetadataParams</text>
@@ -140,8 +140,8 @@
 <g class="u-class"><rect x="460" y="560" width="302" height="112" class="u-box"/>
 <text x="611.0" y="579" class="u-name">NoCallMetadataCrawler</text>
 <line x1="460" y1="590" x2="762" y2="590" class="u-div"/>
-<text x="470" y="606" class="u-mem" xml:space="preserve">+ configureFetchSettings(company: CompanyDTO):</text>
-<text x="470" y="620" class="u-mem" xml:space="preserve">      FetchSettings</text>
+<text x="470" y="606" class="u-mem" xml:space="preserve">+ configureScrapeSettings(company: CompanyDTO):</text>
+<text x="470" y="620" class="u-mem" xml:space="preserve">      ScrapeSettings</text>
 <text x="470" y="634" class="u-mem" xml:space="preserve">+ configurePageScraper(): PageScraper</text>
 <text x="470" y="648" class="u-mem" xml:space="preserve">+ parseMetadata(response: PageScraperResponse):</text>
 <text x="470" y="662" class="u-mem" xml:space="preserve">      MetadataParams</text>
@@ -150,10 +150,10 @@
 <text x="611.0" y="735" class="u-stereo">«interface»</text>
 <text x="611.0" y="751" class="u-name">VacancyCrawler</text>
 <line x1="460" y1="764" x2="762" y2="764" class="u-div"/>
-<text x="470" y="780" class="u-mem" xml:space="preserve">+ configureFetchSettings(</text>
+<text x="470" y="780" class="u-mem" xml:space="preserve">+ configureScrapeSettings(</text>
 <text x="470" y="794" class="u-mem" xml:space="preserve">      previewVacancy: VacancyDTO,</text>
 <text x="470" y="808" class="u-mem" xml:space="preserve">      company: CompanyDTO,</text>
-<text x="470" y="822" class="u-mem" xml:space="preserve">      vacancyOrderOnPage: int): FetchSettings</text>
+<text x="470" y="822" class="u-mem" xml:space="preserve">      vacancyOrderOnPage: int): ScrapeSettings</text>
 <text x="470" y="836" class="u-mem" xml:space="preserve">+ configurePageScraper(): PageScraper</text>
 <text x="470" y="850" class="u-mem" xml:space="preserve">+ parseVacancy(previewVacancy: VacancyDTO,</text>
 <text x="470" y="864" class="u-mem" xml:space="preserve">      response: PageScraperResponse): VacancyDTO</text>
@@ -161,10 +161,10 @@
 <g class="u-class"><rect x="460" y="920" width="302" height="140" class="u-box"/>
 <text x="611.0" y="939" class="u-name">NoCallVacancyCrawler</text>
 <line x1="460" y1="950" x2="762" y2="950" class="u-div"/>
-<text x="470" y="966" class="u-mem" xml:space="preserve">+ configureFetchSettings(</text>
+<text x="470" y="966" class="u-mem" xml:space="preserve">+ configureScrapeSettings(</text>
 <text x="470" y="980" class="u-mem" xml:space="preserve">      previewVacancy: VacancyDTO,</text>
 <text x="470" y="994" class="u-mem" xml:space="preserve">      company: CompanyDTO,</text>
-<text x="470" y="1008" class="u-mem" xml:space="preserve">      vacancyOrderOnPage: int): FetchSettings</text>
+<text x="470" y="1008" class="u-mem" xml:space="preserve">      vacancyOrderOnPage: int): ScrapeSettings</text>
 <text x="470" y="1022" class="u-mem" xml:space="preserve">+ configurePageScraper(): PageScraper</text>
 <text x="470" y="1036" class="u-mem" xml:space="preserve">+ parseVacancy(previewVacancy: VacancyDTO,</text>
 <text x="470" y="1050" class="u-mem" xml:space="preserve">      response: PageScraperResponse): VacancyDTO</text>
@@ -173,7 +173,7 @@
 <text x="1028.0" y="415" class="u-stereo">«interface»</text>
 <text x="1028.0" y="431" class="u-name">PageScraper</text>
 <line x1="880" y1="444" x2="1176" y2="444" class="u-div"/>
-<text x="890" y="460" class="u-mem" xml:space="preserve">+ scrapePage(settings: FetchSettings):</text>
+<text x="890" y="460" class="u-mem" xml:space="preserve">+ scrapePage(settings: ScrapeSettings):</text>
 <text x="890" y="474" class="u-mem" xml:space="preserve">      PageScraperResponse {throws IOException}</text>
 </g>
 <g class="u-class"><rect x="900" y="520" width="160" height="30" class="u-box"/>
@@ -197,7 +197,7 @@
 </g>
 <g class="u-class"><rect x="40" y="1150" width="374" height="260" class="u-box"/>
 <text x="227.0" y="1165" class="u-stereo">{immutable}</text>
-<text x="227.0" y="1181" class="u-name">FetchSettings</text>
+<text x="227.0" y="1181" class="u-name">ScrapeSettings</text>
 <line x1="40" y1="1194" x2="414" y2="1194" class="u-div"/>
 <text x="50" y="1210" class="u-mem" xml:space="preserve">- pageId: int</text>
 <text x="50" y="1224" class="u-mem" xml:space="preserve">- pageURL: String</text>
@@ -209,10 +209,10 @@
 <text x="50" y="1308" class="u-mem" xml:space="preserve">- followRedirects: boolean = true</text>
 <text x="50" y="1322" class="u-mem" xml:space="preserve">- delay: Duration = Duration.ZERO</text>
 <line x1="40" y1="1330" x2="414" y2="1330" class="u-div"/>
-<text x="50" y="1346" class="u-mem u-static" xml:space="preserve">+ builder(): FetchSettingsBuilder</text>
-<text x="50" y="1360" class="u-mem" xml:space="preserve">+ toBuilder(): FetchSettingsBuilder</text>
+<text x="50" y="1346" class="u-mem u-static" xml:space="preserve">+ builder(): ScrapeSettingsBuilder</text>
+<text x="50" y="1360" class="u-mem" xml:space="preserve">+ toBuilder(): ScrapeSettingsBuilder</text>
 <text x="50" y="1374" class="u-mem" xml:space="preserve">+ fillPlaceholders(placeholders: Map&lt;String, String&gt;):</text>
-<text x="50" y="1388" class="u-mem" xml:space="preserve">      FetchSettings {throws UnresolvedPlaceholderException}</text>
+<text x="50" y="1388" class="u-mem" xml:space="preserve">      ScrapeSettings {throws UnresolvedPlaceholderException}</text>
 <text x="50" y="1402" class="u-mem" xml:space="preserve">...</text>
 </g>
 <g class="u-class"><rect x="460" y="1150" width="272" height="96" class="u-box"/>
@@ -247,19 +247,19 @@
 <text x="989.0" y="1036" class="u-name">RuntimeException</text>
 </g>
 <g class="u-class"><rect x="900" y="1070" width="183" height="30" class="u-box"/>
-<text x="991.5" y="1089" class="u-name">MetadataFetchException</text>
+<text x="991.5" y="1089" class="u-name">MetadataScrapeException</text>
 </g>
 <g class="u-class"><rect x="900" y="1115" width="183" height="30" class="u-box"/>
 <text x="991.5" y="1134" class="u-name">MetadataParseException</text>
 </g>
 <g class="u-class"><rect x="900" y="1160" width="210" height="30" class="u-box"/>
-<text x="1005.0" y="1179" class="u-name">VacancyPageFetchException</text>
+<text x="1005.0" y="1179" class="u-name">VacancyPageScrapeException</text>
 </g>
 <g class="u-class"><rect x="900" y="1205" width="210" height="30" class="u-box"/>
 <text x="1005.0" y="1224" class="u-name">VacancyPageParseException</text>
 </g>
 <g class="u-class"><rect x="900" y="1250" width="175" height="30" class="u-box"/>
-<text x="987.5" y="1269" class="u-name">VacancyFetchException</text>
+<text x="987.5" y="1269" class="u-name">VacancyScrapeException</text>
 </g>
 <g class="u-class"><rect x="900" y="1295" width="175" height="30" class="u-box"/>
 <text x="987.5" y="1314" class="u-name">VacancyParseException</text>
@@ -278,24 +278,24 @@
 <text x="50" y="732" class="u-note-text" xml:space="preserve">extend DefaultCompanyCrawler.</text>
 <text x="50" y="760" class="u-note-text" xml:space="preserve">scrapeCompanyVacancies(company):</text>
 <text x="50" y="774" class="u-note-text" xml:space="preserve">1. metadata crawler: configurePageScraper().scrapePage(</text>
-<text x="50" y="788" class="u-note-text" xml:space="preserve">   configureFetchSettings(company)) (fails: MetadataFetch-</text>
+<text x="50" y="788" class="u-note-text" xml:space="preserve">   configureScrapeSettings(company)) (fails: MetadataScrape-</text>
 <text x="50" y="802" class="u-note-text" xml:space="preserve">   Exception), then parseMetadata (fails: MetadataParse-</text>
 <text x="50" y="816" class="u-note-text" xml:space="preserve">   Exception)</text>
 <text x="50" y="830" class="u-note-text" xml:space="preserve">2. initPages(metadata.pagesCount)</text>
 <text x="50" y="844" class="u-note-text" xml:space="preserve">3. for every page, before any request:</text>
-<text x="50" y="858" class="u-note-text" xml:space="preserve">   configureFetchSettings, set pageId, fill unset data,</text>
+<text x="50" y="858" class="u-note-text" xml:space="preserve">   configureScrapeSettings, set pageId, fill unset data,</text>
 <text x="50" y="872" class="u-note-text" xml:space="preserve">   headers and cookies from company, merge metadata</text>
 <text x="50" y="886" class="u-note-text" xml:space="preserve">   headers and cookies by key, fillPlaceholders(+ {page})</text>
 <text x="50" y="900" class="u-note-text" xml:space="preserve">4. wait delay on the stop signal, then</text>
 <text x="50" y="914" class="u-note-text" xml:space="preserve">   configurePageScraper(pageId).scrapePage</text>
-<text x="50" y="928" class="u-note-text" xml:space="preserve">   (fails: VacancyPageFetchException)</text>
+<text x="50" y="928" class="u-note-text" xml:space="preserve">   (fails: VacancyPageScrapeException)</text>
 <text x="50" y="956" class="u-note-text" xml:space="preserve">parseVacancies(page, company), final:</text>
 <text x="50" y="970" class="u-note-text" xml:space="preserve">1. parsePreviewVacancies(page, company)</text>
 <text x="50" y="984" class="u-note-text" xml:space="preserve">2. every preview on a virtual thread of its own:</text>
-<text x="50" y="998" class="u-note-text" xml:space="preserve">   configureVacancyCrawler().configureFetchSettings(</text>
+<text x="50" y="998" class="u-note-text" xml:space="preserve">   configureVacancyCrawler().configureScrapeSettings(</text>
 <text x="50" y="1012" class="u-note-text" xml:space="preserve">   preview, company, vacancyOrderOnPage from 1), wait</text>
 <text x="50" y="1026" class="u-note-text" xml:space="preserve">   delay on the stop signal, configurePageScraper()</text>
-<text x="50" y="1040" class="u-note-text" xml:space="preserve">   .scrapePage (fails: VacancyFetchException), then</text>
+<text x="50" y="1040" class="u-note-text" xml:space="preserve">   .scrapePage (fails: VacancyScrapeException), then</text>
 <text x="50" y="1054" class="u-note-text" xml:space="preserve">   parseVacancy (fails or null: VacancyParseException)</text>
 <text x="50" y="1068" class="u-note-text" xml:space="preserve">3. join; each result replaces its preview, a failed or</text>
 <text x="50" y="1082" class="u-note-text" xml:space="preserve">   skipped vacancy keeps its preview</text>

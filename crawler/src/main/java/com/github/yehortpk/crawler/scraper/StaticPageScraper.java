@@ -1,6 +1,6 @@
 package com.github.yehortpk.crawler.scraper;
 
-import com.github.yehortpk.crawler.models.FetchSettings;
+import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -58,7 +58,7 @@ public class StaticPageScraper implements PageScraper {
     private static final Set<String> RESTRICTED_HEADERS = Set.of("connection", "content-length", "expect", "host", "upgrade");
 
     @Override
-    public PageScraperResponse scrapePage(FetchSettings settings) throws IOException {
+    public PageScraperResponse scrapePage(ScrapeSettings settings) throws IOException {
         Map<String, String> data = Optional.ofNullable(settings.getData()).orElse(Map.of());
         Map<String, String> headers = Optional.ofNullable(settings.getHeaders()).orElse(Map.of());
         Map<String, String> cookies = Optional.ofNullable(settings.getCookies()).orElse(Map.of());
@@ -126,7 +126,7 @@ public class StaticPageScraper implements PageScraper {
         }
     }
 
-    private HttpRequest buildRequest(FetchSettings settings, Map<String, String> data, Map<String, String> headers,
+    private HttpRequest buildRequest(ScrapeSettings settings, Map<String, String> data, Map<String, String> headers,
                                      Map<String, String> cookies) throws IOException {
         boolean isPost = "POST".equals(settings.getConnectionMethod().name());
 
