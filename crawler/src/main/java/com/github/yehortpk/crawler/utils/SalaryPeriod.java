@@ -1,4 +1,6 @@
-package com.github.yehortpk.crawler.models;
+package com.github.yehortpk.crawler.utils;
+
+import com.github.yehortpk.crawler.models.VacancyDTO;
 
 /**
  * Suggested values for {@link VacancyDTO#getSalaryPeriod()}. Pass {@code name()}; the field

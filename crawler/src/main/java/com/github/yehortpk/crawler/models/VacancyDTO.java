@@ -1,5 +1,6 @@
 package com.github.yehortpk.crawler.models;
 
+import com.github.yehortpk.crawler.utils.SalaryPeriod;
 import lombok.*;
 
 import java.io.Serializable;
