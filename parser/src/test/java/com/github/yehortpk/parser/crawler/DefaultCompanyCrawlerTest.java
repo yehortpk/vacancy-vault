@@ -1,6 +1,7 @@
 package com.github.yehortpk.parser.crawler;
 
 import com.github.yehortpk.parser.crawler.metadata.CompanyMetadataCrawler;
+import com.github.yehortpk.parser.crawler.vacancy.VacancyCrawler;
 import com.github.yehortpk.parser.exceptions.MetadataFetchException;
 import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
@@ -10,6 +11,7 @@ import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.FetchSettings;
 import com.github.yehortpk.parser.models.MetadataParams;
 import com.github.yehortpk.parser.models.VacancyDTO;
+import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.scraper.PageScraper;
 import com.github.yehortpk.parser.scraper.PageScraperResponse;
 import com.github.yehortpk.parser.services.ParsingProgressService;
@@ -23,6 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +34,7 @@ import java.util.function.BiFunction;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,12 +56,17 @@ class DefaultCompanyCrawlerTest {
         private final BiFunction<CompanyDTO, Integer, FetchSettings> fetchSettingsFactory;
         private final PageScraper pageScraper;
         private final CompanyMetadataCrawler metadataCrawler;
+        private final List<VacancyDTO> previewVacancies;
+        private final VacancyCrawler vacancyCrawler;
 
         TestCrawler(BiFunction<CompanyDTO, Integer, FetchSettings> fetchSettingsFactory, PageScraper pageScraper,
-                    CompanyMetadataCrawler metadataCrawler) {
+                    CompanyMetadataCrawler metadataCrawler, List<VacancyDTO> previewVacancies,
+                    VacancyCrawler vacancyCrawler) {
             this.fetchSettingsFactory = fetchSettingsFactory;
             this.pageScraper = pageScraper;
             this.metadataCrawler = metadataCrawler;
+            this.previewVacancies = previewVacancies;
+            this.vacancyCrawler = vacancyCrawler;
         }
 
         @Override
@@ -76,8 +85,13 @@ class DefaultCompanyCrawlerTest {
         }
 
         @Override
-        public List<VacancyDTO> parseVacancies(PageScraperResponse page, CompanyDTO company) {
-            return List.of();
+        protected VacancyCrawler configureVacancyCrawler() {
+            return vacancyCrawler != null ? vacancyCrawler : super.configureVacancyCrawler();
+        }
+
+        @Override
+        protected List<VacancyDTO> parsePreviewVacancies(PageScraperResponse page, CompanyDTO company) {
+            return previewVacancies;
         }
     }
 
@@ -110,15 +124,51 @@ class DefaultCompanyCrawlerTest {
         };
     }
 
+    /**
+     * A vacancy crawler that requests the vacancy's link with the given scraper and sets the response body as the
+     * vacancy's description
+     */
+    private static VacancyCrawler createVacancyCrawler(PageScraper vacancyScraper) {
+        return new VacancyCrawler() {
+            @Override
+            public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company,
+                                                        int vacancyOrderOnPage) {
+                return FetchSettings.builder().pageURL(previewVacancy.getLink()).build();
+            }
+
+            @Override
+            public PageScraper configurePageScraper() {
+                return vacancyScraper;
+            }
+
+            @Override
+            public VacancyDTO parseVacancy(VacancyDTO previewVacancy, PageScraperResponse response) {
+                return previewVacancy.toBuilder().description(response.getBody()).build();
+            }
+        };
+    }
+
     private TestCrawler createCrawler(BiFunction<CompanyDTO, Integer, FetchSettings> fetchSettingsFactory,
                                       CompanyMetadataCrawler metadataCrawler) {
-        TestCrawler crawler = new TestCrawler(fetchSettingsFactory, stubPageScraper, metadataCrawler);
-        ReflectionTestUtils.setField(crawler, "parsingProgressService", parsingProgressService);
-        return crawler;
+        return initCrawler(new TestCrawler(fetchSettingsFactory, stubPageScraper, metadataCrawler, List.of(), null));
     }
 
     private TestCrawler createCrawler(CompanyMetadataCrawler metadataCrawler) {
         return createCrawler((company, pageId) -> FetchSettings.builder().build(), metadataCrawler);
+    }
+
+    /**
+     * A crawler whose page holds the given preview vacancies, with one initialized page in the progress
+     */
+    private TestCrawler createVacanciesCrawler(List<VacancyDTO> previewVacancies, VacancyCrawler vacancyCrawler) {
+        parsingProgressService.getParsers().get(1).initPages(1);
+        return initCrawler(new TestCrawler((company, pageId) -> FetchSettings.builder().build(), stubPageScraper,
+                null, previewVacancies, vacancyCrawler));
+    }
+
+    private TestCrawler initCrawler(TestCrawler crawler) {
+        ReflectionTestUtils.setField(crawler, "parsingProgressService", parsingProgressService);
+        return crawler;
     }
 
     private static CompanyDTO createCompany() {
@@ -132,12 +182,24 @@ class DefaultCompanyCrawlerTest {
                 .build();
     }
 
+    private static PageScraperResponse createVacanciesPage() {
+        return new PageScraperResponse(1, "https://example.com/vacancies/1", Map.of(), Map.of(), "body");
+    }
+
+    private static VacancyDTO createPreviewVacancy(String link) {
+        return VacancyDTO.builder().title("Title of " + link).link(link).build();
+    }
+
     private static List<PageScraperResponse> joinPages(List<CompletableFuture<PageScraperResponse>> pages) {
         return pages.stream().map(page -> page.orTimeout(TIMEOUT_SEC, TimeUnit.SECONDS).join()).toList();
     }
 
     private List<FetchSettings> getScrapedSettingsInPageOrder() {
         return scrapedSettings.stream().sorted(Comparator.comparingInt(FetchSettings::getPageId)).toList();
+    }
+
+    private List<ParserProgress.PageProgress.PageLog> getFirstPageLogs() {
+        return parsingProgressService.getParsers().get(1).getPages().getFirst().getLogs();
     }
 
     @BeforeEach
@@ -354,11 +416,10 @@ class DefaultCompanyCrawlerTest {
     @Test
     void ScrapeCompanyVacancies_PageScraperThrowsIOException_ShouldFailPageWithVacancyPageFetchException() {
         IOException cause = new IOException("Connection reset");
-        TestCrawler crawler = new TestCrawler((company, pageId) -> FetchSettings.builder().build(),
+        TestCrawler crawler = initCrawler(new TestCrawler((company, pageId) -> FetchSettings.builder().build(),
                 settings -> {
                     throw cause;
-                }, null);
-        ReflectionTestUtils.setField(crawler, "parsingProgressService", parsingProgressService);
+                }, null, List.of(), null));
 
         CompletableFuture<PageScraperResponse> page = crawler.scrapeCompanyVacancies(createCompany()).getFirst();
 
@@ -366,5 +427,125 @@ class DefaultCompanyCrawlerTest {
                 () -> page.get(TIMEOUT_SEC, TimeUnit.SECONDS));
         assertInstanceOf(VacancyPageFetchException.class, exception.getCause());
         assertSame(cause, exception.getCause().getCause());
+    }
+
+    @Test
+    void ParseVacancies_NoCallVacancyCrawler_ShouldReturnPreviewCopies() {
+        List<VacancyDTO> previewVacancies = List.of(createPreviewVacancy("https://example.com/a"),
+                createPreviewVacancy("https://example.com/b"));
+        TestCrawler crawler = createVacanciesCrawler(previewVacancies, null);
+
+        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+
+        assertEquals(2, vacancies.size());
+        for (int i = 0; i < vacancies.size(); i++) {
+            assertNotSame(previewVacancies.get(i), vacancies.get(i));
+            assertEquals(previewVacancies.get(i).getLink(), vacancies.get(i).getLink());
+            assertEquals(previewVacancies.get(i).getTitle(), vacancies.get(i).getTitle());
+        }
+    }
+
+    @Test
+    void ParseVacancies_VacancyCrawler_ShouldReplacePreviews() {
+        List<VacancyDTO> previewVacancies = List.of(createPreviewVacancy("https://example.com/a"),
+                createPreviewVacancy("https://example.com/b"));
+        TestCrawler crawler = createVacanciesCrawler(previewVacancies, createVacancyCrawler(settings ->
+                new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(),
+                        "Description of " + settings.getPageURL())));
+
+        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+
+        assertEquals(List.of("https://example.com/a", "https://example.com/b"),
+                vacancies.stream().map(VacancyDTO::getLink).toList());
+        assertEquals(List.of("Description of https://example.com/a", "Description of https://example.com/b"),
+                vacancies.stream().map(VacancyDTO::getDescription).toList());
+        assertEquals("Title of https://example.com/a", vacancies.getFirst().getTitle());
+    }
+
+    @Test
+    void ParseVacancies_FetchFails_ShouldKeepPreview() {
+        VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
+        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyCrawler(settings -> {
+            throw new IOException("Connection reset");
+        }));
+
+        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+
+        assertSame(previewVacancy, vacancies.getFirst());
+        assertTrue(getFirstPageLogs().stream()
+                .anyMatch(log -> log.level() == ParserProgress.LogLevelEnum.ERROR));
+    }
+
+    @Test
+    void ParseVacancies_ParseReturnsNull_ShouldKeepPreview() {
+        VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
+        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), new VacancyCrawler() {
+            @Override
+            public FetchSettings configureFetchSettings(VacancyDTO preview, CompanyDTO company,
+                                                        int vacancyOrderOnPage) {
+                return FetchSettings.builder().pageURL(preview.getLink()).build();
+            }
+
+            @Override
+            public PageScraper configurePageScraper() {
+                return settings -> new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(), "");
+            }
+
+            @Override
+            public VacancyDTO parseVacancy(VacancyDTO preview, PageScraperResponse response) {
+                return null;
+            }
+        });
+
+        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+
+        assertSame(previewVacancy, vacancies.getFirst());
+    }
+
+    @Test
+    void ParseVacancies_StopRequested_ShouldKeepPreviews() {
+        List<FetchSettings> vacancySettings = new CopyOnWriteArrayList<>();
+        VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
+        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyCrawler(settings -> {
+            vacancySettings.add(settings);
+            return new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(), "Description");
+        }));
+        parsingProgressService.requestStop();
+
+        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+
+        assertSame(previewVacancy, vacancies.getFirst());
+        assertTrue(vacancySettings.isEmpty());
+    }
+
+    @Test
+    void ParseVacancies_SeveralVacancies_ShouldPassOrderOnPage() {
+        Map<String, Integer> ordersByLink = new ConcurrentHashMap<>();
+        VacancyCrawler orderRecordingCrawler = new VacancyCrawler() {
+            @Override
+            public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company,
+                                                        int vacancyOrderOnPage) {
+                ordersByLink.put(previewVacancy.getLink(), vacancyOrderOnPage);
+                return FetchSettings.builder().pageURL(previewVacancy.getLink()).build();
+            }
+
+            @Override
+            public PageScraper configurePageScraper() {
+                return settings -> new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(), "");
+            }
+
+            @Override
+            public VacancyDTO parseVacancy(VacancyDTO previewVacancy, PageScraperResponse response) {
+                return previewVacancy.toBuilder().build();
+            }
+        };
+        TestCrawler crawler = createVacanciesCrawler(List.of(createPreviewVacancy("https://example.com/a"),
+                createPreviewVacancy("https://example.com/b"), createPreviewVacancy("https://example.com/c")),
+                orderRecordingCrawler);
+
+        crawler.parseVacancies(createVacanciesPage(), createCompany());
+
+        assertEquals(Map.of("https://example.com/a", 1, "https://example.com/b", 2, "https://example.com/c", 3),
+                ordersByLink);
     }
 }

@@ -21,6 +21,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 - [Usage](#usage)
   - [Code Usage](#code-usage)
   - [Parser structure](#parser-structure)
+    - [Vacancy pages](#vacancy-pages)
   - [Scraper structure](#scraper-structure)
   - [Class diagram](#class-diagram)
   - [Database usage](#database-usage)
@@ -198,15 +199,18 @@ class runs the whole fetch flow, so a company crawler only describes its site. I
   as is extends <code>VacanciesUrlCompanyCrawler</code> (in the companies' <code>common</code> package) instead of
   implementing this method. A crawler that reads the site's API sets <code>pageURL(company.getApiVacanciesURL())</code>,
   and <code>connectionMethod(POST)</code> when the API needs it.
-- <code>parseVacancies(page, company)</code> - turns a fetched page into vacancies. Read HTML with <code>Jsoup.parse(page.getBody())</code>
-  and JSON with Gson.
+- <code>parsePreviewVacancies(page, company)</code> - turns a fetched page into vacancies, as the page itself describes them.
+  Read HTML with <code>Jsoup.parse(page.getBody())</code> and JSON with Gson.
 
-It may also override two hooks:
+It may also override three hooks:
 - <code>configurePageScraper(pageId)</code> - the scraper the page is fetched with. Defaults to <code>new StaticPageScraper()</code>.
   Return <code>new DynamicPageScraper(browserPool, readySelector)</code> for a site whose vacancies a browser has to render
   (inject the <code>BrowserPool</code> bean into the crawler). See [Scraper structure](#scraper-structure) for choosing one.
 - <code>configureMetadataCrawler()</code> - the call made before the pages, to learn the page count or values the requests
   need. Defaults to <code>NoCallMetadataCrawler</code>: no request, one page. See [Dynamic request parameters](#dynamic-request-parameters).
+- <code>configureVacancyCrawler()</code> - the call made for every vacancy of a parsed page, to read the vacancy's own page
+  (e.g. its description). Defaults to <code>NoCallVacancyCrawler</code>: no request, the vacancy stays as its page described it.
+  See [Vacancy pages](#vacancy-pages).
 
 The delay between pages defaults to 0, so every page of a company is sent at once. A site that needs pacing sets it per page
 in <code>configureFetchSettings</code>, e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.
@@ -220,7 +224,7 @@ public class AcmeCrawler extends DefaultCompanyCrawler {
     }
 
     @Override
-    public List<VacancyDTO> parseVacancies(PageScraperResponse page, CompanyDTO company) {
+    protected List<VacancyDTO> parsePreviewVacancies(PageScraperResponse page, CompanyDTO company) {
         return Jsoup.parse(page.getBody()).select("a.vacancy").stream()
                 .map(link -> VacancyDTO.builder().title(link.text()).link(link.attr("href")).build())
                 .toList();
@@ -245,8 +249,15 @@ once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>Default
 3. <b>Every page</b> waits out its <code>delay</code>, then is fetched on a virtual thread of its own with
    <code>configurePageScraper(pageId)</code>. A stop request ends the wait at once.
 
-The runner then parses each fetched page with <code>parseVacancies(page, company)</code>, publishes the new vacancies and,
-once every page was parsed, marks the vanished ones outdated.
+The runner then parses each fetched page with <code>parseVacancies(page, company)</code>, which <code>DefaultCompanyCrawler</code>
+implements (it is final) as:
+1. <b>Preview vacancies.</b> <code>parsePreviewVacancies(page, company)</code> turns the page into vacancies.
+2. <b>Vacancy calls.</b> Every vacancy gets a virtual thread of its own: the crawler's <code>VacancyCrawler</code> describes the
+   request (<code>configureFetchSettings(previewVacancy, company, vacancyOrderOnPage)</code>, <code>configurePageScraper()</code>), the
+   call waits out its <code>delay</code>, is made, and <code>parseVacancy(previewVacancy, response)</code> returns the vacancy that
+   replaces the preview one. All calls are waited for before the page's vacancies are returned.
+
+It then publishes the new vacancies and, once every page was parsed, marks the vanished ones outdated.
 
 A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> in a private nested class
 (e.g. <code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>. Its
@@ -254,6 +265,54 @@ A company crawler that needs a metadata call implements <code>CompanyMetadataCra
 <code>configurePageScraper</code> creates the scraper with <code>new</code>.
 
 A metadata call that fails, or whose response can't be parsed, marks the company ERROR.
+
+#### Vacancy pages
+<b>Warning!</b> A vacancy call is made for <b>every vacancy of every page on every run</b>, not only for the new ones. It
+multiplies the requests sent to the company's site, which can get the parser rate-limited or banned there. Use it with
+consideration, and space the calls out with a delay.
+
+A company crawler that needs it implements <code>VacancyCrawler</code> in a private nested class and returns a new instance
+of it from <code>configureVacancyCrawler()</code>:
+
+```java
+private static final Duration VACANCY_DELAY = Duration.ofSeconds(2);
+
+@Override
+protected VacancyCrawler configureVacancyCrawler() {
+    return new AcmeVacancyCrawler();
+}
+
+private static class AcmeVacancyCrawler implements VacancyCrawler {
+    @Override
+    public FetchSettings configureFetchSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
+        return FetchSettings.builder()
+                .pageURL(previewVacancy.getLink())
+                .delay(VACANCY_DELAY.multipliedBy(vacancyOrderOnPage - 1L))
+                .build();
+    }
+
+    @Override
+    public PageScraper configurePageScraper() {
+        return new StaticPageScraper();
+    }
+
+    @Override
+    public VacancyDTO parseVacancy(VacancyDTO previewVacancy, PageScraperResponse response) {
+        return previewVacancy.toBuilder()
+                .description(Jsoup.parse(response.getBody()).selectFirst(".job-description").text())
+                .build();
+    }
+}
+```
+
+- The settings are used as returned: nothing is filled from the vacancy or the company.
+- <code>vacancyOrderOnPage</code> is the vacancy's place on its page, starting from 1. The delay counts from the moment the page's
+  vacancies are scheduled, so the example sends one call every 2 seconds per page. Pages are parsed in parallel, so the
+  calls of different pages can overlap.
+- The returned vacancy replaces the preview one. Start from <code>previewVacancy.toBuilder()</code> and set only what the page adds,
+  and keep the <code>link</code>: it is the vacancy's identity, and a different link makes it another vacancy.
+- A call that fails (<code>VacancyFetchException</code>), can't be parsed or returns <code>null</code> (<code>VacancyParseException</code>), or is
+  skipped by a stop request keeps the preview vacancy and is logged on its page. The page itself doesn't fail.
 
 ### Scraper structure
 A <code>PageScraper</code> fetches one page from a <code>FetchSettings</code> and returns a <code>PageScraperResponse</code>
@@ -271,7 +330,7 @@ Both scrapers are plain classes created with <code>new</code>:
 ### Class diagram
 The detailed view of the same structure, as a UML 2 class diagram: attributes, operations, visibility, defaults and thrown
 exceptions, including the data classes (<code>FetchSettings</code>, <code>MetadataParams</code>,
-<code>PageScraperResponse</code>).
+<code>PageScraperResponse</code>, <code>VacancyDTO</code>).
 
 ![Parser class diagram](docs/parser-class-diagram.svg)
 

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * DTO representing a vacancy
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor

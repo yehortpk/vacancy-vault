@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface CompanyCrawler {
     /**
-     * Parses the vacancies of one fetched page
+     * Parses the vacancies of one fetched page, including any call made for each vacancy's own page
      *
      * @param page the fetched page
      * @param company the company the page belongs to

@@ -6,10 +6,16 @@ import com.github.yehortpk.parser.exceptions.MetadataFetchException;
 import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
 import com.github.yehortpk.parser.exceptions.UnresolvedPlaceholderException;
+import com.github.yehortpk.parser.crawler.vacancy.NoCallVacancyCrawler;
+import com.github.yehortpk.parser.crawler.vacancy.VacancyCrawler;
+import com.github.yehortpk.parser.exceptions.VacancyFetchException;
 import com.github.yehortpk.parser.exceptions.VacancyPageFetchException;
+import com.github.yehortpk.parser.exceptions.VacancyPageParseException;
+import com.github.yehortpk.parser.exceptions.VacancyParseException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.FetchSettings;
 import com.github.yehortpk.parser.models.MetadataParams;
+import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.scraper.PageScraper;
 import com.github.yehortpk.parser.scraper.PageScraperResponse;
@@ -26,15 +32,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Runs the whole fetch flow of a company: the metadata call, then every page. A company crawler extends it and only
- * describes its site: how each page is requested ({@link #configureFetchSettings}, plus the
- * {@link #configurePageScraper} and {@link #configureMetadataCrawler} hooks) and how a page turns into vacancies
- * ({@link #parseVacancies}). Holds no state of a run.
+ * Runs the whole fetch flow of a company: the metadata call, every page, then the call of every vacancy. A company
+ * crawler extends it and only describes its site: how each page is requested ({@link #configureFetchSettings}, plus
+ * the {@link #configurePageScraper} and {@link #configureMetadataCrawler} hooks), how a page turns into vacancies
+ * ({@link #parsePreviewVacancies}) and how each vacancy's own page is read ({@link #configureVacancyCrawler} hook).
+ * Holds no state of a run.
  */
 @Slf4j
 public abstract class DefaultCompanyCrawler implements CompanyCrawler {
@@ -76,6 +84,50 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
      */
     protected CompanyMetadataCrawler configureMetadataCrawler() {
         return new NoCallMetadataCrawler();
+    }
+
+    /**
+     * The call made for every vacancy of a parsed page, {@link NoCallVacancyCrawler} unless overridden: no request,
+     * and every vacancy stays as its vacancies page described it
+     *
+     * @return a new vacancy crawler, never {@code null}
+     */
+    protected VacancyCrawler configureVacancyCrawler() {
+        return new NoCallVacancyCrawler();
+    }
+
+    /**
+     * Turns a fetched vacancies page into its vacancies, as the page itself describes them
+     *
+     * @param page the fetched page
+     * @param company the company the page belongs to
+     * @return the page's vacancies
+     * @throws VacancyPageParseException when the page can't be parsed
+     */
+    protected abstract List<VacancyDTO> parsePreviewVacancies(PageScraperResponse page, CompanyDTO company);
+
+    /**
+     * Parses the page's vacancies with {@link #parsePreviewVacancies}, then makes the {@link #configureVacancyCrawler}
+     * call for every one of them, each on a virtual thread of its own after its delay, and waits for all of them.
+     * Every result replaces its preview vacancy. A vacancy whose call fails, or is skipped by a stop request, keeps its
+     * preview; the page itself never fails because of it.
+     *
+     * @throws VacancyPageParseException when the page can't be parsed
+     */
+    @Override
+    public final List<VacancyDTO> parseVacancies(PageScraperResponse page, CompanyDTO company) {
+        List<VacancyDTO> previewVacancies = parsePreviewVacancies(page, company);
+        ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
+
+        List<CompletableFuture<VacancyDTO>> vacancyFutures = new ArrayList<>();
+        for (int i = 0; i < previewVacancies.size(); i++) {
+            vacancyFutures.add(scheduleVacancy(previewVacancies.get(i), i + 1, page.getPageId(), company,
+                    parserProgress));
+        }
+
+        return vacancyFutures.stream()
+                .map(CompletableFuture::join)
+                .toList();
     }
 
     /**
@@ -205,5 +257,78 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
         log.info(successLog);
 
         return response;
+    }
+
+    /**
+     * Starts the vacancy's call once its delay is over, like {@link #schedulePage}. Never completes exceptionally: a
+     * failed or skipped call completes with the preview vacancy.
+     */
+    private CompletableFuture<VacancyDTO> scheduleVacancy(VacancyDTO previewVacancy, int vacancyOrderOnPage, int pageId,
+                                                          CompanyDTO company, ParserProgress parserProgress) {
+        VacancyCrawler vacancyCrawler = configureVacancyCrawler();
+
+        FetchSettings settings;
+        try {
+            settings = vacancyCrawler.configureFetchSettings(previewVacancy, company, vacancyOrderOnPage);
+        } catch (RuntimeException e) {
+            VacancyFetchException exception = new VacancyFetchException(String.format(
+                    "Vacancy %d of page %d of %s can't be configured: %s",
+                    vacancyOrderOnPage, pageId, company.getTitle(), e.getMessage()), e);
+            return CompletableFuture.completedFuture(
+                    keepPreviewVacancy(exception, previewVacancy, vacancyOrderOnPage, pageId, company, parserProgress));
+        }
+
+        return parsingProgressService.getStopSignal().copy()
+                .completeOnTimeout(null, settings.getDelay().toMillis(), TimeUnit.MILLISECONDS)
+                .thenApplyAsync(ignored -> scrapeVacancy(vacancyCrawler, settings, previewVacancy, vacancyOrderOnPage,
+                        pageId, company, parserProgress), PAGE_EXECUTOR)
+                .exceptionally(ex -> keepPreviewVacancy(ex, previewVacancy, vacancyOrderOnPage, pageId, company,
+                        parserProgress));
+    }
+
+    private VacancyDTO scrapeVacancy(VacancyCrawler vacancyCrawler, FetchSettings settings, VacancyDTO previewVacancy,
+                                     int vacancyOrderOnPage, int pageId, CompanyDTO company,
+                                     ParserProgress parserProgress) {
+        if (parsingProgressService.isStopRequested()) {
+            throw new ParsingStoppedException();
+        }
+
+        PageScraperResponse response;
+        try {
+            response = vacancyCrawler.configurePageScraper().scrapePage(settings);
+        } catch (IOException | RuntimeException e) {
+            throw new VacancyFetchException(String.format("Vacancy %d of page %d of %s can't be fetched: %s",
+                    vacancyOrderOnPage, pageId, company.getTitle(), e.getMessage()), e);
+        }
+
+        VacancyDTO vacancy;
+        try {
+            vacancy = vacancyCrawler.parseVacancy(previewVacancy, response);
+        } catch (RuntimeException e) {
+            throw new VacancyParseException(String.format("Vacancy %d of page %d of %s can't be parsed: %s",
+                    vacancyOrderOnPage, pageId, company.getTitle(), e.getMessage()), e);
+        }
+        if (vacancy == null) {
+            throw new VacancyParseException(String.format("Vacancy %d of page %d of %s was parsed into null",
+                    vacancyOrderOnPage, pageId, company.getTitle()), null);
+        }
+
+        String successLog = String.format("Company: %s, Page: %s, vacancy %s was scraped",
+                company.getTitle(), pageId, vacancyOrderOnPage);
+        parserProgress.addPageLog(pageId, ParserProgress.LogLevelEnum.INFO, successLog);
+        log.info(successLog);
+
+        return vacancy;
+    }
+
+    private VacancyDTO keepPreviewVacancy(Throwable ex, VacancyDTO previewVacancy, int vacancyOrderOnPage, int pageId,
+                                          CompanyDTO company, ParserProgress parserProgress) {
+        Throwable cause = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
+        String errorLog = String.format("Company: %s, Page: %s, vacancy %s kept its preview: %s",
+                company.getTitle(), pageId, vacancyOrderOnPage, cause.getMessage());
+        parserProgress.addPageLog(pageId, ParserProgress.LogLevelEnum.ERROR, errorLog);
+        log.warn(errorLog);
+
+        return previewVacancy;
     }
 }
