@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * A company's page: its vacancies only.
+ * A company's page: the company as its newest stored vacancy carries it, and its vacancies only.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -69,6 +69,23 @@ class CompanyTest extends PostgresContainerTest {
         List<String> titles = new ArrayList<>();
         page.get("vacancies").forEach(vacancy -> titles.add(vacancy.get("title").asText()));
         return titles;
+    }
+
+    @Test
+    void GetCompany_StoredVacancies_ShouldReturnCompanyOfNewestVacancy() throws Exception {
+        insertVacancy("Java Developer", ACME_ID, "Acme Old", "2026-01-01 10:00:00");
+        insertVacancy("Go Developer", ACME_ID, "Acme", "2026-02-01 10:00:00");
+
+        JsonNode company = readJson("/company/" + ACME_ID);
+
+        assertThat(company.get("company_id").asInt()).isEqualTo(ACME_ID);
+        assertThat(company.get("title").asText()).isEqualTo("Acme");
+        assertThat(company.get("company_url").asText()).isEqualTo("https://company.example");
+    }
+
+    @Test
+    void GetCompany_NoStoredVacancy_ShouldReturnNotFound() throws Exception {
+        mockMvc.perform(get("/company/999999")).andExpect(status().isNotFound());
     }
 
     @Test

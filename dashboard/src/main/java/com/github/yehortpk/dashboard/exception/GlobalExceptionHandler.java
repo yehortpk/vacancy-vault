@@ -19,4 +19,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Object> handleVacancyNotFoundException(VacancyNotFoundException ex) {
         return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
     }
+
+    @ExceptionHandler(CompanyNotFoundException.class)
+    public ResponseEntity<Object> handleCompanyNotFoundException(CompanyNotFoundException ex) {
+        return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
+    }
 }

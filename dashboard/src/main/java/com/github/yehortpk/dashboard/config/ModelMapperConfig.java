@@ -1,6 +1,7 @@
 package com.github.yehortpk.dashboard.config;
 
 import com.github.yehortpk.dashboard.mapper.DataPageToVacanciesPageDTOMapper;
+import com.github.yehortpk.dashboard.mapper.VacancyToCompanyShortInfoDTOMapper;
 import com.github.yehortpk.dashboard.mapper.VacancyToVacancyCompanyDTOMapper;
 import com.github.yehortpk.dashboard.mapper.VacancyToVacancyDetailsDTOMapper;
 import com.github.yehortpk.dashboard.utils.ServerClock;
@@ -36,6 +37,7 @@ public class ModelMapperConfig {
         modelMapper.addMappings(new DataPageToVacanciesPageDTOMapper());
         modelMapper.addMappings(new VacancyToVacancyCompanyDTOMapper());
         modelMapper.addMappings(new VacancyToVacancyDetailsDTOMapper());
+        modelMapper.addMappings(new VacancyToCompanyShortInfoDTOMapper());
 
         return modelMapper;
     }

@@ -1,5 +1,6 @@
 package com.github.yehortpk.dashboard.controllers;
 
+import com.github.yehortpk.dashboard.models.company.CompanyShortInfoDTO;
 import com.github.yehortpk.dashboard.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.dashboard.models.vacancy.Vacancy;
 import com.github.yehortpk.dashboard.services.CompanyService;
@@ -9,7 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Controller responsible for a company's page: its stored vacancies. Read-only,
+ * Controller responsible for a company's page: the company and its stored vacancies. Read-only,
  * and a company is known here only while at least one of its vacancies is stored.
  */
 @RestController
@@ -18,6 +19,11 @@ import org.springframework.web.bind.annotation.*;
 public class CompanyController {
     private final CompanyService companyService;
     private final ModelMapper modelMapper;
+
+    @GetMapping("/{id}")
+    public CompanyShortInfoDTO getCompany(@PathVariable int id) {
+        return modelMapper.map(companyService.getCompany(id), CompanyShortInfoDTO.class);
+    }
 
     @GetMapping("/{id}/vacancies")
     public VacanciesPageDTO getCompanyVacancies(@PathVariable int id,
