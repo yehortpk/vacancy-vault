@@ -7,9 +7,9 @@
 ## Description
 This project aims to make the process of job searching easier by automating the collection of vacancies from various company websites.
 With this system, users can effortlessly stay updated on job openings without the hassle of manually scouring multiple websites.
-Our project includes a robust library that allows users to create custom parsers for vacancy sites of their choice.
+Our project includes a robust library that allows users to create custom crawlers for vacancy sites of their choice.
 This flexibility ensures compatibility with a wide range of company websites, catering to diverse job seekers' needs.
-Also, users can subscribe to specific companies of interest, enabling the parser to automatically detect and notify them of new job postings.
+Also, users can subscribe to specific companies of interest, enabling the crawler to automatically detect and notify them of new job postings.
 
 Available via Telegram Bot: https://t.me/vacancy_notification_bot
 
@@ -20,7 +20,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 - [Architecture](#architecture)
 - [Usage](#usage)
   - [Code Usage](#code-usage)
-  - [Parser structure](#parser-structure)
+  - [Crawler structure](#crawler-structure)
     - [Vacancy pages](#vacancy-pages)
   - [Scraper structure](#scraper-structure)
   - [Class diagram](#class-diagram)
@@ -74,57 +74,57 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    MONGO_ROOT_PASS=progress
    ```
    - <code>POSTGRES_USERNAME</code>, <code>POSTGRES_PASSWORD</code> - credentials of the notifier PostgreSQL
-     database, created as its superuser. The parser, the dashboard and the router share the database, each in a
+     database, created as its superuser. The crawler, the dashboard and the router share the database, each in a
      schema of its own.
-   - <code>MONGO_ROOT_USERNAME</code>, <code>MONGO_ROOT_PASS</code> - root credentials of the parser-progress
-     MongoDB database, where the parser keeps its runs.
+   - <code>MONGO_ROOT_USERNAME</code>, <code>MONGO_ROOT_PASS</code> - root credentials of the crawler-progress
+     MongoDB database, where the crawler keeps its runs.
 
    The credentials are applied only when the database volumes are first created, so changing them
    later also means changing them inside the database. The database ports are published on the
    host, so pick your own passwords on a server reachable from the internet.
 
-   Parser admin:
+   Crawler admin:
    ```env
-   PARSER_ADMIN_USERNAME=admin
-   PARSER_ADMIN_PASSWORD=PARSER_ADMIN_PASSWORD
+   CRAWLER_ADMIN_USERNAME=admin
+   CRAWLER_ADMIN_PASSWORD=CRAWLER_ADMIN_PASSWORD
    ```
-   The first admin of the parser's own panel, created by the parser on startup. The password needs at least 8
+   The first admin of the crawler's own panel, created by the crawler on startup. The password needs at least 8
    characters. See [Access levels](#access-levels).
 
    These defaults are public, so set your own password on a server reachable from the internet. Set
    both to empty values to create no admin account.
 
-   Parser load:
+   Crawler load:
    ```env
-   PARSER_BROWSER_POOL_SIZE=2
+   CRAWLER_BROWSER_POOL_SIZE=2
    ```
-   <code>PARSER_BROWSER_POOL_SIZE</code> is how many Chromium instances may render dynamic sites at once, or
+   <code>CRAWLER_BROWSER_POOL_SIZE</code> is how many Chromium instances may render dynamic sites at once, or
    <code>max</code>.
 
-   Chromium dominates the parser's memory, at roughly 400MB per instance, so this is the main
-   knob. Raise it to parse dynamic sites faster, or set <code>max</code> for as many as the host
+   Chromium dominates the crawler's memory, at roughly 400MB per instance, so this is the main
+   knob. Raise it to crawl dynamic sites faster, or set <code>max</code> for as many as the host
    can afford: half of its CPUs, but no more than fit into its memory once about 3GB is left to
-   the rest of the stack, and never less than <code>1</code>. The parser logs the size it picked
+   the rest of the stack, and never less than <code>1</code>. The crawler logs the size it picked
    at startup.
 
-   The parser runs without CPU or memory limits by default. To cap it, for example on a server
+   The crawler runs without CPU or memory limits by default. To cap it, for example on a server
    shared with other apps, add a <code>docker-compose.override.yaml</code> next to
    <code>docker-compose.yaml</code>; docker compose picks it up on its own:
    ```yaml
    services:
-     parser:
-       mem_limit: 2g # hard ceiling, the parser is killed when it runs out
-       cpus: 2       # soft ceiling, the parser only slows down
+     crawler:
+       mem_limit: 2g # hard ceiling, the crawler is killed when it runs out
+       cpus: 2       # soft ceiling, the crawler only slows down
    ```
    With a memory limit, <code>max</code> sizes the pool from the limit rather than the host, still
    leaving the 3GB reserve, so it picks <code>1</code> below about 4GB. Set a number instead if the
-   limit allows more: the parser itself takes about 1GB, each instance about 400MB more.
+   limit allows more: the crawler itself takes about 1GB, each instance about 400MB more.
 
 5. Create and run with docker
 ```
 docker compose up --build
 ```
-The parser does not parse on its own: every run is started from its admin panel at http://localhost:4201 (see
+The crawler does not crawl on its own: every run is started from its admin panel at http://localhost:4201 (see
 [Access levels](#access-levels)).
 
 ### Ports
@@ -133,11 +133,11 @@ Docker compose publishes these ports on the host:
 | Port | Service |
 |---|---|
 | 4200 | Vacancy dashboard web app (Angular dev server, reloads on change) |
-| 4201 | Parser admin panel (Angular dev server, reloads on change) |
+| 4201 | Crawler admin panel (Angular dev server, reloads on change) |
 | 8081 | Router API |
-| 8082 | Parser API |
+| 8082 | Crawler API |
 | 8083 | Dashboard API |
-| 5005 | Parser remote debugging (JDWP) |
+| 5005 | Crawler remote debugging (JDWP) |
 | 5006 | Router remote debugging (JDWP) |
 | 5007 | Telegram bot remote debugging (JDWP) |
 | 5008 | Dashboard remote debugging (JDWP) |
@@ -151,20 +151,20 @@ Docker compose publishes these ports on the host:
   messenger with a one-time code (for Telegram, send <code>/link &lt;code&gt;</code> to the bot) and the list of
   linked chats. At <code>/filters</code> they write their [filters](#filters) and choose which linked chats each one
   notifies. Every account is the same: there are no roles.
-- <b>The operator</b> logs in to the parser's own admin panel at http://localhost:4201, to start a parse and watch
+- <b>The operator</b> logs in to the crawler's own admin panel at http://localhost:4201, to start a crawl and watch
   its progress. This is a separate login, unrelated to the user accounts: a user's session opens nothing in the
   panel, and the operator needs no user account.
 
-The operator's account comes from <code>PARSER_ADMIN_USERNAME</code> and <code>PARSER_ADMIN_PASSWORD</code> (see their
-defaults in the optional env variables): on startup the parser creates it if that username does not exist yet, and
+The operator's account comes from <code>CRAWLER_ADMIN_USERNAME</code> and <code>CRAWLER_ADMIN_PASSWORD</code> (see their
+defaults in the optional env variables): on startup the crawler creates it if that username does not exist yet, and
 you log in with exactly those credentials. It only ever creates the account, never changes one, so changing
-<code>PARSER_ADMIN_PASSWORD</code> later does not change the stored password. There is no registration: any further
-admin is a row in the <code>parser.admin</code> table, with a BCrypt hash as its password.
+<code>CRAWLER_ADMIN_PASSWORD</code> later does not change the stored password. There is no registration: any further
+admin is a row in the <code>crawler.admin</code> table, with a BCrypt hash as its password.
 
 ## Architecture
 Three services, each owning its own data and sharing nothing but Kafka topics:
 
-- <b>parser</b> crawls the company sites and publishes what it finds. It keeps the companies, its memory of the
+- <b>crawler</b> crawls the company sites and publishes what it finds. It keeps the companies, its memory of the
   vacancies it has already published, the history of its runs (MongoDB) and its own admins, and it serves its own
   admin panel. No other service calls it.
 - <b>dashboard</b> stores the published vacancies and serves the public vacancy listing. It has no users and no
@@ -174,21 +174,21 @@ Three services, each owning its own data and sharing nothing but Kafka topics:
 
 | Topic | Producer | Consumers | Message |
 |---|---|---|---|
-| <code>vacancies</code> | parser | dashboard, router | a new vacancy with its company (id, title, URL), or the link of a vacancy that is gone for good; keyed by the link |
+| <code>vacancies</code> | crawler | dashboard, router | a new vacancy with its company (id, title, URL), or the link of a vacancy that is gone for good; keyed by the link |
 | <code>telegram-notifier</code> | router | telegram-bot | one notification for one chat |
 
-A vacancy that disappears from its site is kept for a week, in case it comes back; only then does the parser drop it
+A vacancy that disappears from its site is kept for a week, in case it comes back; only then does the crawler drop it
 and publish its removal to <code>vacancies</code>. Both kinds share one topic keyed by the link, so a vacancy that is
 removed and then listed again reaches every consumer in that order; the kind travels in the <code>__TypeId__</code>
 header, and the router skips removals. Every consumer skips a link it has already seen, so a
 redelivered or republished vacancy is stored once and notified about once.
 
-The services share one PostgreSQL database, <code>notifier</code>, each in its own schema (<code>parser</code>,
+The services share one PostgreSQL database, <code>notifier</code>, each in its own schema (<code>crawler</code>,
 <code>dashboard</code>, <code>router</code>) that it creates and migrates itself. No service reads another's schema.
 The only REST call between services is the Telegram bot reporting linked chats to the router.
 
 ## Usage
-The app needs the client to create parsing information for both sides - in the code itself and in the database. Let's look at the features of the code.
+The app needs the client to create crawling information for both sides - in the code itself and in the database. Let's look at the features of the code.
 
 ### Code usage
 Every company is crawled by a Spring bean that extends the abstract class <code>DefaultCompanyCrawler</code>. The base
@@ -235,10 +235,10 @@ public class AcmeCrawler extends DefaultCompanyCrawler {
 The bean name (<code>acme-company</code> here) is the company's <code>bean_class</code> in the database, see [Database usage](#database-usage).
 Crawlers hold no state of a run, so one bean may serve several companies.
 
-### Parser structure
-![Parser structure](docs/parser-structure.svg)
+### Crawler structure
+![Crawler structure](docs/crawler-structure.svg)
 
-<code>ParserRunnerService</code> receives every crawler bean as a map by bean name and looks up each company's crawler
+<code>CrawlerRunnerService</code> receives every crawler bean as a map by bean name and looks up each company's crawler
 once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>DefaultCompanyCrawler</code> implements as:
 1. <b>Metadata call.</b> The crawler's <code>CompanyMetadataCrawler</code> describes its request
    (<code>configureFetchSettings(company)</code>, <code>configurePageScraper()</code>); the base class makes it, and the metadata
@@ -268,7 +268,7 @@ A metadata call that fails, or whose response can't be parsed, marks the company
 
 #### Vacancy pages
 <b>Warning!</b> A vacancy call is made for <b>every vacancy of every page on every run</b>, not only for the new ones. It
-multiplies the requests sent to the company's site, which can get the parser rate-limited or banned there. Use it with
+multiplies the requests sent to the company's site, which can get the crawler rate-limited or banned there. Use it with
 consideration, and space the calls out with a delay.
 
 A company crawler that needs it implements <code>VacancyCrawler</code> in a private nested class and returns a new instance
@@ -332,17 +332,17 @@ The detailed view of the same structure, as a UML 2 class diagram: attributes, o
 exceptions, including the data classes (<code>FetchSettings</code>, <code>MetadataParams</code>,
 <code>PageScraperResponse</code>, <code>VacancyDTO</code>).
 
-![Parser class diagram](docs/parser-class-diagram.svg)
+![Crawler class diagram](docs/crawler-class-diagram.svg)
 
 ### Database usage
 To add a new site for analysis, all you have to do is add the entity to the <i>company</i> table in the 
-<i>parser</i> schema of the <i>notifier</i> database (<code>parser.company</code>). The schema and the table will be
-created automatically after the first launch of the parser. Companies live only there: the dashboard and the router
-learn a company's title and URL from the vacancies the parser publishes. You must fill out the following fields:
+<i>crawler</i> schema of the <i>notifier</i> database (<code>crawler.company</code>). The schema and the table will be
+created automatically after the first launch of the crawler. Companies live only there: the dashboard and the router
+learn a company's title and URL from the vacancies the crawler publishes. You must fill out the following fields:
 - <code>company_id</code> - id of the company
 - <code>bean_class</code> - name of the @Bean in the code that corresponds this db entity;
 - <code>title</code> - company title.
-- <code>parsing_enabled</code> - enable/disable specific parser;
+- <code>crawling_enabled</code> - enable/disable specific crawler;
 - <code>main_page_url</code> - URL to the site main page;
 - <code>vacancies_url</code> - URL to the page with the vacancies in the site;
 - <code>api_vacancies_url</code> - URL to the endpoint for API to retrieve vacancies; used when the crawler sets it as <code>pageURL</code>

@@ -11,7 +11,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Applies what the parser publishes to the stored vacancies: stores the new ones and drops the
+ * Applies what the crawler publishes to the stored vacancies: stores the new ones and drops the
  * ones gone for good. Both arrive on one topic keyed by the link, so a vacancy removed and then
  * listed again is applied in that order.
  */

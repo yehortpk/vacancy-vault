@@ -1,4 +1,4 @@
--- The dashboard's read model: every vacancy the parser has published and not yet removed.
+-- The dashboard's read model: every vacancy the crawler has published and not yet removed.
 --
 -- The company is plain columns rather than a table of its own: each new vacancy carries its
 -- company's id, title and URL, so the dashboard never needs a company row, and nothing here

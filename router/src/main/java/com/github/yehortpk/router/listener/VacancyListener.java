@@ -14,10 +14,10 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * Notifies the matching destinations of every new vacancy the parser publishes, once per link.
+ * Notifies the matching destinations of every new vacancy the crawler publishes, once per link.
  * Removed vacancies share the topic and are skipped.
  *
- * <p>Kafka delivers at least once and the parser republishes after a crash, so the link is
+ * <p>Kafka delivers at least once and the crawler republishes after a crash, so the link is
  * recorded first and a link that was already recorded is skipped.
  */
 @Component

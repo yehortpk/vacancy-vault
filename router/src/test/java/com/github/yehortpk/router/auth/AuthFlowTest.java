@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>A {@code @WebMvcTest} slice would mock the repository away and so could not catch a
  * mismatch between the entity and V2, nor confirm that the security chain leaves the
- * parser's and dashboard's public endpoints reachable.
+ * crawler's and dashboard's public endpoints reachable.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

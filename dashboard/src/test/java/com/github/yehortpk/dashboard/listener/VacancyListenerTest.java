@@ -80,7 +80,7 @@ class VacancyListenerTest extends PostgresContainerTest {
 
     @Test
     void StoreVacancy_SameVacancyTwice_ShouldStoreOneRow() {
-        // Kafka delivers at least once, and the parser republishes after a crash
+        // Kafka delivers at least once, and the crawler republishes after a crash
         NewVacancyDTO vacancy = createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example");
 
         vacancyListener.storeVacancy(vacancy);

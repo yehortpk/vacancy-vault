@@ -5,7 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * A new vacancy as the parser publishes it to the {@code vacancies} topic, keyed by its link.
+ * A new vacancy as the crawler publishes it to the {@code vacancies} topic, keyed by its link.
  * The company travels with it, so a consumer needs no company table of its own.
  */
 @Getter

@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Kafka consumer of the {@code vacancies} topic the parser publishes: new and removed vacancies
+ * Kafka consumer of the {@code vacancies} topic the crawler publishes: new and removed vacancies
  * as JSON, told apart by the type header.
  */
 @Configuration

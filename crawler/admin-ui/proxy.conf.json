@@ -1,0 +1,14 @@
+{
+  "/crawler": {
+    "target": "http://vv-crawler:8080",
+    "secure": false
+  },
+  "/login": {
+    "target": "http://vv-crawler:8080",
+    "secure": false
+  },
+  "/logout": {
+    "target": "http://vv-crawler:8080",
+    "secure": false
+  }
+}

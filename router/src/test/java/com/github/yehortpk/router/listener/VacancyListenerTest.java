@@ -64,7 +64,7 @@ class VacancyListenerTest extends PostgresContainerTest {
 
     @Test
     void NotifyAboutVacancy_SameLinkTwice_ShouldNotifyOnce() {
-        // Redelivered by Kafka, republished by the parser after a crash, or replayed from the
+        // Redelivered by Kafka, republished by the crawler after a crash, or replayed from the
         // start of the topic: every chat would otherwise get the vacancy again
         vacancyListener.notifyAboutVacancy(createVacancy("https://acme.example/1"));
         vacancyListener.notifyAboutVacancy(createVacancy("https://acme.example/1"));

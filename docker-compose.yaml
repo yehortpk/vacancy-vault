@@ -1,8 +1,8 @@
 services:
-  parser:
-    container_name: vv-parser
+  crawler:
+    container_name: vv-crawler
     build:
-      dockerfile: ./parser/Dockerfile
+      dockerfile: ./crawler/Dockerfile
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:
       - ./:/opt/app
@@ -16,18 +16,18 @@ services:
       KAFKA_VACANCIES_TOPIC: vacancies
       # How many Chromium instances may run at once: a number, or "max" for as many as the
       # host's CPUs and memory allow. See README
-      PARSER_BROWSER_POOL_SIZE: ${PARSER_BROWSER_POOL_SIZE:-2}
+      CRAWLER_BROWSER_POOL_SIZE: ${CRAWLER_BROWSER_POOL_SIZE:-2}
       # Optional database credentials, see README. Keep the defaults in sync with the postgres and
       # mongo services below
       POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
       MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
-      # The first admin of the parser's own panel. Defaults documented in the README; set both
+      # The first admin of the crawler's own panel. Defaults documented in the README; set both
       # empty in .env to create no admin
-      PARSER_ADMIN_USERNAME: ${PARSER_ADMIN_USERNAME-admin}
-      PARSER_ADMIN_PASSWORD: ${PARSER_ADMIN_PASSWORD-PARSER_ADMIN_PASSWORD}
-    # Parses only when a run is started from its admin panel. It needs no other service of the
+      CRAWLER_ADMIN_USERNAME: ${CRAWLER_ADMIN_USERNAME-admin}
+      CRAWLER_ADMIN_PASSWORD: ${CRAWLER_ADMIN_PASSWORD-CRAWLER_ADMIN_PASSWORD}
+    # Crawls only when a run is started from its admin panel. It needs no other service of the
     # stack: the router and the dashboard only read what it publishes
     depends_on:
       kafka:
@@ -141,15 +141,15 @@ services:
       - vv-network
     command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
 
-  # The parser's own admin panel. Its dev server proxies /parser, /login and /logout to the
-  # parser, so the browser sees one origin and the session cookie just works
-  parser-admin-ui:
-    container_name: vv-parser-admin-ui
+  # The crawler's own admin panel. Its dev server proxies /crawler, /login and /logout to the
+  # crawler, so the browser sees one origin and the session cookie just works
+  crawler-admin-ui:
+    container_name: vv-crawler-admin-ui
     image: node:20-alpine
     working_dir: /app
     volumes:
-      - ./parser/admin-ui:/app
-      - parser-admin-ui-node-modules:/app/node_modules
+      - ./crawler/admin-ui:/app
+      - crawler-admin-ui-node-modules:/app/node_modules
     ports:
       - "4201:4201"
     networks:
@@ -215,12 +215,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS:-progress}
-      MONGO_INITDB_DATABASE: parser-progress
+      MONGO_INITDB_DATABASE: crawler-progress
     networks:
       - vv-network
     volumes:
       - vv-mongo-data:/data/db
-      - ./init-parsing-history.js:/docker-entrypoint-initdb.d/init-parsing-history.js:ro
+      - ./init-crawling-history.js:/docker-entrypoint-initdb.d/init-crawling-history.js:ro
 
 networks:
   vv-network:
@@ -230,5 +230,5 @@ volumes:
   vv-postgres-data:
   vv-mongo-data:
   frontend-node-modules:
-  parser-admin-ui-node-modules:
+  crawler-admin-ui-node-modules:
   maven-home:

@@ -15,7 +15,7 @@
 	<name>vacancy-vault</name>
 	<description>VacancyVault</description>
 	<modules>
-		<module>parser</module>
+		<module>crawler</module>
 		<module>router</module>
 		<module>dashboard</module>
 		<module>providers/telegram-bot</module>

@@ -58,7 +58,7 @@ public class VacancyService {
     }
 
     /**
-     * Removes the vacancy the parser dropped. A link that is not stored is not an error: the
+     * Removes the vacancy the crawler dropped. A link that is not stored is not an error: the
      * removal may be redelivered, or the vacancy may never have reached this service.
      *
      * @return whether a vacancy was actually removed

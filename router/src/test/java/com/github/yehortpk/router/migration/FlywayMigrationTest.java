@@ -211,7 +211,7 @@ class FlywayMigrationTest extends PostgresContainerTest {
 
     @Test
     void Migrate_FreshDatabase_ShouldNotCreateTheOtherServicesTables() throws SQLException {
-        // Vacancies are the dashboard's, companies the parser's
+        // Vacancies are the dashboard's, companies the crawler's
         assertThat(isTablePresent("vacancy")).isFalse();
         assertThat(isTablePresent("company")).isFalse();
     }

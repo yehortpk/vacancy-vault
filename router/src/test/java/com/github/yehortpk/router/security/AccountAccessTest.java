@@ -98,11 +98,11 @@ class AccountAccessTest extends PostgresContainerTest {
     }
 
     @Test
-    void GetParserProgress_LoggedInUser_ShouldReturnNotFound() throws Exception {
-        // The parser room moved to the parser's own panel; the router no longer proxies it
+    void GetCrawlerProgress_LoggedInUser_ShouldReturnNotFound() throws Exception {
+        // The crawler room moved to the crawler's own panel; the router no longer proxies it
         String accessToken = registerUser("curious@example.com", "");
 
-        mockMvc.perform(get("/parser/progress").header("Authorization", accessToken))
+        mockMvc.perform(get("/crawler/progress").header("Authorization", accessToken))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/vacancy").param("page", "0"))
                 .andExpect(status().isNotFound());

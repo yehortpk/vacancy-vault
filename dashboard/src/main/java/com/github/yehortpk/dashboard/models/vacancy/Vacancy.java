@@ -37,7 +37,7 @@ public class Vacancy {
     private String description;
 
     /**
-     * The company as the parser last published it. Plain columns: companies are the parser's,
+     * The company as the crawler last published it. Plain columns: companies are the crawler's,
      * and every vacancy of one company carries the same title and URL.
      */
     @Column(nullable = false)
