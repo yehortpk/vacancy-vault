@@ -361,7 +361,7 @@ public class CrawlerRunnerService {
 
         int pageID = page.getPageId();
 
-        List<VacancyDTO> parsedVacancies = crawler.parseVacancies(page, company);
+        List<VacancyDTO> parsedVacancies = crawler.parsePageVacancies(page, company);
 
         if (parsedVacancies.isEmpty()) {
             throw new NoVacanciesOnPageException(page.getPageId());

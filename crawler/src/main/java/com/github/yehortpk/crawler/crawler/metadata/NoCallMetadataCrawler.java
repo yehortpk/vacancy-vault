@@ -5,8 +5,8 @@ import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.MetadataParams;
 import com.github.yehortpk.crawler.scraper.PageScraper;
 import com.github.yehortpk.crawler.scraper.PageScraperResponse;
+import com.github.yehortpk.crawler.scraper.NoCallPageScraper;
 
-import java.util.Map;
 
 /**
  * Makes no call: its scraper returns an empty response without a request. The company has a single page and no
@@ -20,7 +20,7 @@ public class NoCallMetadataCrawler implements CompanyMetadataCrawler {
 
     @Override
     public PageScraper configurePageScraper() {
-        return settings -> new PageScraperResponse(0, null, Map.of(), Map.of(), "");
+        return new NoCallPageScraper();
     }
 
     @Override

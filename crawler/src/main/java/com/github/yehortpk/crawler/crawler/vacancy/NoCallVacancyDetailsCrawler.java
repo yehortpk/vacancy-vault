@@ -5,14 +5,14 @@ import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.VacancyDTO;
 import com.github.yehortpk.crawler.scraper.PageScraper;
 import com.github.yehortpk.crawler.scraper.PageScraperResponse;
+import com.github.yehortpk.crawler.scraper.NoCallPageScraper;
 
-import java.util.Map;
 
 /**
  * Makes no call: its scraper returns an empty response without a request, and the vacancy stays as the vacancies
  * page described it.
  */
-public class NoCallVacancyCrawler implements VacancyCrawler {
+public class NoCallVacancyDetailsCrawler implements VacancyDetailsCrawler {
     @Override
     public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
         return ScrapeSettings.builder().build();
@@ -20,11 +20,11 @@ public class NoCallVacancyCrawler implements VacancyCrawler {
 
     @Override
     public PageScraper configurePageScraper() {
-        return settings -> new PageScraperResponse(0, null, Map.of(), Map.of(), "");
+        return new NoCallPageScraper();
     }
 
     @Override
-    public VacancyDTO parseVacancy(VacancyDTO previewVacancy, PageScraperResponse response) {
+    public VacancyDTO parseVacancyDetails(VacancyDTO previewVacancy, PageScraperResponse response) {
         return previewVacancy.toBuilder().build();
     }
 }

@@ -23,7 +23,7 @@ public interface CompanyCrawler {
      * @return the page's vacancies
      * @throws VacancyPageParseException when the page can't be parsed
      */
-    List<VacancyDTO> parseVacancies(PageScraperResponse page, CompanyDTO company);
+    List<VacancyDTO> parsePageVacancies(PageScraperResponse page, CompanyDTO company);
 
     /**
      * Starts fetching every page of the company

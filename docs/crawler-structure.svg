@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 910" width="1240" height="910" role="img" aria-label="Crawler structure. Implementations are green, interfaces grey, value types blue in their own panel. CrawlerRunnerService resolves a CompanyCrawler once. DefaultCompanyCrawler implements it, configures ScrapeSettings and the PageScraper for each page, uses a CompanyMetadataCrawler, NoCallMetadataCrawler by default, which returns MetadataParams, and implements parseVacancies as parsePreviewVacancies followed by a call per vacancy through a VacancyCrawler, NoCallVacancyCrawler by default, which returns the VacancyDTO that replaces the preview one. Company crawlers extend DefaultCompanyCrawler. PageScraper takes ScrapeSettings and returns PageScraperResponse; StaticPageScraper is the default, DynamicPageScraper renders pages in a browser borrowed from the BrowserPool.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 910" width="1240" height="910" role="img" aria-label="Crawler structure. Implementations are green, interfaces grey, value types blue in their own panel. CrawlerRunnerService resolves a CompanyCrawler once. DefaultCompanyCrawler implements it, configures ScrapeSettings and the PageScraper for each page, uses a CompanyMetadataCrawler, NoCallMetadataCrawler by default, which returns MetadataParams, and implements parseVacancies as parsePreviewVacancies followed by a call per vacancy through a VacancyDetailsCrawler, NoCallVacancyDetailsCrawler by default, which returns the VacancyDTO that replaces the preview one. Company crawlers extend DefaultCompanyCrawler. PageScraper takes ScrapeSettings and returns PageScraperResponse; StaticPageScraper is the default, DynamicPageScraper renders pages in a browser borrowed from the BrowserPool.">
   <style>
     svg {
       --panel: #fdfdfe; --box: #eef1f6; --fg: #1b2230; --muted: #5d6778; --line: #3a4456;
@@ -97,7 +97,7 @@
   <text x="32" y="407" class="d-sec">HOOKS, WITH DEFAULTS</text>
   <text x="32" y="423" class="d-mem">configurePageScraper(pageId)  Static</text>
   <text x="32" y="438" class="d-mem">configureMetadataCrawler()  NoCall</text>
-  <text x="32" y="453" class="d-mem">configureVacancyCrawler()  NoCall</text>
+  <text x="32" y="453" class="d-mem">configureVacancyDetailsCrawler()  NoCall</text>
   <line x1="20" y1="463" x2="305" y2="463" class="d-div"/>
   <text x="32" y="480" class="d-mem">@Autowired crawlingProgressService</text>
   <text x="32" y="497" class="d-note">metadata call · vacancy calls · placeholders</text>
@@ -129,25 +129,25 @@
   <line x1="375" y1="512" x2="625" y2="512" class="d-div"/>
   <text x="387" y="529" class="d-note">no I/O · one page · empty maps</text>
 
-  <!-- ===== VacancyCrawler ===== -->
+  <!-- ===== VacancyDetailsCrawler ===== -->
   <rect x="375" y="600" width="250" height="116" rx="3" class="d-iface"/>
   <text x="500" y="618" class="d-st">«interface» · one call per vacancy</text>
-  <text x="500" y="634" class="d-name">VacancyCrawler</text>
+  <text x="500" y="634" class="d-name">VacancyDetailsCrawler</text>
   <line x1="375" y1="644" x2="625" y2="644" class="d-div"/>
   <text x="387" y="661" class="d-mem">configureScrapeSettings(preview,</text>
   <text x="387" y="676" class="d-mem">    company, vacancyOrderOnPage)</text>
   <text x="387" y="691" class="d-mem">configurePageScraper()</text>
-  <text x="387" y="706" class="d-mem">parseVacancy(preview, response)</text>
+  <text x="387" y="706" class="d-mem">parseVacancyDetails(preview, response)</text>
 
-  <!-- ===== NoCallVacancyCrawler ===== -->
+  <!-- ===== NoCallVacancyDetailsCrawler ===== -->
   <rect x="375" y="750" width="250" height="75" rx="3" class="d-impl"/>
-  <text x="500" y="771" class="d-name">NoCallVacancyCrawler</text>
-  <text x="500" y="787" class="d-st">default for configureVacancyCrawler()</text>
+  <text x="500" y="771" class="d-name">NoCallVacancyDetailsCrawler</text>
+  <text x="500" y="787" class="d-st">default for configureVacancyDetailsCrawler()</text>
   <line x1="375" y1="797" x2="625" y2="797" class="d-div"/>
   <text x="387" y="814" class="d-note">no I/O · returns a copy of the preview</text>
   <text x="387" y="850" class="d-note">a crawler that needs a call returns a</text>
   <text x="387" y="865" class="d-note">nested class that implements</text>
-  <text x="387" y="880" class="d-note">CompanyMetadataCrawler or VacancyCrawler</text>
+  <text x="387" y="880" class="d-note">CompanyMetadataCrawler or VacancyDetailsCrawler</text>
 
   <!-- ===== ScrapeSettings ===== -->
   <rect x="690" y="128" width="260" height="220" rx="3" class="d-type"/>

@@ -1,7 +1,7 @@
 package com.github.yehortpk.crawler.crawler;
 
 import com.github.yehortpk.crawler.crawler.metadata.CompanyMetadataCrawler;
-import com.github.yehortpk.crawler.crawler.vacancy.VacancyCrawler;
+import com.github.yehortpk.crawler.crawler.vacancy.VacancyDetailsCrawler;
 import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
 import com.github.yehortpk.crawler.exceptions.CrawlingStoppedException;
@@ -11,10 +11,12 @@ import com.github.yehortpk.crawler.models.CompanyDTO;
 import com.github.yehortpk.crawler.models.ScrapeSettings;
 import com.github.yehortpk.crawler.models.MetadataParams;
 import com.github.yehortpk.crawler.models.VacancyDTO;
+import com.github.yehortpk.crawler.parser.PageParser;
 import com.github.yehortpk.crawler.progress.CrawlerProgress;
 import com.github.yehortpk.crawler.scraper.PageScraper;
 import com.github.yehortpk.crawler.scraper.PageScraperResponse;
 import com.github.yehortpk.crawler.services.CrawlingProgressService;
+import com.github.yehortpk.crawler.scraper.NoCallPageScraper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -57,20 +59,20 @@ class DefaultCompanyCrawlerTest {
         private final PageScraper pageScraper;
         private final CompanyMetadataCrawler metadataCrawler;
         private final List<VacancyDTO> previewVacancies;
-        private final VacancyCrawler vacancyCrawler;
+        private final VacancyDetailsCrawler vacancyDetailsCrawler;
 
         TestCrawler(BiFunction<CompanyDTO, Integer, ScrapeSettings> scrapeSettingsFactory, PageScraper pageScraper,
                     CompanyMetadataCrawler metadataCrawler, List<VacancyDTO> previewVacancies,
-                    VacancyCrawler vacancyCrawler) {
+                    VacancyDetailsCrawler vacancyDetailsCrawler) {
             this.scrapeSettingsFactory = scrapeSettingsFactory;
             this.pageScraper = pageScraper;
             this.metadataCrawler = metadataCrawler;
             this.previewVacancies = previewVacancies;
-            this.vacancyCrawler = vacancyCrawler;
+            this.vacancyDetailsCrawler = vacancyDetailsCrawler;
         }
 
         @Override
-        protected ScrapeSettings configureScrapeSettings(CompanyDTO company, int pageId) {
+        protected ScrapeSettings configurePageScrapeSettings(CompanyDTO company, int pageId) {
             return scrapeSettingsFactory.apply(company, pageId);
         }
 
@@ -85,13 +87,13 @@ class DefaultCompanyCrawlerTest {
         }
 
         @Override
-        protected VacancyCrawler configureVacancyCrawler() {
-            return vacancyCrawler != null ? vacancyCrawler : super.configureVacancyCrawler();
+        protected VacancyDetailsCrawler configureVacancyDetailsCrawler() {
+            return vacancyDetailsCrawler != null ? vacancyDetailsCrawler : super.configureVacancyDetailsCrawler();
         }
 
         @Override
-        protected List<VacancyDTO> parsePreviewVacancies(PageScraperResponse page, CompanyDTO company) {
-            return previewVacancies;
+        protected PageParser configurePageParser() {
+            return (page, company) -> previewVacancies;
         }
     }
 
@@ -99,7 +101,7 @@ class DefaultCompanyCrawlerTest {
      * A metadata crawler that returns the given metadata without a request
      */
     private static CompanyMetadataCrawler createMetadataCrawler(MetadataParams metadata) {
-        return createMetadataCrawler(settings -> new PageScraperResponse(0, null, Map.of(), Map.of(), ""), metadata);
+        return createMetadataCrawler(new NoCallPageScraper(), metadata);
     }
 
     /**
@@ -128,8 +130,8 @@ class DefaultCompanyCrawlerTest {
      * A vacancy crawler that requests the vacancy's link with the given scraper and sets the response body as the
      * vacancy's description
      */
-    private static VacancyCrawler createVacancyCrawler(PageScraper vacancyScraper) {
-        return new VacancyCrawler() {
+    private static VacancyDetailsCrawler createVacancyDetailsCrawler(PageScraper vacancyScraper) {
+        return new VacancyDetailsCrawler() {
             @Override
             public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company,
                                                         int vacancyOrderOnPage) {
@@ -142,7 +144,7 @@ class DefaultCompanyCrawlerTest {
             }
 
             @Override
-            public VacancyDTO parseVacancy(VacancyDTO previewVacancy, PageScraperResponse response) {
+            public VacancyDTO parseVacancyDetails(VacancyDTO previewVacancy, PageScraperResponse response) {
                 return previewVacancy.toBuilder().description(response.getBody()).build();
             }
         };
@@ -160,10 +162,11 @@ class DefaultCompanyCrawlerTest {
     /**
      * A crawler whose page holds the given preview vacancies, with one initialized page in the progress
      */
-    private TestCrawler createVacanciesCrawler(List<VacancyDTO> previewVacancies, VacancyCrawler vacancyCrawler) {
+    private TestCrawler createVacanciesCrawler(List<VacancyDTO> previewVacancies,
+                                               VacancyDetailsCrawler vacancyDetailsCrawler) {
         crawlingProgressService.getCrawlers().get(1).initPages(1);
         return initCrawler(new TestCrawler((company, pageId) -> ScrapeSettings.builder().build(), stubPageScraper,
-                null, previewVacancies, vacancyCrawler));
+                null, previewVacancies, vacancyDetailsCrawler));
     }
 
     private TestCrawler initCrawler(TestCrawler crawler) {
@@ -430,12 +433,12 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ParseVacancies_NoCallVacancyCrawler_ShouldReturnPreviewCopies() {
+    void ParsePageVacancies_NoCallVacancyDetailsCrawler_ShouldReturnPreviewCopies() {
         List<VacancyDTO> previewVacancies = List.of(createPreviewVacancy("https://example.com/a"),
                 createPreviewVacancy("https://example.com/b"));
         TestCrawler crawler = createVacanciesCrawler(previewVacancies, null);
 
-        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+        List<VacancyDTO> vacancies = crawler.parsePageVacancies(createVacanciesPage(), createCompany());
 
         assertEquals(2, vacancies.size());
         for (int i = 0; i < vacancies.size(); i++) {
@@ -446,14 +449,14 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ParseVacancies_VacancyCrawler_ShouldReplacePreviews() {
+    void ParsePageVacancies_VacancyDetailsCrawler_ShouldReplacePreviews() {
         List<VacancyDTO> previewVacancies = List.of(createPreviewVacancy("https://example.com/a"),
                 createPreviewVacancy("https://example.com/b"));
-        TestCrawler crawler = createVacanciesCrawler(previewVacancies, createVacancyCrawler(settings ->
+        TestCrawler crawler = createVacanciesCrawler(previewVacancies, createVacancyDetailsCrawler(settings ->
                 new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(),
                         "Description of " + settings.getPageURL())));
 
-        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+        List<VacancyDTO> vacancies = crawler.parsePageVacancies(createVacanciesPage(), createCompany());
 
         assertEquals(List.of("https://example.com/a", "https://example.com/b"),
                 vacancies.stream().map(VacancyDTO::getLink).toList());
@@ -463,13 +466,13 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ParseVacancies_ScrapeFails_ShouldKeepPreview() {
+    void ParsePageVacancies_ScrapeFails_ShouldKeepPreview() {
         VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
-        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyCrawler(settings -> {
+        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyDetailsCrawler(settings -> {
             throw new IOException("Connection reset");
         }));
 
-        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+        List<VacancyDTO> vacancies = crawler.parsePageVacancies(createVacanciesPage(), createCompany());
 
         assertSame(previewVacancy, vacancies.getFirst());
         assertTrue(getFirstPageLogs().stream()
@@ -477,9 +480,9 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ParseVacancies_ParseReturnsNull_ShouldKeepPreview() {
+    void ParsePageVacancies_ParseReturnsNull_ShouldKeepPreview() {
         VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
-        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), new VacancyCrawler() {
+        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), new VacancyDetailsCrawler() {
             @Override
             public ScrapeSettings configureScrapeSettings(VacancyDTO preview, CompanyDTO company,
                                                         int vacancyOrderOnPage) {
@@ -492,36 +495,36 @@ class DefaultCompanyCrawlerTest {
             }
 
             @Override
-            public VacancyDTO parseVacancy(VacancyDTO preview, PageScraperResponse response) {
+            public VacancyDTO parseVacancyDetails(VacancyDTO preview, PageScraperResponse response) {
                 return null;
             }
         });
 
-        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+        List<VacancyDTO> vacancies = crawler.parsePageVacancies(createVacanciesPage(), createCompany());
 
         assertSame(previewVacancy, vacancies.getFirst());
     }
 
     @Test
-    void ParseVacancies_StopRequested_ShouldKeepPreviews() {
+    void ParsePageVacancies_StopRequested_ShouldKeepPreviews() {
         List<ScrapeSettings> vacancySettings = new CopyOnWriteArrayList<>();
         VacancyDTO previewVacancy = createPreviewVacancy("https://example.com/a");
-        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyCrawler(settings -> {
+        TestCrawler crawler = createVacanciesCrawler(List.of(previewVacancy), createVacancyDetailsCrawler(settings -> {
             vacancySettings.add(settings);
             return new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(), "Description");
         }));
         crawlingProgressService.requestStop();
 
-        List<VacancyDTO> vacancies = crawler.parseVacancies(createVacanciesPage(), createCompany());
+        List<VacancyDTO> vacancies = crawler.parsePageVacancies(createVacanciesPage(), createCompany());
 
         assertSame(previewVacancy, vacancies.getFirst());
         assertTrue(vacancySettings.isEmpty());
     }
 
     @Test
-    void ParseVacancies_SeveralVacancies_ShouldPassOrderOnPage() {
+    void ParsePageVacancies_SeveralVacancies_ShouldPassOrderOnPage() {
         Map<String, Integer> ordersByLink = new ConcurrentHashMap<>();
-        VacancyCrawler orderRecordingCrawler = new VacancyCrawler() {
+        VacancyDetailsCrawler orderRecordingCrawler = new VacancyDetailsCrawler() {
             @Override
             public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company,
                                                         int vacancyOrderOnPage) {
@@ -535,7 +538,7 @@ class DefaultCompanyCrawlerTest {
             }
 
             @Override
-            public VacancyDTO parseVacancy(VacancyDTO previewVacancy, PageScraperResponse response) {
+            public VacancyDTO parseVacancyDetails(VacancyDTO previewVacancy, PageScraperResponse response) {
                 return previewVacancy.toBuilder().build();
             }
         };
@@ -543,7 +546,7 @@ class DefaultCompanyCrawlerTest {
                 createPreviewVacancy("https://example.com/b"), createPreviewVacancy("https://example.com/c")),
                 orderRecordingCrawler);
 
-        crawler.parseVacancies(createVacanciesPage(), createCompany());
+        crawler.parsePageVacancies(createVacanciesPage(), createCompany());
 
         assertEquals(Map.of("https://example.com/a", 1, "https://example.com/b", 2, "https://example.com/c", 3),
                 ordersByLink);

@@ -122,7 +122,7 @@ class CrawledVacancyReconciliationTest extends PostgresContainerTest {
     private CrawlingProgressDTO runCrawling(String... listedPaths) throws Exception {
         PageScraperResponse page = new PageScraperResponse(1, createLink(""), Map.of(), Map.of(), "");
         when(crawler.scrapeCompanyVacancies(any())).thenReturn(List.of(CompletableFuture.completedFuture(page)));
-        when(crawler.parseVacancies(eq(page), any())).thenReturn(Arrays.stream(listedPaths)
+        when(crawler.parsePageVacancies(eq(page), any())).thenReturn(Arrays.stream(listedPaths)
                 .map(path -> VacancyDTO.builder().link(createLink(path)).title("Java Developer").build())
                 .toList());
 
