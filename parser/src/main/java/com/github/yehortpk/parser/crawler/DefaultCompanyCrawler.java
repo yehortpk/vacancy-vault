@@ -135,9 +135,6 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
 
         FetchSettings settings = configuredSettings.toBuilder()
                 .pageId(pageId)
-                .pageURL(configuredSettings.getPageURL() != null
-                        ? configuredSettings.getPageURL()
-                        : company.getVacanciesURL())
                 .data(copyValues(configuredSettings.getData() != null
                         ? configuredSettings.getData()
                         : company.getData()))
