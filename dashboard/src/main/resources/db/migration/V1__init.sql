@@ -24,6 +24,3 @@ CREATE TABLE vacancy (
     PRIMARY KEY (vacancy_id),
     CONSTRAINT uk_vacancy_link UNIQUE (link)
 );
-
--- A company's title or URL change is applied to all of its stored vacancies
-CREATE INDEX idx_vacancy_company_id ON vacancy (company_id);
