@@ -1,0 +1,21 @@
+package com.github.yehortpk.telegramprovider.controllers;
+
+import com.github.yehortpk.telegramprovider.models.VacancyNotificationDTO;
+import com.github.yehortpk.telegramprovider.services.NotifierService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+@ConditionalOnProperty(name = "spring.kafka.bootstrap-servers")
+@Component
+@RequiredArgsConstructor
+public class NotificationController {
+    private final NotifierService notifierService;
+
+    @KafkaListener(topics = {"#{environment['KAFKA_TELEGRAM_NOTIFIER_TOPIC']}"},
+            containerFactory = "telegramNotifierContainerFactory")
+    public void listenTelegramNotifierTopic(VacancyNotificationDTO vacancy) {
+        notifierService.notifyUser(vacancy);
+    }
+}

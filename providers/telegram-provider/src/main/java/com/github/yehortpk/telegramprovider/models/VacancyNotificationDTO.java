@@ -1,0 +1,25 @@
+package com.github.yehortpk.telegramprovider.models;
+
+import lombok.*;
+
+@Getter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class VacancyNotificationDTO {
+    private long chatId;
+    private long filterId;
+    private String filter;
+    private String companyTitle;
+    private String vacancyTitle;
+    private Integer minSalary;
+    private Integer maxSalary;
+    /** Currency code such as USD; null when the source does not say. */
+    private String salaryCurrency;
+    /** Payout period such as MONTH; null when the source does not say. */
+    private String salaryPeriod;
+    @EqualsAndHashCode.Include
+    private String link;
+    private boolean isRemote;
+}

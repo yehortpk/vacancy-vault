@@ -60,7 +60,7 @@ services:
       # Signs the users' tokens; no other service holds it. The router refuses to start unless the
       # secret is at least 32 bytes (raw, or after Base64 decoding)
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set, see README}
-      # Shared with the telegram-bot service below
+      # Shared with the telegram-provider service below
       TELEGRAM_PROVIDER_SECRET: ${TELEGRAM_PROVIDER_SECRET:?TELEGRAM_PROVIDER_SECRET is not set, see README}
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1" ]
@@ -100,15 +100,13 @@ services:
       retries: 3
       start_period: 180s
     depends_on:
-      kafka:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
-  telegram-bot:
-    container_name: vv-telegram-bot
+  telegram-provider:
+    container_name: vv-telegram-provider
     build:
-      dockerfile: ./providers/telegram-bot/Dockerfile
+      dockerfile: ./providers/telegram-provider/Dockerfile
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:
       - ./:/opt/app

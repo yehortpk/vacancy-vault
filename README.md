@@ -142,7 +142,7 @@ Docker compose publishes these ports on the host:
 | 8083 | Dashboard API |
 | 5005 | Crawler remote debugging (JDWP) |
 | 5006 | Router remote debugging (JDWP) |
-| 5007 | Telegram bot remote debugging (JDWP) |
+| 5007 | Telegram provider remote debugging (JDWP) |
 | 5008 | Dashboard remote debugging (JDWP) |
 | 5432 | PostgreSQL |
 | 27017 | MongoDB |
@@ -179,7 +179,7 @@ Three services, each owning its own data and sharing nothing but Kafka topics:
 | Topic | Producer | Consumers | Message |
 |---|---|---|---|
 | <code>vacancies</code> | crawler | dashboard, router | a new vacancy with its company (id, title, URL), or the link of a vacancy that is gone for good; keyed by the link |
-| <code>telegram-notifier</code> | router | telegram-bot | one notification for one chat |
+| <code>telegram-notifier</code> | router | telegram-provider | one notification for one chat |
 
 A vacancy that disappears from its site is kept for a week, in case it comes back; only then does the crawler drop it
 and publish its removal to <code>vacancies</code>. Both kinds share one topic keyed by the link, so a vacancy that is
@@ -189,7 +189,7 @@ redelivered or republished vacancy is stored once and notified about once.
 
 The services share one PostgreSQL database, <code>notifier</code>, each in its own schema (<code>crawler</code>,
 <code>dashboard</code>, <code>router</code>) that it creates and migrates itself. No service reads another's schema.
-The only REST call between services is the Telegram bot reporting linked chats to the router.
+The only REST call between services is the Telegram provider reporting linked chats to the router.
 
 ## Usage
 The app needs the client to create crawling information for both sides - in the code itself and in the database. Let's look at the features of the code.
