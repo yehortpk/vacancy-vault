@@ -25,7 +25,7 @@ public class VacancyDTO implements Serializable {
     private Integer minSalary;
     private Integer maxSalary;
     /**
-     * Currency code, preferably one of {@link Currency}; null when the source does not say
+     * ISO 4217 currency code, e.g. UAH; null when the source does not say
      */
     private String salaryCurrency;
     /**
