@@ -85,10 +85,22 @@ class DefaultCompanyCrawlerTest {
      * A metadata crawler that returns the given metadata without a request
      */
     private static CompanyMetadataCrawler createMetadataCrawler(MetadataParams metadata) {
+        return createMetadataCrawler(settings -> new PageScraperResponse(0, null, Map.of(), Map.of(), ""), metadata);
+    }
+
+    /**
+     * A metadata crawler whose call is made with the given scraper and that returns the given metadata
+     */
+    private static CompanyMetadataCrawler createMetadataCrawler(PageScraper metadataScraper, MetadataParams metadata) {
         return new CompanyMetadataCrawler() {
             @Override
-            public PageScraperResponse extractMetadata(CompanyDTO company) {
-                return new PageScraperResponse(0, null, Map.of(), Map.of(), "");
+            public FetchSettings configureFetchSettings(CompanyDTO company) {
+                return FetchSettings.builder().pageURL("https://example.com/metadata").build();
+            }
+
+            @Override
+            public PageScraper configurePageScraper() {
+                return metadataScraper;
             }
 
             @Override
@@ -141,6 +153,21 @@ class DefaultCompanyCrawlerTest {
         assertEquals(1, pages.size());
         assertEquals(1, pages.getFirst().getPageId());
         assertEquals(1, parsingProgressService.getParsers().get(1).getTotalPages());
+    }
+
+    @Test
+    void ScrapeCompanyVacancies_MetadataCrawler_ShouldScrapeWithItsSettingsAndScraper() {
+        List<FetchSettings> metadataSettings = new CopyOnWriteArrayList<>();
+        TestCrawler crawler = createCrawler(createMetadataCrawler(settings -> {
+            metadataSettings.add(settings);
+            return new PageScraperResponse(0, settings.getPageURL(), Map.of(), Map.of(), "");
+        }, MetadataParams.builder().pagesCount(2).build()));
+
+        joinPages(crawler.scrapeCompanyVacancies(createCompany()));
+
+        assertEquals(1, metadataSettings.size());
+        assertEquals("https://example.com/metadata", metadataSettings.getFirst().getPageURL());
+        assertEquals(2, scrapedSettings.size());
     }
 
     @Test
@@ -206,19 +233,11 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ScrapeCompanyVacancies_ExtractMetadataThrowsIOException_ShouldWrapInMetadataFetchException() {
+    void ScrapeCompanyVacancies_MetadataScraperThrowsIOException_ShouldWrapInMetadataFetchException() {
         IOException cause = new IOException("Connection refused");
-        TestCrawler crawler = createCrawler(new CompanyMetadataCrawler() {
-            @Override
-            public PageScraperResponse extractMetadata(CompanyDTO company) throws IOException {
-                throw cause;
-            }
-
-            @Override
-            public MetadataParams parseMetadata(PageScraperResponse response) {
-                return MetadataParams.builder().build();
-            }
-        });
+        TestCrawler crawler = createCrawler(createMetadataCrawler(settings -> {
+            throw cause;
+        }, MetadataParams.builder().build()));
 
         MetadataFetchException exception = assertThrows(MetadataFetchException.class,
                 () -> crawler.scrapeCompanyVacancies(createCompany()));
@@ -228,18 +247,10 @@ class DefaultCompanyCrawlerTest {
     }
 
     @Test
-    void ScrapeCompanyVacancies_ExtractMetadataThrowsRuntimeException_ShouldWrapInMetadataFetchException() {
-        TestCrawler crawler = createCrawler(new CompanyMetadataCrawler() {
-            @Override
-            public PageScraperResponse extractMetadata(CompanyDTO company) {
-                throw new IllegalStateException("Browser crashed");
-            }
-
-            @Override
-            public MetadataParams parseMetadata(PageScraperResponse response) {
-                return MetadataParams.builder().build();
-            }
-        });
+    void ScrapeCompanyVacancies_MetadataScraperThrowsRuntimeException_ShouldWrapInMetadataFetchException() {
+        TestCrawler crawler = createCrawler(createMetadataCrawler(settings -> {
+            throw new IllegalStateException("Browser crashed");
+        }, MetadataParams.builder().build()));
 
         MetadataFetchException exception = assertThrows(MetadataFetchException.class,
                 () -> crawler.scrapeCompanyVacancies(createCompany()));
@@ -251,8 +262,13 @@ class DefaultCompanyCrawlerTest {
     void ScrapeCompanyVacancies_ParseMetadataFails_ShouldWrapInMetadataParseException() {
         TestCrawler crawler = createCrawler(new CompanyMetadataCrawler() {
             @Override
-            public PageScraperResponse extractMetadata(CompanyDTO company) {
-                return new PageScraperResponse(0, null, Map.of(), Map.of(), "<html></html>");
+            public FetchSettings configureFetchSettings(CompanyDTO company) {
+                return FetchSettings.builder().build();
+            }
+
+            @Override
+            public PageScraper configurePageScraper() {
+                return settings -> new PageScraperResponse(0, null, Map.of(), Map.of(), "<html></html>");
             }
 
             @Override

@@ -108,7 +108,8 @@ public abstract class DefaultCompanyCrawler implements CompanyCrawler {
 
         PageScraperResponse response;
         try {
-            response = metadataCrawler.extractMetadata(company);
+            response = metadataCrawler.configurePageScraper()
+                    .scrapePage(metadataCrawler.configureFetchSettings(company));
         } catch (IOException | RuntimeException e) {
             throw new MetadataFetchException(
                     String.format("Metadata call of %s failed: %s", company.getTitle(), e.getMessage()), e);

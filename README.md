@@ -233,9 +233,10 @@ Crawlers hold no state of a run, so one bean may serve several companies.
 
 <code>ParserRunnerService</code> receives every crawler bean as a map by bean name and looks up each company's crawler
 once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>DefaultCompanyCrawler</code> implements as:
-1. <b>Metadata call.</b> The crawler's <code>CompanyMetadataCrawler</code> makes its request (<code>extractMetadata</code>) and reads
-   the <code>MetadataParams</code> from the response (<code>parseMetadata</code>): the page count, placeholder values, and headers and
-   cookies to add to every page.
+1. <b>Metadata call.</b> The crawler's <code>CompanyMetadataCrawler</code> describes its request
+   (<code>configureFetchSettings(company)</code>, <code>configurePageScraper()</code>); the base class makes it, and the metadata
+   crawler reads the <code>MetadataParams</code> from the response (<code>parseMetadata</code>): the page count, placeholder values, and
+   headers and cookies to add to every page.
 2. <b>Every page's settings</b>, built before any page is sent: <code>configureFetchSettings(company, pageId)</code>, unset fields
    filled from the company, the metadata headers and cookies added, and the placeholders filled.
 3. <b>Every page</b> waits out its <code>delay</code>, then is fetched on a virtual thread of its own with
@@ -245,8 +246,9 @@ The runner then parses each fetched page with <code>parseVacancies(page, company
 once every page was parsed, marks the vanished ones outdated.
 
 A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> in a private nested class
-(e.g. <code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>. Its <code>extractMetadata</code> builds the request and creates its scraper
-with <code>new</code>.
+(e.g. <code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>. Its
+<code>configureFetchSettings</code> describes the request, used as returned (nothing is filled from the company), and its
+<code>configurePageScraper</code> creates the scraper with <code>new</code>.
 
 A metadata call that fails, or whose response can't be parsed, marks the company ERROR.
 
