@@ -22,6 +22,7 @@ export interface CrawlerProgress {
 }
 
 export interface CrawlingProgress {
+    crawling_hash: string
     crawlers: CrawlerProgress[]
     status: CrawlingStatus
     finished: boolean
@@ -31,3 +32,7 @@ export interface CrawlingProgress {
     started_at: string | null
     finished_at: string | null
 }
+
+
+/** A stored run as the history list serves it, without its companies. */
+export type CrawlingRunSummary = Omit<CrawlingProgress, 'crawlers'>;

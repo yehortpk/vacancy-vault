@@ -4,8 +4,16 @@
     {{ actionError }}
   </div>
 
+  <!-- Back from a Stored Run -->
+  <a *ngIf="crawlingHash" routerLink="/" class="inline-flex items-center gap-1 mb-6 text-sm font-medium text-blue-600 hover:text-blue-700">
+    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+    </svg>
+    Back to the crawler
+  </a>
+
   <!-- Empty State -->
-  <div *ngIf="!isProgressShown" class="flex flex-col items-center justify-center py-20">
+  <div *ngIf="!crawlingHash && !isProgressShown" class="flex flex-col items-center justify-center py-20">
     <svg class="w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
@@ -28,7 +36,7 @@
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
         <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-4xl font-bold text-slate-900 dark:text-white">Crawler Status</h1>
+          <h1 class="text-4xl font-bold text-slate-900 dark:text-white">{{ crawlingHash ? 'Crawling Run' : 'Crawler Status' }}</h1>
           <span
             class="inline-flex items-center gap-2 text-sm font-medium px-3 py-1 rounded-full"
             [ngClass]="{
@@ -43,7 +51,12 @@
             {{ crawlingStatusLabels[progress.status] }}
           </span>
         </div>
-        <p class="text-slate-600 dark:text-slate-400">Monitor your job crawling pipeline</p>
+        <p *ngIf="!crawlingHash" class="text-slate-600 dark:text-slate-400">Monitor your job crawling pipeline</p>
+        <p *ngIf="crawlingHash" class="text-slate-600 dark:text-slate-400">
+          {{ progress.started_at ? (progress.started_at | date: 'medium') : 'Unknown start' }}
+          –
+          {{ progress.finished_at | date: 'medium' }}
+        </p>
       </div>
       <button
         *ngIf="isCrawlingRunning"
@@ -57,7 +70,7 @@
         {{ progress.status === 'STOPPING' ? 'Stopping…' : 'Stop Crawling' }}
       </button>
       <button
-        *ngIf="!isCrawlingRunning"
+        *ngIf="!crawlingHash && !isCrawlingRunning"
         (click)="startCrawling()"
         class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
       >
@@ -176,5 +189,41 @@
         </div>
       </div>
     </div>
+  </div>
+  <!-- Crawling History -->
+  <div *ngIf="!crawlingHash" class="mt-8 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+      <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Crawling History</h2>
+    </div>
+    <p *ngIf="crawlingRuns.length === 0" class="px-6 py-6 text-sm text-slate-600 dark:text-slate-400">No finished runs yet</p>
+    <ul class="divide-y divide-slate-200 dark:divide-slate-700">
+      <li *ngFor="let run of crawlingRuns">
+        <a
+          [routerLink]="['/runs', run.crawling_hash]"
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+        >
+          <div class="flex items-center gap-3">
+            <span
+              class="text-xs font-medium px-3 py-1 rounded-full"
+              [ngClass]="{
+                'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': run.status === 'FINISHED',
+                'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300': run.status === 'STOPPED',
+                'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300': run.status === 'FAILED'
+              }"
+            >
+              {{ crawlingStatusLabels[run.status] }}
+            </span>
+            <span class="text-sm text-slate-900 dark:text-white">
+              {{ run.started_at ? (run.started_at | date: 'medium') : 'Unknown start' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+            <span>{{ run.total }} crawled</span>
+            <span>{{ run.new }} new</span>
+            <span>{{ run.outdated }} outdated</span>
+          </div>
+        </a>
+      </li>
+    </ul>
   </div>
 </div>

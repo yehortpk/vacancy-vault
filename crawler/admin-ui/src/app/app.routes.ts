@@ -9,6 +9,7 @@ import { sessionGuard } from './guard/session.guard';
  */
 export const routes: Routes = [
     { path: '', component: CrawlerProgressComponent, canActivate: [sessionGuard] },
+    { path: 'runs/:crawlingHash', component: CrawlerProgressComponent, canActivate: [sessionGuard] },
     { path: 'sign-in', component: LoginComponent },
     { path: '**', redirectTo: '' },
 ];

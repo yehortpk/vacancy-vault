@@ -7,6 +7,7 @@ import com.github.yehortpk.crawler.repositories.CrawlingHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -17,6 +18,10 @@ import java.util.Optional;
 public class CrawlingHistoryService {
     private final CrawlingHistoryRepository crawlingHistoryRepository;
     private final CrawlingProgressDTOToEntityMapper crawlingProgressMapper;
+
+    public List<CrawlingHistory> findSummaries() {
+        return crawlingHistoryRepository.findSummaries();
+    }
 
     public Optional<CrawlingHistory> findByCrawlingHash(String crawlingHash) {
         return crawlingHistoryRepository.findByCrawlingHash(crawlingHash);

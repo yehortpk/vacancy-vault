@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class CrawlingProgressDTO {
+    @JsonProperty("crawling_hash")
     private String crawlingHash;
     @Builder.Default
     private CrawlingStatusEnum status = CrawlingStatusEnum.IDLE;

@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * Controller responsible for the admin's crawler room: starting and stopping a run, following
  * the current one, and reading the stored ones.
@@ -44,6 +46,12 @@ public class CrawlerController {
     @GetMapping("/progress")
     public CrawlingProgressDTO getProgress() {
         return crawlingProgressService.getProgress();
+    }
+
+    /** The stored runs without their companies, newest first. */
+    @GetMapping("/history")
+    public List<CrawlingHistory> getCrawlingHistories() {
+        return crawlingHistoryService.findSummaries();
     }
 
     @GetMapping("/progress/{crawling_hash}")
