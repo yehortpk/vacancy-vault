@@ -50,22 +50,22 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    - <code>TG_BOT_API_KEY</code> - API token of the bot from step 2.
    - <code>TG_BOT_USERNAME</code> - username of the bot from step 2.
 
-   **Optional**
-
-   Every variable below falls back to the value shown, so add only the ones you want to change.
-
    Security:
    ```env
-   JWT_SECRET=bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=
-   SERVICE_CONNECTOR_TOKEN=SERVICE_CONNECTOR_TOKEN
+   JWT_SECRET=
+   TELEGRAM_PROVIDER_SECRET=
    ```
    - <code>JWT_SECRET</code> - key the router signs the users' login tokens with; no other service holds it.
      At least 32 bytes, either Base64 or raw text - generate one with <code>openssl rand -base64 32</code>.
      Changing it invalidates every existing session.
-   - <code>SERVICE_CONNECTOR_TOKEN</code> - shared secret the bot presents to the router's <code>/connector</code>
-     endpoints, the same for both services - generate one with <code>openssl rand -hex 32</code>.
+   - <code>TELEGRAM_PROVIDER_SECRET</code> - shared secret the Telegram service presents to the router's
+     <code>/connector</code> endpoints, the same for both services - generate one with <code>openssl rand -base64 32</code>.
 
-   These defaults are public, so on a server reachable from the internet generate your own.
+   Docker compose refuses to start without either of them.
+
+   **Optional**
+
+   Every variable below falls back to the value shown, so add only the ones you want to change.
 
    Databases:
    ```env

@@ -31,7 +31,7 @@ public class ConnectorService {
     @Value("${connector-url}")
     private String connectorURL;
 
-    @Value("${SERVICE_CONNECTOR_TOKEN}")
+    @Value("${TELEGRAM_PROVIDER_SECRET}")
     private String serviceToken;
 
     public ConnectorService(RestTemplateBuilder restTemplateBuilder) {
