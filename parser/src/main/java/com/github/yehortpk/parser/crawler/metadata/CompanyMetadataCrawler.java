@@ -10,7 +10,7 @@ import java.io.IOException;
 /**
  * The call a company crawler makes before its pages, to learn the page count, placeholder values, headers or
  * cookies. It builds its own fetch settings from the company and creates its own scraper. A company crawler that
- * needs a metadata call implements this interface itself and returns {@code this} from
+ * needs a metadata call implements this interface in a private nested class and returns a new instance of it from
  * {@code configureMetadataCrawler()}.
  *
  * @see NoMetadataCrawler

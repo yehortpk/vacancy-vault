@@ -244,8 +244,8 @@ once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>Default
 The runner then parses each fetched page with <code>parseVacancies(page, company)</code>, publishes the new vacancies and,
 once every page was parsed, marks the vanished ones outdated.
 
-A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> itself and returns
-<code>this</code> from <code>configureMetadataCrawler()</code>. Its <code>extractMetadata</code> builds the request and creates its scraper
+A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> in a private nested class
+(e.g. <code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>. Its <code>extractMetadata</code> builds the request and creates its scraper
 with <code>new</code>.
 
 A metadata call that fails, or whose response can't be parsed, marks the company ERROR.

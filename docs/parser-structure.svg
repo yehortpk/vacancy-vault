@@ -118,8 +118,8 @@
   <line x1="375" y1="517" x2="625" y2="517" class="d-div"/>
   <text x="387" y="534" class="d-note">no I/O · one page · empty maps</text>
   <text x="387" y="566" class="d-note">a crawler that needs a call</text>
-  <text x="387" y="582" class="d-note">implements CompanyMetadataCrawler</text>
-  <text x="387" y="597" class="d-note">and returns this</text>
+  <text x="387" y="582" class="d-note">returns a nested class that</text>
+  <text x="387" y="597" class="d-note">implements CompanyMetadataCrawler</text>
 
   <!-- ===== FetchSettings ===== -->
   <rect x="690" y="128" width="260" height="220" rx="3" class="d-type"/>
