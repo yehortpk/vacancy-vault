@@ -48,7 +48,7 @@ class VacancyDetailsTest extends PostgresContainerTest {
     }
 
     private int insertVacancy(String title, String description) {
-        return jdbcTemplate.queryForObject("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, parsed_at,"
+        return jdbcTemplate.queryForObject("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, crawled_at,"
                         + " title, company_id, company_title, company_url, description)"
                         + " VALUES (true, ?, 3000, 1000, now(), ?, ?, 'Acme', 'https://acme.example', ?)"
                         + " RETURNING vacancy_id",

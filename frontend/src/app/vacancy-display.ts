@@ -43,8 +43,8 @@ function formatSalaryRange(vacancy: Vacancy): string | null {
 }
 
 /** Describes a timestamp relative to now, e.g. "3 hours ago" or "yesterday". */
-export function describePostedAt(parsedAt: string): string {
-  const elapsedSeconds = (Date.parse(parsedAt) - Date.now()) / 1000;
+export function describePostedAt(crawledAt: string): string {
+  const elapsedSeconds = (Date.parse(crawledAt) - Date.now()) / 1000;
   for (const [unit, unitSeconds] of RELATIVE_TIME_UNITS) {
     if (Math.abs(elapsedSeconds) >= unitSeconds) {
       return relativeTimeFormat.format(Math.round(elapsedSeconds / unitSeconds), unit);

@@ -17,7 +17,7 @@ CREATE TABLE vacancy (
     salary_currency VARCHAR(16),
     salary_period   VARCHAR(16),
     is_remote       BOOLEAN      NOT NULL,
-    parsed_at       TIMESTAMP(6),
+    crawled_at      TIMESTAMP(6),
     company_id      INTEGER      NOT NULL,
     company_title   VARCHAR(255),
     company_url     VARCHAR(255),

@@ -59,7 +59,7 @@ class VacancySearchTest extends PostgresContainerTest {
     }
 
     private void insertVacancy(String title, boolean isRemote, Integer minSalary, Integer maxSalary) {
-        jdbcTemplate.update("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, parsed_at, title,"
+        jdbcTemplate.update("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, crawled_at, title,"
                         + " company_id, company_title) VALUES (?, ?, ?, ?, now(), ?, ?, 'Acme')",
                 isRemote, "https://acme.example/" + title.replace(' ', '-'), maxSalary, minSalary, title, COMPANY_ID);
     }
@@ -74,16 +74,16 @@ class VacancySearchTest extends PostgresContainerTest {
         return titles;
     }
 
-    private void markParsedHoursAgo(String title, int hours) {
-        jdbcTemplate.update("UPDATE vacancy SET parsed_at = now() - make_interval(hours => ?) WHERE title = ?",
+    private void markCrawledHoursAgo(String title, int hours) {
+        jdbcTemplate.update("UPDATE vacancy SET crawled_at = now() - make_interval(hours => ?) WHERE title = ?",
                 hours, title);
     }
 
     @Test
     void GetVacancies_DifferentParseTimes_ShouldListNewestFirst() throws Exception {
-        markParsedHoursAgo("Java Office No Salary", 1);
-        markParsedHoursAgo("Java Remote No Salary", 3);
-        markParsedHoursAgo("Java Office Min Salary", 2);
+        markCrawledHoursAgo("Java Office No Salary", 1);
+        markCrawledHoursAgo("Java Remote No Salary", 3);
+        markCrawledHoursAgo("Java Office Min Salary", 2);
 
         // "Java Remote Max Salary" keeps the parse time of now()
         assertThat(titlesOf(get("/vacancy").param("query", "Java"))).containsExactly(

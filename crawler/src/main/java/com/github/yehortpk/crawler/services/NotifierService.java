@@ -53,7 +53,7 @@ public class NotifierService {
                 .salaryCurrency(vacancy.getSalaryCurrency())
                 .salaryPeriod(vacancy.getSalaryPeriod())
                 .isRemote(vacancy.isRemote())
-                .parsedAt(vacancy.getCrawledAt())
+                .crawledAt(vacancy.getCrawledAt())
                 .company(new NewVacancyDTO.Company(company.getCompanyId(), company.getTitle(), company.getMainPageURL()))
                 .build();
     }

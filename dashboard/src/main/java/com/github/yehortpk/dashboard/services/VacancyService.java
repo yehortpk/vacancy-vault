@@ -32,7 +32,7 @@ public class VacancyService {
                 .salaryCurrency(vacancy.getSalaryCurrency())
                 .salaryPeriod(vacancy.getSalaryPeriod())
                 .isRemote(vacancy.isRemote())
-                .parsedAt(vacancy.getParsedAt())
+                .crawledAt(vacancy.getCrawledAt())
                 .companyId(company.getId())
                 .companyTitle(company.getTitle())
                 .companyUrl(company.getUrl())

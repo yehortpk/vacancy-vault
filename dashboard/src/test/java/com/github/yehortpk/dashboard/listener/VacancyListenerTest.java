@@ -49,7 +49,7 @@ class VacancyListenerTest extends PostgresContainerTest {
                 .salaryCurrency("USD")
                 .salaryPeriod("MONTH")
                 .isRemote(true)
-                .parsedAt(LocalDateTime.of(2026, 11, 11, 9, 30))
+                .crawledAt(LocalDateTime.of(2026, 11, 11, 9, 30))
                 .company(new NewVacancyDTO.Company(companyId, companyTitle, companyUrl))
                 .build();
     }
@@ -72,7 +72,7 @@ class VacancyListenerTest extends PostgresContainerTest {
         assertThat(stored.getMaxSalary()).isNull();
         assertThat(stored.getSalaryCurrency()).isEqualTo("USD");
         assertThat(stored.isRemote()).isTrue();
-        assertThat(stored.getParsedAt()).isEqualTo(LocalDateTime.of(2026, 11, 11, 9, 30));
+        assertThat(stored.getCrawledAt()).isEqualTo(LocalDateTime.of(2026, 11, 11, 9, 30));
         assertThat(stored.getCompanyId()).isEqualTo(ACME_ID);
         assertThat(stored.getCompanyTitle()).isEqualTo("Acme");
         assertThat(stored.getCompanyUrl()).isEqualTo("https://acme.example");

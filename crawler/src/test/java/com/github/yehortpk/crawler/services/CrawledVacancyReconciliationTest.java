@@ -151,7 +151,7 @@ class CrawledVacancyReconciliationTest extends PostgresContainerTest {
 
         NewVacancyDTO published = capturePublishedVacancies(1).getFirst();
         assertThat(published.getLink()).isEqualTo(createLink("fresh"));
-        assertThat(published.getParsedAt()).isNotNull();
+        assertThat(published.getCrawledAt()).isNotNull();
         assertThat(published.getCompany().getId()).isEqualTo(COMPANY_ID);
         assertThat(published.getCompany().getTitle()).isEqualTo("Acme");
         assertThat(published.getCompany().getUrl()).isEqualTo("https://acme.example");

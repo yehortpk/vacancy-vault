@@ -16,7 +16,7 @@ export type Vacancy = {
         imageUrl?: string|null
         company_url: string|null
     }
-    parsedAt: string|null
+    crawledAt: string|null
     remote: boolean
 }
 

@@ -20,7 +20,7 @@ public class VacancyDetailsDTO {
     private String URL;
     private CompanyShortInfoDTO company;
     /** With the dashboard's offset, so the page shows the time in the viewer's zone. */
-    private OffsetDateTime parsedAt;
+    private OffsetDateTime crawledAt;
     /** Serialized as {@code remote}, after the Lombok accessor pair {@code isRemote()/setRemote()}. */
     private boolean isRemote;
     private String description;

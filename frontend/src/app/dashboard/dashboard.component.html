@@ -87,11 +87,11 @@
               </ng-template>
             </span>
 
-            <span *ngIf="vacancy.parsedAt" class="inline-flex items-center gap-1.5">
+            <span *ngIf="vacancy.crawledAt" class="inline-flex items-center gap-1.5">
               <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <time [attr.datetime]="vacancy.parsedAt">{{ describePostedAt(vacancy.parsedAt) }}</time>
+              <time [attr.datetime]="vacancy.crawledAt">{{ describePostedAt(vacancy.crawledAt) }}</time>
             </span>
           </div>
         </div>
@@ -134,7 +134,7 @@
     <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No vacancies found</h2>
     <p class="text-slate-500 dark:text-slate-400 mb-6">
       {{ hasActiveConditions() ? 'Nothing matches the selected conditions. Try switching some off.'
-        : searchQuery ? 'Nothing matches your search.' : 'No job listings have been parsed yet.' }}
+        : searchQuery ? 'Nothing matches your search.' : 'No job listings have been crawled yet.' }}
     </p>
     <a *ngIf="searchQuery || hasActiveConditions()" routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
   </div>

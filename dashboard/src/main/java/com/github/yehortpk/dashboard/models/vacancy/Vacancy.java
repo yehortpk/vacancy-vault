@@ -28,7 +28,7 @@ public class Vacancy {
     private Integer maxSalary;
     private String salaryCurrency;
     private String salaryPeriod;
-    private LocalDateTime parsedAt;
+    private LocalDateTime crawledAt;
     /**
      * Whether remote type of work available for the vacancy
      */

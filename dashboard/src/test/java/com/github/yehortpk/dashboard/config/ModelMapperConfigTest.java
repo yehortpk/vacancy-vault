@@ -15,7 +15,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ModelMapperConfigTest {
-    private static final LocalDateTime PARSED_AT = LocalDateTime.of(2026, 11, 11, 9, 30);
+    private static final LocalDateTime CRAWLED_AT = LocalDateTime.of(2026, 11, 11, 9, 30);
 
     private final ModelMapper modelMapper = new ModelMapperConfig().modelMapper();
 
@@ -23,7 +23,7 @@ class ModelMapperConfigTest {
         Vacancy vacancy = new Vacancy();
         vacancy.setTitle("Java Developer");
         vacancy.setLink("https://acme.example/1");
-        vacancy.setParsedAt(PARSED_AT);
+        vacancy.setCrawledAt(CRAWLED_AT);
         vacancy.setCompanyId(7);
         vacancy.setCompanyTitle("Acme");
         vacancy.setCompanyUrl("https://acme.example");
@@ -31,10 +31,10 @@ class ModelMapperConfigTest {
     }
 
     @Test
-    void MapVacancy_ParsedAtWithoutZone_ShouldCarryTheDashboardOffset() {
+    void MapVacancy_CrawledAtWithoutZone_ShouldCarryTheDashboardOffset() {
         VacancyCompanyDTO dto = modelMapper.map(createVacancy(), VacancyCompanyDTO.class);
 
-        assertThat(dto.getParsedAt()).isEqualTo(PARSED_AT.atZone(ZoneId.systemDefault()).toOffsetDateTime());
+        assertThat(dto.getCrawledAt()).isEqualTo(CRAWLED_AT.atZone(ZoneId.systemDefault()).toOffsetDateTime());
         assertThat(dto.getURL()).isEqualTo("https://acme.example/1");
     }
 
@@ -58,13 +58,13 @@ class ModelMapperConfigTest {
     }
 
     @Test
-    void MapVacanciesPage_ParsedAtWithoutZone_ShouldCarryTheDashboardOffset() {
+    void MapVacanciesPage_CrawledAtWithoutZone_ShouldCarryTheDashboardOffset() {
         VacanciesPageDTO page = modelMapper.getTypeMap(org.springframework.data.domain.Page.class, VacanciesPageDTO.class)
                 .map(new PageImpl<>(List.of(createVacancy())));
 
         assertThat(page.getVacancies()).hasSize(1);
-        assertThat(page.getVacancies().getFirst().getParsedAt())
-                .isEqualTo(PARSED_AT.atZone(ZoneId.systemDefault()).toOffsetDateTime());
+        assertThat(page.getVacancies().getFirst().getCrawledAt())
+                .isEqualTo(CRAWLED_AT.atZone(ZoneId.systemDefault()).toOffsetDateTime());
     }
 
     @Test

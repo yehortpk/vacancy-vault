@@ -33,7 +33,7 @@ public class VacancyController {
 
         // Newest first; the id keeps pages stable
         PageRequest pageable = PageRequest.of(pageId, pageSize,
-                Sort.by(Sort.Order.desc("parsedAt").nullsLast(), Sort.Order.desc("vacancyID")));
+                Sort.by(Sort.Order.desc("crawledAt").nullsLast(), Sort.Order.desc("vacancyID")));
 
         Page<Vacancy> vacanciesOnPage = vacancyService.getVacancies(
                 new VacancySearchCriteria(query, remoteRequired, salaryRequired), pageable);

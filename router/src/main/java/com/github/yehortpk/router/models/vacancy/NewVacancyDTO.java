@@ -26,7 +26,7 @@ public class NewVacancyDTO {
     private String salaryPeriod;
     /** Serialized as {@code remote}, after the Lombok accessor pair {@code isRemote()/setRemote()}. */
     private boolean isRemote;
-    private LocalDateTime parsedAt;
+    private LocalDateTime crawledAt;
     private Company company;
 
     @Getter
