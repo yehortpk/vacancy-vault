@@ -1,5 +1,6 @@
 package com.github.yehortpk.crawler.services;
 
+import com.github.yehortpk.crawler.company.CompanySource;
 import com.github.yehortpk.crawler.crawler.CompanyCrawler;
 import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
@@ -35,13 +36,13 @@ class CrawlerRunnerServiceTest {
     private static final int TIMEOUT_MS = 5000;
 
     private final Map<String, CompanyCrawler> companyCrawlers = new HashMap<>();
-    private final CompanyService companyService = mock(CompanyService.class);
+    private final CompanySource companySource = mock(CompanySource.class);
     private final CrawlingHistoryService crawlingHistoryService = mock(CrawlingHistoryService.class);
     private final VacancyService vacancyService = mock(VacancyService.class);
     private final CrawlingProgressService crawlingProgressService = new CrawlingProgressService();
     private final CrawlerRunnerService crawlerRunnerService = new CrawlerRunnerService(
             companyCrawlers,
-            companyService,
+            companySource,
             mock(NotifierService.class),
             crawlingProgressService,
             crawlingHistoryService,
@@ -65,7 +66,7 @@ class CrawlerRunnerServiceTest {
         CompanyCrawler crawler = mock(CompanyCrawler.class);
         when(crawler.scrapeCompanyVacancies(any())).thenThrow(exception);
         companyCrawlers.put("crawler", crawler);
-        when(companyService.getCompaniesList()).thenReturn(List.of(createCompany(1, "crawler")));
+        when(companySource.getCompanies()).thenReturn(List.of(createCompany(1, "crawler")));
 
         crawlerRunnerService.runCrawling();
 
@@ -75,7 +76,7 @@ class CrawlerRunnerServiceTest {
 
     @Test
     void RunCrawling_CompaniesListFails_ShouldSaveFailedRun() {
-        when(companyService.getCompaniesList()).thenThrow(new IllegalStateException("Database is down"));
+        when(companySource.getCompanies()).thenThrow(new IllegalStateException("Database is down"));
 
         crawlerRunnerService.runCrawling();
 
@@ -85,7 +86,7 @@ class CrawlerRunnerServiceTest {
 
     @Test
     void RunCrawling_NoCompanies_ShouldSaveFinishedRun() {
-        when(companyService.getCompaniesList()).thenReturn(List.of());
+        when(companySource.getCompanies()).thenReturn(List.of());
 
         crawlerRunnerService.runCrawling();
 
@@ -95,7 +96,7 @@ class CrawlerRunnerServiceTest {
 
     @Test
     void RunCrawling_CrawlerMissing_ShouldSkipCompany() {
-        when(companyService.getCompaniesList()).thenReturn(List.of(createCompany(1, "missing-crawler")));
+        when(companySource.getCompanies()).thenReturn(List.of(createCompany(1, "missing-crawler")));
 
         crawlerRunnerService.runCrawling();
 
@@ -110,7 +111,7 @@ class CrawlerRunnerServiceTest {
         CompletableFuture<PageScraperResponse> failedPage = CompletableFuture.failedFuture(new IllegalStateException("Page failed"));
         when(crawler.scrapeCompanyVacancies(any())).thenReturn(List.of(failedPage));
         companyCrawlers.put("crawler", crawler);
-        when(companyService.getCompaniesList()).thenReturn(List.of(createCompany(1, "crawler")));
+        when(companySource.getCompanies()).thenReturn(List.of(createCompany(1, "crawler")));
         when(vacancyService.getPersistedVacancies(1)).thenReturn(List.of(mock(CrawledVacancy.class)));
 
         crawlerRunnerService.runCrawling();
@@ -148,7 +149,7 @@ class CrawlerRunnerServiceTest {
             throw new UnresolvedPlaceholderException("{nonce}", "data _ajax_nonce");
         });
         companyCrawlers.put("crawler", crawler);
-        when(companyService.getCompaniesList()).thenReturn(List.of(createCompany(1, "crawler")));
+        when(companySource.getCompanies()).thenReturn(List.of(createCompany(1, "crawler")));
 
         crawlerRunnerService.runCrawling();
 
@@ -169,7 +170,7 @@ class CrawlerRunnerServiceTest {
         });
         companyCrawlers.put("slowCrawler", slowCrawler);
         companyCrawlers.put("failingCrawler", mock(CompanyCrawler.class));
-        when(companyService.getCompaniesList()).thenReturn(List.of(
+        when(companySource.getCompanies()).thenReturn(List.of(
                 createCompany(1, "slowCrawler"),
                 createCompany(2, "failingCrawler")
         ));

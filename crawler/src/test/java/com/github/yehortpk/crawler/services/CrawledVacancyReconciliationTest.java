@@ -1,5 +1,6 @@
 package com.github.yehortpk.crawler.services;
 
+import com.github.yehortpk.crawler.company.CompanySource;
 import com.github.yehortpk.crawler.PostgresContainerTest;
 import com.github.yehortpk.crawler.crawler.CompanyCrawler;
 import com.github.yehortpk.crawler.models.CompanyDTO;
@@ -67,7 +68,7 @@ class CrawledVacancyReconciliationTest extends PostgresContainerTest {
     @MockitoBean
     private KafkaTemplate<String, VacancyMessage> vacancyKafkaTemplate;
 
-    private final CompanyService companyService = mock(CompanyService.class);
+    private final CompanySource companySource = mock(CompanySource.class);
     private final CrawlingHistoryService crawlingHistoryService = mock(CrawlingHistoryService.class);
     private final CompanyCrawler crawler = mock(CompanyCrawler.class);
 
@@ -85,7 +86,7 @@ class CrawledVacancyReconciliationTest extends PostgresContainerTest {
         when(vacancyKafkaTemplate.sendDefault(anyString(), any()))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mock(SendResult.class)));
 
-        when(companyService.getCompaniesList()).thenReturn(List.of(CompanyDTO.builder()
+        when(companySource.getCompanies()).thenReturn(List.of(CompanyDTO.builder()
                 .companyId(COMPANY_ID)
                 .beanClass(CRAWLER_BEAN)
                 .title("Acme")
@@ -127,7 +128,7 @@ class CrawledVacancyReconciliationTest extends PostgresContainerTest {
 
         NotifierService notifierService =
                 new NotifierService(vacancyKafkaTemplate, vacancyService);
-        CrawlerRunnerService crawlerRunnerService = new CrawlerRunnerService(Map.of(CRAWLER_BEAN, crawler), companyService,
+        CrawlerRunnerService crawlerRunnerService = new CrawlerRunnerService(Map.of(CRAWLER_BEAN, crawler), companySource,
                 notifierService, new CrawlingProgressService(), crawlingHistoryService, vacancyService);
 
         crawlerRunnerService.runCrawling();

@@ -25,6 +25,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
   - [Scraper structure](#scraper-structure)
   - [Class diagram](#class-diagram)
   - [Database usage](#database-usage)
+    - [Company source](#company-source)
     - [Request parameters](#request-parameters)
       - [Dynamic request parameters](#dynamic-request-parameters)
 - [Filters](#filters)
@@ -354,6 +355,16 @@ learn a company's title and URL from the vacancies the crawler publishes. You mu
 - <code>main_page_url</code> - URL to the site main page;
 - <code>vacancies_url</code> - URL to the page with the vacancies in the site;
 - <code>api_vacancies_url</code> - URL to the endpoint for API to retrieve vacancies; used when the crawler sets it as <code>pageURL</code>
+
+#### Company source
+The crawler takes the companies of a run from a <code>CompanySource</code> bean (in the <code>company</code> package),
+which returns them as a <code>List&lt;CompanyDTO&gt;</code>. The default, <code>DatabaseCompanySource</code>, reads the
+companies above whose <code>crawling_enabled</code> is set. To take them from somewhere else, add your own
+<code>@Component</code> that implements <code>CompanySource</code>: <code>DatabaseCompanySource</code> is marked
+<code>@ConditionalOnMissingBean(CompanySource.class)</code>, so it is not created when another implementation exists.
+Every other table, such as the crawled vacancies and the crawling history, stays in the database either way. Your source
+must return the same <code>companyId</code> for a company on every run, since its crawled vacancies are kept under that
+id, and a <code>beanClass</code> that names a crawler bean.
 
 #### Request parameters
 If you have request data that need to be sent with the request (e.g. GET request query data, or POST request body)

@@ -1,5 +1,6 @@
 package com.github.yehortpk.crawler.services;
 
+import com.github.yehortpk.crawler.company.CompanySource;
 import com.github.yehortpk.crawler.crawler.CompanyCrawler;
 import com.github.yehortpk.crawler.exceptions.MetadataScrapeException;
 import com.github.yehortpk.crawler.exceptions.MetadataParseException;
@@ -37,7 +38,7 @@ public class CrawlerRunnerService {
      * Every company crawler by its bean name, which is a company's {@code bean_class}
      */
     private final Map<String, CompanyCrawler> companyCrawlers;
-    private final CompanyService companyService;
+    private final CompanySource companySource;
     private final NotifierService notifierService;
     private final CrawlingProgressService crawlingProgressService;
     private final CrawlingHistoryService crawlingHistoryService;
@@ -69,7 +70,7 @@ public class CrawlerRunnerService {
 
     private void runCrawlers() {
         try {
-            crawlCompanies(companyService.getCompaniesList());
+            crawlCompanies(companySource.getCompanies());
             crawlingProgressService.markCompleted();
         } catch (RuntimeException ex) {
             log.error("Crawling failed: {}", createErrorMessage(ex));

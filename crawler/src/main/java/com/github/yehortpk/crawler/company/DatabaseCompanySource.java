@@ -1,4 +1,4 @@
-package com.github.yehortpk.crawler.services;
+package com.github.yehortpk.crawler.company;
 
 import com.github.yehortpk.crawler.models.CompanyDTO;
 import com.github.yehortpk.crawler.models.company.Company;
@@ -7,18 +7,20 @@ import com.github.yehortpk.crawler.models.company.CompanyData;
 import com.github.yehortpk.crawler.models.company.CompanyHeader;
 import com.github.yehortpk.crawler.repositories.CompanyRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This service provides methods for working with {@link CompanyRepository}
+ * The default {@link CompanySource}: the companies of the {@code company} table that are switched on
+ * for crawling. Skipped when the application has its own {@code CompanySource} bean.
  */
-@Service
+@Component
 @RequiredArgsConstructor
-public class CompanyService {
+public class DatabaseCompanySource implements CompanySource {
     private final CompanyRepository companyRepository;
 
     private static CompanyDTO createCompanyDTO(Company company) {
@@ -39,14 +41,11 @@ public class CompanyService {
                 .build();
     }
 
-    /**
-     * Returns the companies that are switched on for crawling
-     * @return companies list
-     */
+    @Override
     @Transactional(readOnly = true)
-    public List<CompanyDTO> getCompaniesList() {
+    public List<CompanyDTO> getCompanies() {
         return companyRepository.findCrawlingEnabled().stream()
-                .map(CompanyService::createCompanyDTO)
+                .map(DatabaseCompanySource::createCompanyDTO)
                 .toList();
     }
 }
