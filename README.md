@@ -11,8 +11,6 @@ Our project includes a robust library that allows users to create custom crawler
 This flexibility ensures compatibility with a wide range of company websites, catering to diverse job seekers' needs.
 Also, users can subscribe to specific companies of interest, enabling the crawler to automatically detect and notify them of new job postings.
 
-Available via Telegram Bot: https://t.me/vacancy_notification_bot
-
 ## Table of Contents
 - [Installation](#installation)
   - [Ports](#ports)
@@ -20,11 +18,15 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 - [Architecture](#architecture)
 - [Usage](#usage)
   - [Code Usage](#code-usage)
+    - [Scraper](#scraper)
+      - [Metadata call](#metadata-call)
+    - [Parser](#parser)
+      - [Vacancy details](#vacancy-details)
+    - [Full example](#full-example)
   - [Crawler structure](#crawler-structure)
-    - [Vacancy pages](#vacancy-pages)
-  - [Scraper structure](#scraper-structure)
-  - [Class diagram](#class-diagram)
-  - [Database usage](#database-usage)
+  - [Page scrapers](#page-scrapers)
+  - [Class diagrams](#class-diagrams)
+  - [Create companies](#create-companies)
     - [Company source](#company-source)
     - [Request parameters](#request-parameters)
       - [Dynamic request parameters](#dynamic-request-parameters)
@@ -193,30 +195,16 @@ The only REST call between services is the Telegram bot reporting linked chats t
 The app needs the client to create crawling information for both sides - in the code itself and in the database. Let's look at the features of the code.
 
 ### Code usage
-Every company is crawled by a Spring bean that extends the abstract class <code>DefaultCompanyCrawler</code>. The base
-class runs the whole fetch flow, so a company crawler only describes its site. It implements two methods:
-- <code>configurePageScrapeSettings(company, pageId)</code> - how the page is requested, as a <code>ScrapeSettings</code>.
-  The crawler always sets <code>pageURL</code>: it is never taken from the company's config. Leave data, headers or
-  cookies unset to take them from the company's config. A crawler that reads the company's <code>vacancies_url</code>
-  as is extends <code>VacanciesUrlCompanyCrawler</code> (in the companies' <code>common</code> package) instead of
-  implementing this method. A crawler that reads the site's API sets <code>pageURL(company.getApiVacanciesURL())</code>,
-  and <code>connectionMethod(POST)</code> when the API needs it.
-- <code>configurePageParser()</code> - the <code>PageParser</code> a page is parsed with, implemented in a private nested
-  class (e.g. <code>AcmePageParser</code>). Its <code>parsePage(page, company)</code> turns a fetched page into vacancies,
-  as the page itself describes them. Read HTML with <code>Jsoup.parse(page.getBody())</code> and JSON with Gson.
+Every company is crawled by a Spring bean that implements the <code>CompanyCrawler</code> interface. The interface has two
+halves, and a company crawler needs both to work:
+- the <b>scraper</b>, <code>scrapeCompanyVacancies(company)</code>, fetches every page of the company's vacancies, see [Scraper](#scraper);
+- the <b>parser</b>, <code>parsePageVacancies(page, company)</code>, turns one fetched page into vacancies, see [Parser](#parser).
 
-It may also override three hooks:
-- <code>configurePageScraper(pageId)</code> - the scraper the page is fetched with. Defaults to <code>new StaticPageScraper()</code>.
-  Return <code>new DynamicPageScraper(browserPool, readySelector)</code> for a site whose vacancies a browser has to render
-  (inject the <code>BrowserPool</code> bean into the crawler). See [Scraper structure](#scraper-structure) for choosing one.
-- <code>configureMetadataCrawler()</code> - the call made before the pages, to learn the page count or values the requests
-  need. Defaults to <code>NoCallMetadataCrawler</code>: no request, one page. See [Dynamic request parameters](#dynamic-request-parameters).
-- <code>configureVacancyDetailsCrawler()</code> - the call made for every vacancy of a parsed page, to read the vacancy's own page
-  (e.g. its description). Defaults to <code>NoCallVacancyDetailsCrawler</code>: no request, the vacancy stays as its page described it.
-  See [Vacancy pages](#vacancy-pages).
-
-The delay between pages defaults to 0, so every page of a company is sent at once. A site that needs pacing sets it per page
-in <code>configurePageScrapeSettings</code>, e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.
+You don't have to write either half yourself. The abstract class <code>DefaultCompanyCrawler</code> implements both and
+runs the main flow: the metadata call, the placeholders, the delays, the vacancy details calls, the stop requests and
+the errors. A company crawler extends it and only describes its site, with two methods:
+- <code>configurePageScrapeSettings(company, pageId)</code> - how a page is requested, for the scraper.
+- <code>configurePageParser()</code> - how a page turns into vacancies, for the parser.
 
 ```java
 @Component("acme-company")
@@ -224,6 +212,11 @@ public class AcmeCrawler extends DefaultCompanyCrawler {
     @Override
     protected ScrapeSettings configurePageScrapeSettings(CompanyDTO company, int pageId) {
         return ScrapeSettings.builder().build();
+    }
+
+    @Override
+    protected PageScraper configurePageScraper(int pageId) {
+        return new StaticPageScraper();
     }
 
     @Override
@@ -242,7 +235,7 @@ public class AcmeCrawler extends DefaultCompanyCrawler {
 }
 ```
 
-The bean name (<code>acme-company</code> here) is the company's <code>bean_class</code> in the database, see [Database usage](#database-usage).
+The bean name (<code>acme-company</code> here) is the company's <code>bean_class</code> in the database, see [Create companies](#create-companies).
 Crawlers hold no state of a run, so one bean may serve several companies.
 
 A vacancy's <code>countries</code> are ISO 3166-1 alpha-2 codes: two lower-case letters per country, e.g.
@@ -252,107 +245,233 @@ A vacancy's <code>countries</code> are ISO 3166-1 alpha-2 codes: two lower-case 
 A crawler maps any other spelling a site uses itself. Leave the set empty when the site does not say. The dashboard
 shows each code by its English name and filters the listing by it.
 
+#### Scraper
+The scraper fetches the company's pages. A company crawler describes them with:
+- <code>configurePageScrapeSettings(company, pageId)</code> - how the page is requested, as a <code>ScrapeSettings</code>.
+  The crawler always sets <code>pageURL</code>: it is never taken from the company's config. Leave data, headers or
+  cookies unset to take them from the company's config. A crawler that reads the company's <code>vacancies_url</code>
+  as is extends <code>VacanciesUrlCompanyCrawler</code> (in the companies' <code>common</code> package) instead of
+  implementing this method. A crawler that reads the site's API sets <code>pageURL(company.getApiVacanciesURL())</code>,
+  and <code>connectionMethod(POST)</code> when the API needs it.
+- <code>configurePageScraper(pageId)</code> - an optional hook, the scraper the page is fetched with. Defaults to
+  <code>new StaticPageScraper()</code>. Return <code>new DynamicPageScraper(browserPool, readySelector)</code> for a site
+  whose vacancies a browser has to render (inject the <code>BrowserPool</code> bean into the crawler). See
+  [Page scrapers](#page-scrapers) for choosing one.
+- <code>configureMetadataCrawler()</code> - an optional hook, the call made before the pages. Defaults to
+  <code>NoCallMetadataCrawler</code>: no request, one page. See [Metadata call](#metadata-call).
+
+Every call of the scraper - the pages, the metadata call and the vacancy details calls - is fetched with a
+<code>PageScraper</code>, see [Page scrapers](#page-scrapers).
+
+<code>pageId</code> is the page's number, starting from 1. Use it to request that page, e.g. as an offset
+<code>(pageId - 1) * PAGE_SIZE</code> in the request data, or put the <code>{page}</code> placeholder into the URL or data
+instead (see [Dynamic request parameters](#dynamic-request-parameters)). Use it to space the pages out as well: the delay
+between pages defaults to 0, so every page of a company is sent at once, and a site that needs pacing sets it per page,
+e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.
+
+##### Metadata call
+A metadata call is one request made before any page, to learn what the pages need: the page count, placeholder values
+like a CSRF token or a session id that only a first request reveals, and headers and cookies to send with every page.
+
+A company crawler that needs it implements <code>CompanyMetadataCrawler</code> in a private nested class (e.g.
+<code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>:
+- <code>configureScrapeSettings(company)</code> describes the request. It is used as returned: nothing is filled from
+  the company.
+- <code>configurePageScraper()</code> creates the scraper with <code>new</code>. A metadata call whose answer is known
+  without a request, like a fixed page count, returns <code>new NoCallPageScraper()</code>.
+- <code>parseMetadata(response)</code> reads the <code>MetadataParams</code> from the response: <code>pagesCount</code>
+  (1 unless set), <code>placeholders</code> by name without braces, and <code>requestHeaders</code> and
+  <code>requestCookies</code>, which are added to every page, overriding configured ones by key.
+
+A metadata call that fails, or whose response can't be parsed, marks the company ERROR. See the
+[Full example](#full-example).
+
+#### Parser
+The parser turns a fetched page into vacancies. A company crawler describes it with:
+- <code>configurePageParser()</code> - the <code>PageParser</code> a page is parsed with. A company crawler implements
+  <code>PageParser</code> in a private nested class (e.g. <code>AcmePageParser</code>) and returns a new instance of it.
+  Its <code>parsePage(page, company)</code> turns a fetched page into vacancies, as the page itself
+  describes them, and throws <code>VacancyPageParseException</code> when the page can't be parsed. Read HTML with
+  <code>Jsoup.parse(page.getBody())</code> and JSON with Gson.
+- <code>configureVacancyDetailsCrawler()</code> - an optional hook, the call made for every vacancy of a parsed page, to
+  read the vacancy's own page (e.g. its description). Defaults to <code>NoCallVacancyDetailsCrawler</code>: no request,
+  the vacancy stays as its page described it. See [Vacancy details](#vacancy-details).
+
+##### Vacancy details
+<b>Warning!</b> A vacancy details call is made for <b>every vacancy of every page on every run</b>, not only for the new
+ones. It multiplies the requests sent to the company's site, which can get the crawler rate-limited or banned there.
+Use it with consideration, and space the calls out with a delay.
+
+A company crawler that needs it implements <code>VacancyDetailsCrawler</code> in a private nested class (e.g.
+<code>AcmeVacancyDetailsCrawler</code>) and returns a new instance of it from <code>configureVacancyDetailsCrawler()</code>:
+- <code>configureScrapeSettings(previewVacancy, company, vacancyOrderOnPage)</code> describes the request. It is used as
+  returned: nothing is filled from the vacancy or the company. <code>vacancyOrderOnPage</code> is the vacancy's place on
+  its page, starting from 1, for spacing the calls out: the delay counts from the moment the page's vacancies are
+  scheduled. Pages are parsed in parallel, so the calls of different pages can overlap.
+- <code>configurePageScraper()</code> creates the scraper with <code>new</code>.
+- <code>parseVacancyDetails(previewVacancy, response)</code> returns the vacancy that replaces the preview one. Start
+  from <code>previewVacancy.toBuilder()</code> and set only what the page adds, and keep the <code>link</code>: it is the
+  vacancy's identity, and a different link makes it another vacancy.
+
+A call that fails (<code>VacancyDetailsScrapeException</code>), can't be parsed or returns <code>null</code>
+(<code>VacancyDetailsParseException</code>), or is skipped by a stop request keeps the preview vacancy and is logged on
+its page. The page itself doesn't fail. See the [Full example](#full-example).
+
+#### Full example
+A crawler whose metadata call reads the page count and a CSRF token from the first vacancies page, and whose vacancy
+details calls read every vacancy's description:
+
+```java
+@Component("acme-company")
+public class AcmeCrawler extends DefaultCompanyCrawler {
+    private static final Duration PAGE_DELAY = Duration.ofSeconds(1);
+    private static final Duration VACANCY_DETAILS_DELAY = Duration.ofSeconds(2);
+
+    @Override
+    protected ScrapeSettings configurePageScrapeSettings(CompanyDTO company, int pageId) {
+        return ScrapeSettings.builder()
+                .pageURL(company.getVacanciesURL() + "?page={page}&csrf={csrf}")
+                .delay(PAGE_DELAY.multipliedBy(pageId - 1L))
+                .build();
+    }
+
+    @Override
+    protected CompanyMetadataCrawler configureMetadataCrawler() {
+        return new AcmeMetadataCrawler();
+    }
+
+    @Override
+    protected PageParser configurePageParser() {
+        return new AcmePageParser();
+    }
+
+    @Override
+    protected VacancyDetailsCrawler configureVacancyDetailsCrawler() {
+        return new AcmeVacancyDetailsCrawler();
+    }
+
+    private static class AcmeMetadataCrawler implements CompanyMetadataCrawler {
+        @Override
+        public ScrapeSettings configureScrapeSettings(CompanyDTO company) {
+            return ScrapeSettings.builder()
+                    .pageURL(company.getVacanciesURL())
+                    .build();
+        }
+
+        @Override
+        public PageScraper configurePageScraper() {
+            return new StaticPageScraper();
+        }
+
+        @Override
+        public MetadataParams parseMetadata(PageScraperResponse response) {
+            Document document = Jsoup.parse(response.getBody());
+            return MetadataParams.builder()
+                    .pagesCount(Integer.parseInt(document.select(".pagination a").last().text()))
+                    .placeholders(Map.of("csrf", document.selectFirst("meta[name=csrf-token]").attr("content")))
+                    .requestCookies(response.getCookies())
+                    .build();
+        }
+    }
+
+    private static class AcmePageParser implements PageParser {
+        @Override
+        public List<VacancyDTO> parsePage(PageScraperResponse page, CompanyDTO company) {
+            return Jsoup.parse(page.getBody()).select("a.vacancy").stream()
+                    .map(link -> VacancyDTO.builder().title(link.text()).link(link.absUrl("href")).build())
+                    .toList();
+        }
+    }
+
+    private static class AcmeVacancyDetailsCrawler implements VacancyDetailsCrawler {
+        @Override
+        public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company,
+                                                      int vacancyOrderOnPage) {
+            return ScrapeSettings.builder()
+                    .pageURL(previewVacancy.getLink())
+                    .delay(VACANCY_DETAILS_DELAY.multipliedBy(vacancyOrderOnPage - 1L))
+                    .build();
+        }
+
+        @Override
+        public PageScraper configurePageScraper() {
+            return new StaticPageScraper();
+        }
+
+        @Override
+        public VacancyDTO parseVacancyDetails(VacancyDTO previewVacancy, PageScraperResponse response) {
+            return previewVacancy.toBuilder()
+                    .description(Jsoup.parse(response.getBody()).selectFirst(".job-description").text())
+                    .build();
+        }
+    }
+}
+```
+
+Here the metadata call fetches the first vacancies page, so the pages start one second apart and the vacancy details
+calls of a page two seconds apart. The session cookie the first page sets is sent with every page.
+
 ### Crawler structure
 ![Crawler structure](docs/crawler-structure.svg)
 
 <code>CrawlerRunnerService</code> receives every crawler bean as a map by bean name and looks up each company's crawler
-once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>DefaultCompanyCrawler</code> implements as:
+once. It calls the scraper, <code>scrapeCompanyVacancies(company)</code>, which <code>DefaultCompanyCrawler</code>
+implements as:
 1. <b>Metadata call.</b> The crawler's <code>CompanyMetadataCrawler</code> describes its request
    (<code>configureScrapeSettings(company)</code>, <code>configurePageScraper()</code>); the base class makes it, and the metadata
-   crawler reads the <code>MetadataParams</code> from the response (<code>parseMetadata</code>): the page count, placeholder values, and
-   headers and cookies to add to every page.
+   crawler reads the <code>MetadataParams</code> from the response (<code>parseMetadata</code>).
 2. <b>Every page's settings</b>, built before any page is sent: <code>configurePageScrapeSettings(company, pageId)</code>, unset fields
    filled from the company, the metadata headers and cookies added, and the placeholders filled.
 3. <b>Every page</b> waits out its <code>delay</code>, then is fetched on a virtual thread of its own with
    <code>configurePageScraper(pageId)</code>. A stop request ends the wait at once.
 
-The runner then parses each fetched page with <code>parsePageVacancies(page, company)</code>, which <code>DefaultCompanyCrawler</code>
-implements (it is final) as:
+The runner then calls the parser, <code>parsePageVacancies(page, company)</code>, for each fetched page, which
+<code>DefaultCompanyCrawler</code> implements (it is final) as:
 1. <b>Preview vacancies.</b> The crawler's <code>PageParser</code> (<code>configurePageParser()</code>) turns the page
    into vacancies with <code>parsePage(page, company)</code>.
-2. <b>Vacancy calls.</b> Every vacancy gets a virtual thread of its own: the crawler's <code>VacancyDetailsCrawler</code> describes the
-   request (<code>configureScrapeSettings(previewVacancy, company, vacancyOrderOnPage)</code>, <code>configurePageScraper()</code>), the
-   call waits out its <code>delay</code>, is made, and <code>parseVacancyDetails(previewVacancy, response)</code> returns the vacancy that
-   replaces the preview one. All calls are waited for before the page's vacancies are returned.
+2. <b>Vacancy details calls.</b> Every vacancy gets a virtual thread of its own: the crawler's
+   <code>VacancyDetailsCrawler</code> describes the request (<code>configureScrapeSettings(previewVacancy, company,
+   vacancyOrderOnPage)</code>, <code>configurePageScraper()</code>), the call waits out its <code>delay</code>, is made, and
+   <code>parseVacancyDetails(previewVacancy, response)</code> returns the vacancy that replaces the preview one. All calls
+   are waited for before the page's vacancies are returned.
 
 It then publishes the new vacancies and, once every page was parsed, marks the vanished ones outdated.
 
-A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> in a private nested class
-(e.g. <code>AcmeMetadataCrawler</code>) and returns a new instance of it from <code>configureMetadataCrawler()</code>. Its
-<code>configureScrapeSettings</code> describes the request, used as returned (nothing is filled from the company), and its
-<code>configurePageScraper</code> creates the scraper with <code>new</code>.
-
-A metadata call that fails, or whose response can't be parsed, marks the company ERROR.
-
-#### Vacancy pages
-<b>Warning!</b> A vacancy call is made for <b>every vacancy of every page on every run</b>, not only for the new ones. It
-multiplies the requests sent to the company's site, which can get the crawler rate-limited or banned there. Use it with
-consideration, and space the calls out with a delay.
-
-A company crawler that needs it implements <code>VacancyDetailsCrawler</code> in a private nested class and returns a new instance
-of it from <code>configureVacancyDetailsCrawler()</code>:
-
-```java
-private static final Duration VACANCY_DELAY = Duration.ofSeconds(2);
-
-@Override
-protected VacancyDetailsCrawler configureVacancyDetailsCrawler() {
-    return new AcmeVacancyDetailsCrawler();
-}
-
-private static class AcmeVacancyDetailsCrawler implements VacancyDetailsCrawler {
-    @Override
-    public ScrapeSettings configureScrapeSettings(VacancyDTO previewVacancy, CompanyDTO company, int vacancyOrderOnPage) {
-        return ScrapeSettings.builder()
-                .pageURL(previewVacancy.getLink())
-                .delay(VACANCY_DELAY.multipliedBy(vacancyOrderOnPage - 1L))
-                .build();
-    }
-
-    @Override
-    public PageScraper configurePageScraper() {
-        return new StaticPageScraper();
-    }
-
-    @Override
-    public VacancyDTO parseVacancyDetails(VacancyDTO previewVacancy, PageScraperResponse response) {
-        return previewVacancy.toBuilder()
-                .description(Jsoup.parse(response.getBody()).selectFirst(".job-description").text())
-                .build();
-    }
-}
-```
-
-- The settings are used as returned: nothing is filled from the vacancy or the company.
-- <code>vacancyOrderOnPage</code> is the vacancy's place on its page, starting from 1. The delay counts from the moment the page's
-  vacancies are scheduled, so the example sends one call every 2 seconds per page. Pages are parsed in parallel, so the
-  calls of different pages can overlap.
-- The returned vacancy replaces the preview one. Start from <code>previewVacancy.toBuilder()</code> and set only what the page adds,
-  and keep the <code>link</code>: it is the vacancy's identity, and a different link makes it another vacancy.
-- A call that fails (<code>VacancyDetailsScrapeException</code>), can't be parsed or returns <code>null</code> (<code>VacancyDetailsParseException</code>), or is
-  skipped by a stop request keeps the preview vacancy and is logged on its page. The page itself doesn't fail.
-
-### Scraper structure
+### Page scrapers
 A <code>PageScraper</code> fetches one page from a <code>ScrapeSettings</code> and returns a <code>PageScraperResponse</code>
 (the page's id and URL, the response headers and cookies, and the body). It does I/O only: no waiting and no retries.
-Both scrapers are plain classes created with <code>new</code>:
+The pages, the metadata call and the vacancy details calls are all fetched with one. The scrapers are plain classes
+created with <code>new</code>:
 - <code>StaticPageScraper</code> - the default. Based on Java's <code>HttpClient</code>, for pages whose vacancies are in the HTML or the
   API response itself. Sends a GET or POST, follows redirects unless told not to, and decodes gzip and the response charset.
 - <code>DynamicPageScraper(browserPool, readySelector)</code> - for pages a browser has to render. Uses <b>Playwright</b>: it borrows a
   headless Chromium from the <code>BrowserPool</code>, opens the page and waits until <code>readySelector</code> is on it, rather than for
   the whole page. <b>Warning!</b> It is resource-intensive, so use it only when <code>StaticPageScraper</code> is not enough.
+- <code>NoCallPageScraper</code> - makes no request: returns an empty response with the settings' page id and URL. For
+  a call whose answer is known without one; <code>NoCallMetadataCrawler</code> and
+  <code>NoCallVacancyDetailsCrawler</code> use it.
 
 <code>data</code> is the query string of a GET and the form body of a POST. If the request's <code>Content-Type</code> header is
 <code>application/json</code>, a POST sends <code>data</code> as a JSON object instead, with every value as a string.
 
-### Class diagram
-The detailed view of the same structure, as a UML 2 class diagram: attributes, operations, visibility, defaults and thrown
-exceptions, including the data classes (<code>ScrapeSettings</code>, <code>MetadataParams</code>,
-<code>PageScraperResponse</code>, <code>VacancyDTO</code>).
+### Class diagrams
+The detailed view of the same structure, as UML 2 class diagrams: attributes, operations, visibility, defaults and
+thrown exceptions, including the data classes. Each shows one half of <code>CompanyCrawler</code>.
 
-![Crawler class diagram](docs/crawler-class-diagram.svg)
+The scraper, <code>scrapeCompanyVacancies</code>, with the metadata call and the page scrapers
+(<code>ScrapeSettings</code>, <code>MetadataParams</code>, <code>PageScraperResponse</code>):
 
-### Database usage
+![Crawler scraper class diagram](docs/crawler-scraper-class-diagram.svg)
+
+The parser, <code>parsePageVacancies</code>, with the page parsers and the vacancy details call (<code>ScrapeSettings</code>,
+<code>VacancyDTO</code>, <code>PageScraperResponse</code>):
+
+![Crawler parser class diagram](docs/crawler-parser-class-diagram.svg)
+
+### Create companies
+The database is the preferred place to configure companies. You can also take them from another source by implementing
+the <code>CompanySource</code> interface as a <code>@Component</code>, see [Company source](#company-source).
+
 To add a new site for analysis, all you have to do is add the entity to the <i>company</i> table in the 
 <i>crawler</i> schema of the <i>notifier</i> database (<code>crawler.company</code>). The schema and the table will be
 created automatically after the first launch of the crawler. Companies live only there: the dashboard and the router
@@ -388,8 +507,8 @@ Values may hold <code>{name}</code> placeholders, which are filled for every pag
 <code>company_data</code> values and in <code>company_headers</code> values.
 - <code>{page}</code> is provided automatically: the number of the page, starting from 1.
 - Any other placeholder, like a CSRF token or a session id that only a first request reveals, needs a
-  <code>CompanyMetadataCrawler</code>: the crawler returns it from <code>configureMetadataCrawler()</code>, and its
-  <code>parseMetadata</code> returns the value in <code>MetadataParams.placeholders</code>, under the name without braces.
+  [metadata call](#metadata-call): its <code>parseMetadata</code> returns the value in
+  <code>MetadataParams.placeholders</code>, under the name without braces.
 - A placeholder without a value fails all pages of that company before any of them is requested. The company still ends
   FINISHED, with the error in its logs.
 - Headers and cookies the metadata call returns are added to every page, overriding configured ones by key.
@@ -408,10 +527,10 @@ The filter structure should be as follows:
 - <i>-keyword</i>: A minus (or hyphen) before the keyword. This keyword <b>must not</b> be in the vacancy title; if it is - the vacancy is not applicable. (Example: -lead -architect -qa)
 
 
-Keywords can be combined. Examples: 
-- Google, (developer|engineer) software -senior -lead -qa; will find vacancies from company Google that contains developer or engineer, contains software, doesn't contain senior, lead, qa keywords
-- java -senior -lead -qa; will find vacancies from all companies which contains java keyword and doesn't contain senior, lead and qa
-- Amazon,; will find all vacancies from company Amazon
+Keywords can be combined. Examples:
+- <code>Google, (developer|engineer) software -senior -lead -qa</code> - will find vacancies from company Google that contains developer or engineer, contains software, doesn't contain senior, lead, qa keywords
+- <code>java -senior -lead -qa</code> - will find vacancies from all companies which contains java keyword and doesn't contain senior, lead and qa
+- <code>Amazon,</code> - will find all vacancies from company Amazon
 
 ### Telegram bot
 The bot only links chats and delivers notifications; filters are managed in the web app. It answers:
