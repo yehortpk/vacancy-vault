@@ -167,8 +167,8 @@ Three services, each owning its own data and sharing nothing but Kafka topics:
 - <b>crawler</b> crawls the company sites and publishes what it finds. It keeps the companies, its memory of the
   vacancies it has already published, the history of its runs (MongoDB) and its own admins, and it serves its own
   admin panel. No other service calls it.
-- <b>dashboard</b> stores the published vacancies and serves the public vacancy listing. It has no users and no
-  authentication.
+- <b>dashboard</b> stores the published vacancies and serves the public vacancy listing, also per company. It has
+  no users and no authentication.
 - <b>router</b> holds the accounts: registration and login, filters, linked chats, and matching every new vacancy
   against the filters to notify the chats they are bound to. It stores no vacancies.
 

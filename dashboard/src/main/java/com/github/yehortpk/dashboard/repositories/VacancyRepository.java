@@ -30,6 +30,9 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Query("SELECT DISTINCT c FROM Vacancy v JOIN v.countries c ORDER BY c")
     List<String> findCountries();
 
+    @Query("SELECT v FROM Vacancy v WHERE v.companyId = :companyId")
+    Page<Vacancy> findCompanyVacancies(@Param("companyId") int companyId, Pageable pageable);
+
     @Query("SELECT v FROM Vacancy v WHERE v.vacancyID = :id")
     Optional<Vacancy> findVacancyById(@Param("id") int id);
 
