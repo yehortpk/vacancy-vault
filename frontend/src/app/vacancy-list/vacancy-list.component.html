@@ -32,16 +32,10 @@
             <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
             </svg>
-            <a *ngIf="vacancy.company.company_url; else plainCompany"
-              [href]="vacancy.company.company_url"
-              target="_blank"
-              rel="noopener noreferrer"
+            <a [routerLink]="['/company', vacancy.company.company_id]"
               class="relative z-10 font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
               {{ vacancy.company.title }}
             </a>
-            <ng-template #plainCompany>
-              <span class="font-medium text-slate-700 dark:text-slate-300">{{ vacancy.company.title }}</span>
-            </ng-template>
           </span>
 
           <span *ngIf="formatCountries(vacancy) as countries" class="inline-flex items-center gap-1.5">

@@ -1,3 +1,5 @@
+import { Company } from './company.type'
+
 export type Vacancy = {
     id: number
     title: string
@@ -10,11 +12,8 @@ export type Vacancy = {
     /** Payout period such as MONTH; null when the source did not say */
     salaryPeriod: string|null
     url: string
-    company: {
-        company_id: number
-        title: string|null
+    company: Company & {
         imageUrl?: string|null
-        company_url: string|null
     }
     crawledAt: string|null
     remote: boolean

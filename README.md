@@ -146,7 +146,8 @@ Docker compose publishes these ports on the host:
 | 29092 | Kafka, for clients on the host |
 
 ### Access levels
-- <b>Guests</b> (not logged in) browse the vacancy dashboard at http://localhost:4200.
+- <b>Guests</b> (not logged in) browse the vacancy dashboard at http://localhost:4200, and one company's vacancies
+  at <code>/company/&lt;id&gt;</code>, opened from the company name on a vacancy.
 - <b>Users</b> register at <code>/register</code> and get their own account room at <code>/account</code>: linking a
   messenger with a one-time code (for Telegram, send <code>/link &lt;code&gt;</code> to the bot) and the list of
   linked chats. At <code>/filters</code> they write their [filters](#filters) and choose which linked chats each one

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { VacancyComponent } from './vacancy/vacancy.component';
+import { CompanyComponent } from './company/company.component';
 import { AuthFormComponent } from './auth-form/auth-form.component';
 import { AccountComponent } from './account/account.component';
 import { FiltersComponent } from './filters/filters.component';
@@ -12,6 +13,7 @@ export const routes: Routes = [
     // Public: guests browse vacancies without an account
     { path: 'dashboard', component: DashboardComponent },
     { path: 'vacancy/:id', component: VacancyComponent },
+    { path: 'company/:id', component: CompanyComponent },
     { path: 'login', component: AuthFormComponent, data: { mode: 'login' } },
     { path: 'register', component: AuthFormComponent, data: { mode: 'register' } },
     // Any signed-in account
