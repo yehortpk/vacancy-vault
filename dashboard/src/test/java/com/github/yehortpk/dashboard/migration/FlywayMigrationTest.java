@@ -26,6 +26,9 @@ class FlywayMigrationTest extends PostgresContainerTest {
     private static final String INSERT_VACANCY =
             "INSERT INTO vacancy (is_remote, link, title, company_id)"
                     + " VALUES (false, 'https://probe.example/1', 'Probe', 900)";
+    private static final String INSERT_VACANCY_COUNTRY =
+            "INSERT INTO vacancy_country (vacancy_id, country)"
+                    + " SELECT vacancy_id, 'PL' FROM vacancy WHERE link = 'https://probe.example/1'";
 
     @Autowired
     private DataSource dataSource;
@@ -84,6 +87,18 @@ class FlywayMigrationTest extends PostgresContainerTest {
     void Migrate_VacancyTable_ShouldEnforceUniqueLink() throws SQLException {
         // The link is what a redelivered vacancy is recognized by
         assertThat(isAnyStatementRejected(INSERT_VACANCY, INSERT_VACANCY)).isTrue();
+    }
+
+    @Test
+    void Migrate_VacancyCountryTable_ShouldRejectTheSameCountryTwice() throws SQLException {
+        assertThat(isAnyStatementRejected(INSERT_VACANCY, INSERT_VACANCY_COUNTRY, INSERT_VACANCY_COUNTRY)).isTrue();
+    }
+
+    @Test
+    void Migrate_VacancyWithCountries_ShouldDeleteItsCountriesWithIt() throws SQLException {
+        // Removals are bulk deletes, so nothing but the database drops the countries
+        assertThat(isAnyStatementRejected(INSERT_VACANCY, INSERT_VACANCY_COUNTRY,
+                "DELETE FROM vacancy WHERE link = 'https://probe.example/1'")).isFalse();
     }
 
     @Test

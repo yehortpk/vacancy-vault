@@ -19,6 +19,11 @@ export class VacancyService {
       ...createConditionParams(conditions)}});
   }
 
+  /** ISO 3166-1 alpha-2 codes of the countries at least one listed vacancy is offered in. */
+  getCountries(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/countries`);
+  }
+
   getVacancy(vacancyId: number): Observable<VacancyDetails> {
     return this.http.get<VacancyDetails>(`${this.baseUrl}/${vacancyId}`);
   }

@@ -4,7 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { VacancyService } from '../service/vacancy.service';
 import { VacancyDetails } from '../type/vacancy.type';
-import { describePostedAt, formatSalary } from '../vacancy-display';
+import { describePostedAt, formatCountries, formatSalary } from '../vacancy-display';
 
 /** One vacancy on a page of its own, with the description the dashboard's cards leave out. */
 @Component({
@@ -21,6 +21,7 @@ export class VacancyComponent implements OnInit {
 
   readonly formatSalary = formatSalary;
   readonly describePostedAt = describePostedAt;
+  readonly formatCountries = formatCountries;
 
   constructor(
     private vacancyService: VacancyService,

@@ -235,6 +235,13 @@ public class AcmeCrawler extends DefaultCompanyCrawler {
 The bean name (<code>acme-company</code> here) is the company's <code>bean_class</code> in the database, see [Database usage](#database-usage).
 Crawlers hold no state of a run, so one bean may serve several companies.
 
+A vacancy's <code>countries</code> are ISO 3166-1 alpha-2 codes: two lower-case letters per country, e.g.
+<code>pl</code>, <code>ua</code>, <code>us</code>, and <code>gb</code> for the United Kingdom (not <code>uk</code>).
+<code>Locations</code> (in the <code>utils</code> package) lists every code with its lower-case English name:
+<code>findCountryCode("Poland")</code> gives <code>pl</code> and <code>findCountryName("pl")</code> gives <code>poland</code>.
+A crawler maps any other spelling a site uses itself. Leave the set empty when the site does not say. The dashboard
+shows each code by its English name and filters the listing by it.
+
 ### Crawler structure
 ![Crawler structure](docs/crawler-structure.svg)
 

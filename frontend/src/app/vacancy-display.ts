@@ -11,6 +11,25 @@ const RELATIVE_TIME_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 ];
 const relativeTimeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const salaryFormat = new Intl.NumberFormat('en');
+const countryNames = new Intl.DisplayNames('en', { type: 'region' });
+
+/** The English name of an ISO 3166-1 alpha-2 code, e.g. "Poland" for pl; the code itself when it has none. */
+export function describeCountry(code: string): string {
+  try {
+    // Codes are stored lower-case; not every runtime resolves them without upper-casing
+    return countryNames.of(code.toUpperCase()) ?? code;
+  } catch {
+    // Thrown for a code that is not well-formed
+    return code;
+  }
+}
+
+/** The vacancy's countries by name, e.g. "Poland, Ukraine", or null when the source did not say. */
+export function formatCountries(vacancy: Vacancy): string | null {
+  return vacancy.countries.length > 0
+    ? vacancy.countries.map(describeCountry).sort().join(', ')
+    : null;
+}
 
 /**
  * Returns the salary as published, e.g. "1,500 – 3,000 USD / month", or null when neither bound

@@ -3,6 +3,7 @@ package com.github.yehortpk.router.models.vacancy;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * A new vacancy as the crawler publishes it to the {@code vacancies} topic, keyed by its link.
@@ -26,6 +27,9 @@ public class NewVacancyDTO {
     private String salaryPeriod;
     /** Serialized as {@code remote}, after the Lombok accessor pair {@code isRemote()/setRemote()}. */
     private boolean isRemote;
+    /** ISO 3166-1 alpha-2 codes; empty when the source does not say. */
+    @Builder.Default
+    private Set<String> countries = Set.of();
     private LocalDateTime crawledAt;
     private Company company;
 

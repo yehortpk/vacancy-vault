@@ -12,6 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Controller responsible for the public vacancy listing and a single vacancy's page. Read-only:
  * vacancies arrive and leave over Kafka.
@@ -28,7 +30,8 @@ public class VacancyController {
                                                @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                @RequestParam(value = "query", required = false) String query,
                                                @RequestParam(value = "remote", defaultValue = "false") boolean remoteRequired,
-                                               @RequestParam(value = "withSalary", defaultValue = "false") boolean salaryRequired
+                                               @RequestParam(value = "withSalary", defaultValue = "false") boolean salaryRequired,
+                                               @RequestParam(value = "country", required = false) String country
     ){
 
         // Newest first; the id keeps pages stable
@@ -36,9 +39,15 @@ public class VacancyController {
                 Sort.by(Sort.Order.desc("crawledAt").nullsLast(), Sort.Order.desc("vacancyID")));
 
         Page<Vacancy> vacanciesOnPage = vacancyService.getVacancies(
-                new VacancySearchCriteria(query, remoteRequired, salaryRequired), pageable);
+                new VacancySearchCriteria(query, remoteRequired, salaryRequired, country), pageable);
 
         return modelMapper.getTypeMap(Page.class, VacanciesPageDTO.class).map(vacanciesOnPage);
+    }
+
+    /** The countries the listing can be narrowed to: those of the stored vacancies, as ISO 3166-1 alpha-2 codes. */
+    @GetMapping("/countries")
+    public List<String> getCountries() {
+        return vacancyService.getCountries();
     }
 
     @GetMapping("/{id}")

@@ -4,6 +4,7 @@ import com.github.yehortpk.dashboard.models.company.CompanyShortInfoDTO;
 import lombok.Data;
 
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Data
 public class VacancyCompanyDTO {
@@ -20,4 +21,6 @@ public class VacancyCompanyDTO {
     private OffsetDateTime crawledAt;
     /** Serialized as {@code remote}, after the Lombok accessor pair {@code isRemote()/setRemote()}. */
     private boolean isRemote;
+    /** ISO 3166-1 alpha-2 codes; empty when the source does not say. */
+    private Set<String> countries;
 }

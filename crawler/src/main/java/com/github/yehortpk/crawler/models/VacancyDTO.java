@@ -1,10 +1,12 @@
 package com.github.yehortpk.crawler.models;
 
+import com.github.yehortpk.crawler.utils.Locations;
 import com.github.yehortpk.crawler.utils.SalaryPeriod;
 import lombok.*;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * DTO representing a vacancy
@@ -45,6 +47,13 @@ public class VacancyDTO implements Serializable {
      * Whether remote type of work available for the vacancy
      */
     private boolean isRemote;
+
+    /**
+     * Countries the vacancy is offered in, as lower-case ISO 3166-1 alpha-2 codes (see
+     * {@link Locations}); empty when the source does not say
+     */
+    @Builder.Default
+    private Set<String> countries = Set.of();
 
     private String description;
 }

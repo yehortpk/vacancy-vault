@@ -18,6 +18,8 @@ export type Vacancy = {
     }
     crawledAt: string|null
     remote: boolean
+    /** ISO 3166-1 alpha-2 codes such as PL; empty when the source did not say */
+    countries: string[]
 }
 
 /** A vacancy as its own page shows it; listings leave the description out. */
@@ -33,16 +35,19 @@ export type VacanciesListDTO = {
     totalPages: number
 }
 
-/** Narrowing a vacancy listing on top of its query; false leaves that condition off. */
+/** Narrowing a vacancy listing on top of its query; false or null leaves that condition off. */
 export type VacancyConditions = {
     remoteRequired: boolean
     salaryRequired: boolean
+    /** ISO 3166-1 alpha-2 code the vacancy must be offered in */
+    country: string|null
 }
 
 /** Query params the dashboard service expects for the conditions; only the switched-on ones are sent. */
-export function createConditionParams(conditions: VacancyConditions): Record<string, boolean> {
+export function createConditionParams(conditions: VacancyConditions): Record<string, boolean|string> {
     return {
         ...(conditions.remoteRequired ? { remote: true } : {}),
         ...(conditions.salaryRequired ? { withSalary: true } : {}),
+        ...(conditions.country ? { country: conditions.country } : {}),
     }
 }

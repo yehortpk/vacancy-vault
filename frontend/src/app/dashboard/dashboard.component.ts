@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { TruncatePipe } from '../pipe/truncate.pipe';
-import { describePostedAt, formatSalary } from '../vacancy-display';
+import { describeCountry, describePostedAt, formatCountries, formatSalary } from '../vacancy-display';
 
 @Component({
   selector: 'app-dashboard',
@@ -29,8 +29,10 @@ export class DashboardComponent implements OnInit {
   totalPages: number = 0
   searchQuery: string = ''
   isLoading: boolean = true
-  /** Set from the `remote` and `withSalary` query params, so the toggles survive a reload or a shared link. */
-  conditions: VacancyConditions = { remoteRequired: false, salaryRequired: false }
+  /** Set from the `remote`, `withSalary` and `country` query params, so they survive a reload or a shared link. */
+  conditions: VacancyConditions = { remoteRequired: false, salaryRequired: false, country: null }
+  /** ISO codes the country picker offers: those of the listed vacancies. */
+  countries: string[] = []
 
 
   constructor(
@@ -40,6 +42,10 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.vacancyService.getCountries().subscribe({
+      next: (countries) => this.countries = countries,
+      error: (error) => console.error('An error occurred:', error)
+    });
     this.route.queryParamMap.subscribe(params => {
       this.requestVacancies(params);
     });
@@ -53,6 +59,7 @@ export class DashboardComponent implements OnInit {
     this.conditions = {
       remoteRequired: params.get('remote') === 'true',
       salaryRequired: params.get('withSalary') === 'true',
+      country: params.get('country'),
     };
     this.isLoading = true;
 
@@ -81,6 +88,8 @@ export class DashboardComponent implements OnInit {
 
   readonly formatSalary = formatSalary;
   readonly describePostedAt = describePostedAt;
+  readonly describeCountry = describeCountry;
+  readonly formatCountries = formatCountries;
 
   onPageChange(event: PageEvent) {
     this.router.navigate(["/dashboard"], {
@@ -101,8 +110,12 @@ export class DashboardComponent implements OnInit {
     this.navigateWithConditions({ ...this.conditions, salaryRequired: !this.conditions.salaryRequired });
   }
 
+  selectCountry(country: string) {
+    this.navigateWithConditions({ ...this.conditions, country: country || null });
+  }
+
   hasActiveConditions(): boolean {
-    return this.conditions.remoteRequired || this.conditions.salaryRequired;
+    return this.conditions.remoteRequired || this.conditions.salaryRequired || this.conditions.country !== null;
   }
 
   private navigateWithConditions(conditions: VacancyConditions) {
@@ -111,7 +124,8 @@ export class DashboardComponent implements OnInit {
       queryParams: {
         page: 0,
         remote: conditions.remoteRequired || null,
-        withSalary: conditions.salaryRequired || null
+        withSalary: conditions.salaryRequired || null,
+        country: conditions.country
       },
       queryParamsHandling: 'merge'
     });

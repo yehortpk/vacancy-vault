@@ -21,8 +21,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The {@code query}, {@code remote} and {@code withSalary} conditions on the public vacancy
- * listing, and its order.
+ * The {@code query}, {@code remote}, {@code withSalary} and {@code country} conditions on the
+ * public vacancy listing, its order, and the countries it can be narrowed to.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -51,6 +51,9 @@ class VacancySearchTest extends PostgresContainerTest {
         insertVacancy("Java Office Min Salary", false, 1000, null);
         insertVacancy("Java Remote Max Salary", true, null, 3000);
         insertVacancy("Python Remote Range", true, 2000, 4000);
+        addCountries("Java Office No Salary", "pl");
+        addCountries("Java Remote No Salary", "pl", "ua");
+        addCountries("Python Remote Range", "ua");
     }
 
     @AfterEach
@@ -62,6 +65,13 @@ class VacancySearchTest extends PostgresContainerTest {
         jdbcTemplate.update("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, crawled_at, title,"
                         + " company_id, company_title) VALUES (?, ?, ?, ?, now(), ?, ?, 'Acme')",
                 isRemote, "https://acme.example/" + title.replace(' ', '-'), maxSalary, minSalary, title, COMPANY_ID);
+    }
+
+    private void addCountries(String title, String... countries) {
+        for (String country : countries) {
+            jdbcTemplate.update("INSERT INTO vacancy_country (vacancy_id, country)"
+                    + " SELECT vacancy_id, ? FROM vacancy WHERE title = ?", country, title);
+        }
     }
 
     private List<String> titlesOf(MockHttpServletRequestBuilder request) throws Exception {
@@ -128,6 +138,54 @@ class VacancySearchTest extends PostgresContainerTest {
         assertThat(titlesOf(get("/vacancy").param("query", "Java")
                 .param("remote", "true").param("withSalary", "true")))
                 .containsExactlyInAnyOrder("Java Remote Max Salary");
+    }
+
+    @Test
+    void GetVacancies_Country_ShouldReturnVacanciesOfferedInIt() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("country", "ua")))
+                .containsExactlyInAnyOrder("Java Remote No Salary", "Python Remote Range");
+    }
+
+    @Test
+    void GetVacancies_CountryInUpperCaseWithSpaces_ShouldMatchTheCode() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("country", " PL ")))
+                .containsExactlyInAnyOrder("Java Office No Salary", "Java Remote No Salary");
+    }
+
+    @Test
+    void GetVacancies_BlankCountry_ShouldReturnEveryVacancy() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("country", ""))).hasSize(5);
+    }
+
+    @Test
+    void GetVacancies_CountryWithOtherConditions_ShouldReturnVacanciesMatchingEveryCondition() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("country", "pl").param("remote", "true")))
+                .containsExactly("Java Remote No Salary");
+    }
+
+    @Test
+    void GetVacancies_VacancyInSeveralCountries_ShouldListItOnce() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("query", "Java Remote No Salary"))).hasSize(1);
+    }
+
+    @Test
+    void GetVacancies_Listing_ShouldIncludeEachVacancysCountries() throws Exception {
+        MvcResult result = mockMvc.perform(get("/vacancy").param("page", "0").param("query", "Java Remote No Salary"))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<String> countries = new ArrayList<>();
+        objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("vacancies").get(0).get("countries").forEach(country -> countries.add(country.asText()));
+        assertThat(countries).containsExactlyInAnyOrder("pl", "ua");
+    }
+
+    @Test
+    void GetCountries_StoredVacancies_ShouldReturnTheirDistinctCountriesSorted() throws Exception {
+        MvcResult result = mockMvc.perform(get("/vacancy/countries"))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(objectMapper.readValue(result.getResponse().getContentAsString(), String[].class))
+                .containsExactly("pl", "ua");
     }
 
     @Test

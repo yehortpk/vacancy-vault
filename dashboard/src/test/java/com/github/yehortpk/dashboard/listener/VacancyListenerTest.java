@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,6 +50,7 @@ class VacancyListenerTest extends PostgresContainerTest {
                 .salaryCurrency("USD")
                 .salaryPeriod("MONTH")
                 .isRemote(true)
+                .countries(Set.of("pl", "ua"))
                 .crawledAt(LocalDateTime.of(2026, 11, 11, 9, 30))
                 .company(new NewVacancyDTO.Company(companyId, companyTitle, companyUrl))
                 .build();
@@ -72,6 +74,7 @@ class VacancyListenerTest extends PostgresContainerTest {
         assertThat(stored.getMaxSalary()).isNull();
         assertThat(stored.getSalaryCurrency()).isEqualTo("USD");
         assertThat(stored.isRemote()).isTrue();
+        assertThat(stored.getCountries()).containsExactlyInAnyOrder("pl", "ua");
         assertThat(stored.getCrawledAt()).isEqualTo(LocalDateTime.of(2026, 11, 11, 9, 30));
         assertThat(stored.getCompanyId()).isEqualTo(ACME_ID);
         assertThat(stored.getCompanyTitle()).isEqualTo("Acme");
@@ -127,6 +130,16 @@ class VacancyListenerTest extends PostgresContainerTest {
 
         assertThat(vacancyRepository.findAll()).extracting(Vacancy::getLink)
                 .containsExactly("https://acme.example/2");
+    }
+
+    @Test
+    void StoreVacancy_NoCountries_ShouldStoreTheVacancyWithoutCountries() {
+        NewVacancyDTO vacancy = createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example");
+        vacancy.setCountries(Set.of());
+
+        vacancyListener.storeVacancy(vacancy);
+
+        assertThat(findVacancy("https://acme.example/1").getCountries()).isEmpty();
     }
 
     @Test

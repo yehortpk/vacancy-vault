@@ -12,6 +12,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
+import java.util.List;
+
 /**
  * This service provides methods for control vacancies
  */
@@ -32,6 +35,7 @@ public class VacancyService {
                 .salaryCurrency(vacancy.getSalaryCurrency())
                 .salaryPeriod(vacancy.getSalaryPeriod())
                 .isRemote(vacancy.isRemote())
+                .countries(new HashSet<>(vacancy.getCountries()))
                 .crawledAt(vacancy.getCrawledAt())
                 .companyId(company.getId())
                 .companyTitle(company.getTitle())
@@ -74,6 +78,10 @@ public class VacancyService {
 
     public Page<Vacancy> getVacancies(VacancySearchCriteria criteria, Pageable pageable) {
         return vacancyRepository.search(criteria.getQuery(), criteria.isRemoteRequired(),
-                criteria.isSalaryRequired(), pageable);
+                criteria.isSalaryRequired(), criteria.getCountry(), pageable);
+    }
+
+    public List<String> getCountries() {
+        return vacancyRepository.findCountries();
     }
 }
