@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 910" width="1240" height="910" role="img" aria-label="Crawler structure. Implementations are green, interfaces grey, value types blue in their own panel. CrawlerRunnerService resolves a CompanyCrawler once. DefaultCompanyCrawler implements it, configures ScrapeSettings and the PageScraper for each page, uses a CompanyMetadataCrawler, NoCallMetadataCrawler by default, which returns MetadataParams, and implements parseVacancies as parsePreviewVacancies followed by a call per vacancy through a VacancyDetailsCrawler, NoCallVacancyDetailsCrawler by default, which returns the VacancyDTO that replaces the preview one. Company crawlers extend DefaultCompanyCrawler. PageScraper takes ScrapeSettings and returns PageScraperResponse; StaticPageScraper is the default, DynamicPageScraper renders pages in a browser borrowed from the BrowserPool.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1085" width="1240" height="1085" role="img" aria-label="Crawler structure. Implementations are green, interfaces grey, value types blue. The scraper stage is outlined in orange and holds the metadata crawlers, the page scrapers, ScrapeSettings, MetadataParams and PageScraperResponse; the parser stage is outlined in purple and holds the vacancy details crawlers and VacancyDTO. CrawlerRunnerService resolves a CompanyCrawler once. Company crawlers implement CompanyCrawler, usually by extending DefaultCompanyCrawler, which runs the main flow. Its scraper, scrapeCompanyVacancies, makes the call of a CompanyMetadataCrawler, NoCallMetadataCrawler by default, which returns MetadataParams, then configures ScrapeSettings and the PageScraper for each page. Its parser, parsePageVacancies, turns a page into preview vacancies with the crawler&#x27;s PageParser, then makes one call per vacancy through a VacancyDetailsCrawler, NoCallVacancyDetailsCrawler by default, which returns the VacancyDTO that replaces the preview one. PageScraper takes ScrapeSettings and returns PageScraperResponse; StaticPageScraper is the default, DynamicPageScraper renders pages in a browser borrowed from the BrowserPool.">
   <style>
     svg {
       --panel: #fdfdfe; --box: #eef1f6; --fg: #1b2230; --muted: #5d6778; --line: #3a4456;
@@ -29,189 +29,186 @@
     .d-dash { stroke-dasharray: 5 4; }
     .m-tri { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
     .m-arr { fill: none; stroke: var(--line); stroke-width: 1.2; }
+    svg { --scrape: #b0601a; --parse: #7446b0; }
+    @media (prefers-color-scheme: dark) { svg { --scrape: #e59a55; --parse: #b597ea; } }
+    .s-scrape { fill: none; stroke: var(--scrape); stroke-width: 1.4; stroke-dasharray: 6 4; }
+    .s-parse { fill: none; stroke: var(--parse); stroke-width: 1.4; stroke-dasharray: 6 4; }
+    .t-scrape { font: 600 9.5px var(--sans); fill: var(--scrape); letter-spacing: 0.08em; }
+    .t-parse { font: 600 9.5px var(--sans); fill: var(--parse); letter-spacing: 0.08em; }
+    .d-subdiv { stroke: var(--muted); stroke-opacity: 0.6; stroke-width: 1; stroke-dasharray: 3 3; }
+    .d-abs { font-style: italic; }
   </style>
   <defs>
     <marker id="tri2" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5 L13 7 L1.5 12.5 Z" class="m-tri"/></marker>
     <marker id="arr2" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto"><path d="M2 1.5 L11 6 L2 10.5" class="m-arr"/></marker>
   </defs>
 
-  <rect x="0" y="0" width="1240" height="910" class="bg"/>
 
-  <!-- ===== types panel ===== -->
-  <rect x="680" y="100" width="280" height="700" rx="6" class="d-panel"/>
-  <text x="692" y="118" class="d-sec">TYPES</text>
-
-  <!-- ===== edges ===== -->
-  <line x1="162" y1="70" x2="162" y2="110" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="170" y="94" class="d-lbl">get(beanClass), once</text>
-  <line x1="162" y1="260" x2="162" y2="200" class="d-edge d-dash" marker-end="url(#tri2)"/>
-  <text x="170" y="235" class="d-lbl">implements</text>
-  <line x1="162" y1="560" x2="162" y2="524" class="d-edge" marker-end="url(#tri2)"/>
-  <text x="170" y="547" class="d-lbl">extends</text>
-  <polyline points="305,280 340,280 340,85 1115,85 1115,128" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="720" y="79" class="d-lbl d-mid">configurePageScraper(pageId), then scrapePage(settings)</text>
-  <line x1="305" y1="300" x2="690" y2="300" class="d-edge d-dash" marker-end="url(#arr2)"/>
-  <text x="500" y="292" class="d-lbl d-mid">configureScrapeSettings(company, pageId)</text>
-  <line x1="305" y1="360" x2="375" y2="360" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="340" y="352" class="d-lbl d-mid">uses</text>
-  <line x1="500" y1="465" x2="500" y2="435" class="d-edge d-dash" marker-end="url(#tri2)"/>
-  <text x="508" y="453" class="d-lbl">implements</text>
-  <line x1="625" y1="420" x2="690" y2="440" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="657" y="420" class="d-lbl d-mid">returns</text>
-  <polyline points="305,500 340,500 340,640 375,640" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="346" y="575" class="d-lbl">uses</text>
-  <line x1="500" y1="750" x2="500" y2="716" class="d-edge d-dash" marker-end="url(#tri2)"/>
-  <text x="508" y="737" class="d-lbl">implements</text>
-  <line x1="625" y1="705" x2="690" y2="725" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="657" y="705" class="d-lbl d-mid">returns</text>
-  <line x1="1020" y1="150" x2="950" y2="150" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="985" y="142" class="d-lbl d-mid">takes</text>
-  <polyline points="1020,188 985,188 985,590 950,590" class="d-edge" marker-end="url(#arr2)"/>
-  <text x="991" y="525" class="d-lbl">returns</text>
-  <polyline points="1226,315 1226,180 1210,180" class="d-edge d-dash" marker-end="url(#tri2)"/>
-  <line x1="1210" y1="255" x2="1226" y2="255" class="d-edge d-dash"/>
-  <line x1="1210" y1="315" x2="1226" y2="315" class="d-edge d-dash"/>
-
-  <!-- ===== runner ===== -->
-  <rect x="20" y="20" width="285" height="50" rx="3" class="d-impl"/>
-  <text x="162" y="50" class="d-name">CrawlerRunnerService</text>
-
-  <!-- ===== CompanyCrawler ===== -->
-  <rect x="20" y="110" width="285" height="90" rx="3" class="d-iface"/>
-  <text x="162" y="128" class="d-st">«interface»</text>
-  <text x="162" y="144" class="d-name">CompanyCrawler</text>
-  <line x1="20" y1="154" x2="305" y2="154" class="d-div"/>
-  <text x="32" y="171" class="d-mem">parseVacancies(page, company)</text>
-  <text x="32" y="186" class="d-mem">scrapeCompanyVacancies(company)</text>
-
-  <!-- ===== DefaultCompanyCrawler ===== -->
-  <rect x="20" y="260" width="285" height="264" rx="3" class="d-impl"/>
-  <text x="162" y="278" class="d-st">«abstract class» · no per-run state</text>
-  <text x="162" y="294" class="d-name">DefaultCompanyCrawler</text>
-  <line x1="20" y1="304" x2="305" y2="304" class="d-div"/>
-  <text x="32" y="321" class="d-mem">scrapeCompanyVacancies(company)</text>
-  <text x="32" y="336" class="d-mem">parseVacancies(page, company)  final</text>
-  <text x="32" y="356" class="d-sec">ABSTRACT</text>
-  <text x="32" y="372" class="d-mem">configureScrapeSettings(company, pageId)</text>
-  <text x="32" y="387" class="d-mem">parsePreviewVacancies(page, company)</text>
-  <text x="32" y="407" class="d-sec">HOOKS, WITH DEFAULTS</text>
-  <text x="32" y="423" class="d-mem">configurePageScraper(pageId)  Static</text>
-  <text x="32" y="438" class="d-mem">configureMetadataCrawler()  NoCall</text>
-  <text x="32" y="453" class="d-mem">configureVacancyDetailsCrawler()  NoCall</text>
-  <line x1="20" y1="463" x2="305" y2="463" class="d-div"/>
-  <text x="32" y="480" class="d-mem">@Autowired crawlingProgressService</text>
-  <text x="32" y="497" class="d-note">metadata call · vacancy calls · placeholders</text>
-  <text x="32" y="512" class="d-note">stop-aware delays · wraps failures in *Exception</text>
-
-  <!-- ===== company crawlers ===== -->
-  <rect x="20" y="560" width="285" height="126" rx="3" class="d-impl"/>
-  <text x="162" y="581" class="d-name">company crawlers</text>
-  <text x="162" y="597" class="d-st">@Component · extends DefaultCompanyCrawler</text>
-  <line x1="20" y1="607" x2="305" y2="607" class="d-div"/>
-  <text x="32" y="625" class="d-note">implement parsePreviewVacancies,</text>
-  <text x="32" y="641" class="d-note">configureScrapeSettings</text>
-  <text x="32" y="657" class="d-note">may override the three configure hooks</text>
-  <text x="32" y="673" class="d-note">create scrapers with new</text>
-
-  <!-- ===== CompanyMetadataCrawler ===== -->
-  <rect x="375" y="330" width="250" height="105" rx="3" class="d-iface"/>
-  <text x="500" y="348" class="d-st">«interface»</text>
-  <text x="500" y="364" class="d-name">CompanyMetadataCrawler</text>
-  <line x1="375" y1="374" x2="625" y2="374" class="d-div"/>
-  <text x="387" y="391" class="d-mem">configureScrapeSettings(company)</text>
-  <text x="387" y="406" class="d-mem">configurePageScraper()</text>
-  <text x="387" y="421" class="d-mem">parseMetadata(response)</text>
-
-  <!-- ===== NoCallMetadataCrawler ===== -->
-  <rect x="375" y="465" width="250" height="75" rx="3" class="d-impl"/>
-  <text x="500" y="486" class="d-name">NoCallMetadataCrawler</text>
-  <text x="500" y="502" class="d-st">default for configureMetadataCrawler()</text>
-  <line x1="375" y1="512" x2="625" y2="512" class="d-div"/>
-  <text x="387" y="529" class="d-note">no I/O · one page · empty maps</text>
-
-  <!-- ===== VacancyDetailsCrawler ===== -->
-  <rect x="375" y="600" width="250" height="116" rx="3" class="d-iface"/>
-  <text x="500" y="618" class="d-st">«interface» · one call per vacancy</text>
-  <text x="500" y="634" class="d-name">VacancyDetailsCrawler</text>
-  <line x1="375" y1="644" x2="625" y2="644" class="d-div"/>
-  <text x="387" y="661" class="d-mem">configureScrapeSettings(preview,</text>
-  <text x="387" y="676" class="d-mem">    company, vacancyOrderOnPage)</text>
-  <text x="387" y="691" class="d-mem">configurePageScraper()</text>
-  <text x="387" y="706" class="d-mem">parseVacancyDetails(preview, response)</text>
-
-  <!-- ===== NoCallVacancyDetailsCrawler ===== -->
-  <rect x="375" y="750" width="250" height="75" rx="3" class="d-impl"/>
-  <text x="500" y="771" class="d-name">NoCallVacancyDetailsCrawler</text>
-  <text x="500" y="787" class="d-st">default for configureVacancyDetailsCrawler()</text>
-  <line x1="375" y1="797" x2="625" y2="797" class="d-div"/>
-  <text x="387" y="814" class="d-note">no I/O · returns a copy of the preview</text>
-  <text x="387" y="850" class="d-note">a crawler that needs a call returns a</text>
-  <text x="387" y="865" class="d-note">nested class that implements</text>
-  <text x="387" y="880" class="d-note">CompanyMetadataCrawler or VacancyDetailsCrawler</text>
-
-  <!-- ===== ScrapeSettings ===== -->
-  <rect x="690" y="128" width="260" height="220" rx="3" class="d-type"/>
-  <text x="820" y="146" class="d-st">«type» · immutable · one per page or call</text>
-  <text x="820" y="162" class="d-name">ScrapeSettings</text>
-  <line x1="690" y1="172" x2="950" y2="172" class="d-div"/>
-  <text x="702" y="189" class="d-mem">pageId</text>
-  <text x="702" y="204" class="d-mem">pageURL           set by the crawler</text>
-  <text x="702" y="219" class="d-mem">data              page: company's if unset</text>
-  <text x="702" y="234" class="d-mem">headers           page: company's if unset</text>
-  <text x="702" y="249" class="d-mem">cookies           page: company's if unset</text>
-  <text x="702" y="264" class="d-mem">connectionMethod  GET unless set</text>
-  <text x="702" y="279" class="d-mem">timeoutSec        60 unless set</text>
-  <text x="702" y="294" class="d-mem">followRedirects   true unless set</text>
-  <text x="702" y="309" class="d-mem">delay             0 s unless set</text>
-  <line x1="690" y1="318" x2="950" y2="318" class="d-div"/>
-  <text x="702" y="335" class="d-mem">fillPlaceholders(placeholders)</text>
-
-  <!-- ===== MetadataParams ===== -->
-  <rect x="690" y="383" width="260" height="120" rx="3" class="d-type"/>
-  <text x="820" y="401" class="d-st">«type» · empty maps by default</text>
-  <text x="820" y="417" class="d-name">MetadataParams</text>
-  <line x1="690" y1="427" x2="950" y2="427" class="d-div"/>
-  <text x="702" y="444" class="d-mem">pagesCount</text>
-  <text x="702" y="459" class="d-mem">placeholders</text>
-  <text x="702" y="474" class="d-mem">requestHeaders    override by key</text>
-  <text x="702" y="489" class="d-mem">requestCookies    override by key</text>
-
-  <!-- ===== PageScraperResponse ===== -->
-  <rect x="690" y="523" width="260" height="134" rx="3" class="d-type"/>
-  <text x="820" y="541" class="d-st">«type» · one per page or call</text>
-  <text x="820" y="557" class="d-name">PageScraperResponse</text>
-  <line x1="690" y1="567" x2="950" y2="567" class="d-div"/>
-  <text x="702" y="584" class="d-mem">pageId</text>
-  <text x="702" y="599" class="d-mem">pageURL</text>
-  <text x="702" y="614" class="d-mem">headers           response</text>
-  <text x="702" y="629" class="d-mem">cookies           response</text>
-  <text x="702" y="644" class="d-mem">body</text>
-
-  <!-- ===== VacancyDTO ===== -->
-  <rect x="690" y="677" width="260" height="105" rx="3" class="d-type"/>
-  <text x="820" y="695" class="d-st">«type» · replaces the preview one</text>
-  <text x="820" y="711" class="d-name">VacancyDTO</text>
-  <line x1="690" y1="721" x2="950" y2="721" class="d-div"/>
-  <text x="702" y="738" class="d-mem">link              identity, keep it</text>
-  <text x="702" y="753" class="d-mem">description, ...</text>
-  <text x="702" y="768" class="d-mem">toBuilder()</text>
-
-  <!-- ===== PageScraper ===== -->
-  <rect x="1020" y="128" width="190" height="70" rx="3" class="d-iface"/>
-  <text x="1115" y="146" class="d-st">«interface» · I/O only</text>
-  <text x="1115" y="162" class="d-name">PageScraper</text>
-  <line x1="1020" y1="172" x2="1210" y2="172" class="d-div"/>
-  <text x="1032" y="188" class="d-mem">scrapePage(settings)</text>
-
-  <rect x="1020" y="233" width="190" height="44" rx="3" class="d-impl"/>
-  <text x="1115" y="252" class="d-name">StaticPageScraper</text>
-  <text x="1115" y="268" class="d-note d-mid">HttpClient · default · new per page</text>
-
-  <rect x="1020" y="293" width="190" height="44" rx="3" class="d-impl"/>
-  <text x="1115" y="312" class="d-name">DynamicPageScraper</text>
-  <text x="1115" y="328" class="d-note d-mid">new(browserPool, readySelector)</text>
-
-  <text x="1115" y="353" class="d-note d-mid">Playwright · borrows a browser</text>
-  <text x="1115" y="368" class="d-note d-mid">from the BrowserPool bean</text>
-
+  <rect x="0" y="0" width="1240" height="1085" class="bg"/>
+  <rect x="350" y="20" width="875" height="645" rx="6" class="s-scrape"/>
+  <text x="362" y="38" class="t-scrape">SCRAPER · scrapeCompanyVacancies(company)</text>
+  <rect x="350" y="695" width="875" height="330" rx="6" class="s-parse"/>
+  <text x="362" y="713" class="t-parse">PARSER · parsePageVacancies(page, company)</text>
+  <line x1="170" y1="70" x2="170" y2="110" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="178" y="94" class="d-lbl">get(beanClass), once</text>
+  <line x1="170" y1="260" x2="170" y2="230" class="d-edge d-dash" marker-end="url(#tri2)"/>
+  <text x="178" y="250" class="d-lbl">implements</text>
+  <line x1="170" y1="666" x2="170" y2="628" class="d-edge" marker-end="url(#tri2)"/>
+  <text x="178" y="652" class="d-lbl">extends</text>
+  <line x1="500" y1="570" x2="500" y2="540" class="d-edge d-dash" marker-end="url(#tri2)"/>
+  <text x="508" y="559" class="d-lbl">implements</text>
+  <line x1="635" y1="500" x2="680" y2="500" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="657" y="492" class="d-lbl d-mid">returns</text>
+  <line x1="990" y1="95" x2="940" y2="95" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="965" y="87" class="d-lbl d-mid">takes</text>
+  <polyline points="990,115 965,115 965,370 940,370" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="969" y="340" class="d-lbl">returns</text>
+  <polyline points="1212,260 1212,95 1200,95" class="d-edge d-dash" marker-end="url(#tri2)"/>
+  <polyline points="1200,194 1212,194" class="d-edge d-dash"/>
+  <polyline points="1200,260 1212,260" class="d-edge d-dash"/>
+  <line x1="990" y1="815" x2="940" y2="815" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="965" y="807" class="d-lbl d-mid">returns</text>
+  <line x1="500" y1="935" x2="500" y2="903" class="d-edge d-dash" marker-end="url(#tri2)"/>
+  <text x="508" y="923" class="d-lbl">implements</text>
+  <line x1="635" y1="835" x2="680" y2="835" class="d-edge" marker-end="url(#arr2)"/>
+  <text x="657" y="827" class="d-lbl d-mid">returns</text>
+  <rect x="20" y="20" width="300" height="50" rx="3" class="d-impl"/>
+  <text x="170" y="50" class="d-name">CrawlerRunnerService</text>
+  <rect x="20" y="110" width="300" height="120" rx="3" class="d-iface"/>
+  <text x="170" y="128" class="d-st">«interface» · the contract every company meets</text>
+  <text x="170" y="144" class="d-name">CompanyCrawler</text>
+  <line x1="20" y1="154" x2="320" y2="154" class="d-div"/>
+  <text x="32" y="171" class="d-mem">scrapeCompanyVacancies(company):</text>
+  <text x="32" y="186" class="d-mem">    List&lt;CompletableFuture&lt;PageScraperResponse&gt;&gt;</text>
+  <text x="32" y="201" class="d-mem">parsePageVacancies(page, company):</text>
+  <text x="32" y="216" class="d-mem">    List&lt;VacancyDTO&gt;</text>
+  <rect x="20" y="260" width="300" height="368" rx="3" class="d-impl"/>
+  <text x="170" y="278" class="d-st">«abstract class» · runs the main flow</text>
+  <text x="170" y="294" class="d-name">DefaultCompanyCrawler</text>
+  <line x1="20" y1="304" x2="320" y2="304" class="d-div"/>
+  <text x="32" y="322" class="t-scrape">SCRAPER</text>
+  <text x="32" y="338" class="d-mem">scrapeCompanyVacancies(company):</text>
+  <text x="32" y="353" class="d-mem">    List&lt;CompletableFuture&lt;PageScraperResponse&gt;&gt;</text>
+  <text x="32" y="368" class="d-mem d-abs">configurePageScrapeSettings(company, pageId):</text>
+  <text x="32" y="383" class="d-mem d-abs">    ScrapeSettings  abstract</text>
+  <line x1="32" y1="391" x2="308" y2="391" class="d-subdiv"/>
+  <text x="32" y="406" class="d-mem">configurePageScraper(pageId): PageScraper</text>
+  <text x="32" y="421" class="d-mem">configureMetadataCrawler():</text>
+  <text x="32" y="436" class="d-mem">    CompanyMetadataCrawler  NoCall</text>
+  <text x="32" y="458" class="t-parse">PARSER</text>
+  <text x="32" y="474" class="d-mem">parsePageVacancies(page, company):</text>
+  <text x="32" y="489" class="d-mem">    List&lt;VacancyDTO&gt;</text>
+  <text x="32" y="504" class="d-mem d-abs">configurePageParser(): PageParser  abstract</text>
+  <line x1="32" y1="512" x2="308" y2="512" class="d-subdiv"/>
+  <text x="32" y="527" class="d-mem">configureVacancyDetailsCrawler():</text>
+  <text x="32" y="542" class="d-mem">    VacancyDetailsCrawler  NoCall</text>
+  <line x1="20" y1="549" x2="320" y2="549" class="d-div"/>
+  <text x="32" y="566" class="d-mem">@Autowired crawlingProgressService</text>
+  <text x="32" y="583" class="d-note">metadata call · page calls · placeholders</text>
+  <text x="32" y="598" class="d-note">vacancy details calls</text>
+  <text x="32" y="613" class="d-note">stop-aware delays · wraps failures in *Exception</text>
+  <rect x="20" y="666" width="300" height="140" rx="3" class="d-impl"/>
+  <text x="170" y="687" class="d-name">company crawlers</text>
+  <text x="170" y="703" class="d-st">@Component · implement CompanyCrawler,</text>
+  <text x="170" y="717" class="d-st">usually by extending DefaultCompanyCrawler</text>
+  <line x1="20" y1="727" x2="320" y2="727" class="d-div"/>
+  <text x="32" y="745" class="d-note">implement configurePageScrapeSettings,</text>
+  <text x="32" y="761" class="d-note">configurePageParser</text>
+  <text x="32" y="777" class="d-note">may override the other configure hooks</text>
+  <text x="32" y="793" class="d-note">create scrapers and parsers with new</text>
+  <text x="375" y="85" class="d-note">1. metadata call → MetadataParams</text>
+  <text x="375" y="100" class="d-note">2. every page's ScrapeSettings, built up front</text>
+  <text x="375" y="115" class="d-note">3. every page after its delay: scrapePage</text>
+  <text x="375" y="130" class="d-note">    → one PageScraperResponse per page</text>
+  <rect x="375" y="435" width="260" height="105" rx="3" class="d-iface"/>
+  <text x="505" y="453" class="d-st">«interface» · one call before the pages</text>
+  <text x="505" y="469" class="d-name">CompanyMetadataCrawler</text>
+  <line x1="375" y1="479" x2="635" y2="479" class="d-div"/>
+  <text x="387" y="496" class="d-mem">configureScrapeSettings(company)</text>
+  <text x="387" y="511" class="d-mem">configurePageScraper()</text>
+  <text x="387" y="526" class="d-mem">parseMetadata(response)</text>
+  <rect x="375" y="570" width="260" height="75" rx="3" class="d-impl"/>
+  <text x="505" y="591" class="d-name">NoCallMetadataCrawler</text>
+  <text x="505" y="607" class="d-st">default for configureMetadataCrawler()</text>
+  <line x1="375" y1="617" x2="635" y2="617" class="d-div"/>
+  <text x="387" y="634" class="d-note">no I/O · one page · empty maps</text>
+  <rect x="680" y="60" width="260" height="220" rx="3" class="d-type"/>
+  <text x="810" y="78" class="d-st">«type» · immutable · one per page or call</text>
+  <text x="810" y="94" class="d-name">ScrapeSettings</text>
+  <line x1="680" y1="104" x2="940" y2="104" class="d-div"/>
+  <text x="692" y="121" class="d-mem">pageId</text>
+  <text x="692" y="136" class="d-mem">pageURL           set by the crawler</text>
+  <text x="692" y="151" class="d-mem">data              page: company's if unset</text>
+  <text x="692" y="166" class="d-mem">headers           page: company's if unset</text>
+  <text x="692" y="181" class="d-mem">cookies           page: company's if unset</text>
+  <text x="692" y="196" class="d-mem">connectionMethod  GET unless set</text>
+  <text x="692" y="211" class="d-mem">timeoutSec        60 unless set</text>
+  <text x="692" y="226" class="d-mem">followRedirects   true unless set</text>
+  <text x="692" y="241" class="d-mem">delay             0 s unless set</text>
+  <line x1="680" y1="250" x2="940" y2="250" class="d-div"/>
+  <text x="692" y="267" class="d-mem">fillPlaceholders(placeholders)</text>
+  <rect x="680" y="305" width="260" height="134" rx="3" class="d-type"/>
+  <text x="810" y="323" class="d-st">«type» · one per page or call</text>
+  <text x="810" y="339" class="d-name">PageScraperResponse</text>
+  <line x1="680" y1="349" x2="940" y2="349" class="d-div"/>
+  <text x="692" y="366" class="d-mem">pageId</text>
+  <text x="692" y="381" class="d-mem">pageURL</text>
+  <text x="692" y="396" class="d-mem">headers           response</text>
+  <text x="692" y="411" class="d-mem">cookies           response</text>
+  <text x="692" y="426" class="d-mem">body</text>
+  <rect x="680" y="465" width="260" height="120" rx="3" class="d-type"/>
+  <text x="810" y="483" class="d-st">«type» · empty maps by default</text>
+  <text x="810" y="499" class="d-name">MetadataParams</text>
+  <line x1="680" y1="509" x2="940" y2="509" class="d-div"/>
+  <text x="692" y="526" class="d-mem">pagesCount        1 unless set</text>
+  <text x="692" y="541" class="d-mem">placeholders</text>
+  <text x="692" y="556" class="d-mem">requestHeaders    override by key</text>
+  <text x="692" y="571" class="d-mem">requestCookies    override by key</text>
+  <rect x="990" y="60" width="210" height="70" rx="3" class="d-iface"/>
+  <text x="1095" y="78" class="d-st">«interface» · I/O only</text>
+  <text x="1095" y="94" class="d-name">PageScraper</text>
+  <line x1="990" y1="104" x2="1200" y2="104" class="d-div"/>
+  <text x="1002" y="120" class="d-mem">scrapePage(settings)</text>
+  <rect x="990" y="165" width="210" height="58" rx="3" class="d-impl"/>
+  <text x="1095" y="184" class="d-name">StaticPageScraper</text>
+  <text x="1095" y="200" class="d-st">default for</text>
+  <text x="1095" y="214" class="d-st">configurePageScraper(pageId)</text>
+  <rect x="990" y="238" width="210" height="44" rx="3" class="d-impl"/>
+  <text x="1095" y="257" class="d-name">DynamicPageScraper</text>
+  <text x="1095" y="273" class="d-note d-mid">new(browserPool, readySelector)</text>
+  <text x="1095" y="301" class="d-note d-mid">Playwright · borrows a browser</text>
+  <text x="1095" y="316" class="d-note d-mid">from the BrowserPool bean</text>
+  <text x="1095" y="390" class="d-note d-mid">used by the page calls, the</text>
+  <text x="1095" y="405" class="d-note d-mid">metadata call and the details calls</text>
+  <text x="375" y="740" class="d-note">1. parsePage → the page's preview VacancyDTOs</text>
+  <text x="375" y="755" class="d-note">2. one details call per preview, replacing it</text>
+  <rect x="375" y="775" width="260" height="128" rx="3" class="d-iface"/>
+  <text x="505" y="793" class="d-st">«interface» · one call per vacancy</text>
+  <text x="505" y="809" class="d-name">VacancyDetailsCrawler</text>
+  <line x1="375" y1="819" x2="635" y2="819" class="d-div"/>
+  <text x="387" y="836" class="d-mem">configureScrapeSettings(preview,</text>
+  <text x="387" y="851" class="d-mem">    company, vacancyOrderOnPage)</text>
+  <text x="387" y="866" class="d-mem">configurePageScraper()</text>
+  <text x="387" y="881" class="d-mem">parseVacancyDetails(preview,</text>
+  <text x="387" y="896" class="d-mem">    response)</text>
+  <rect x="375" y="935" width="260" height="75" rx="3" class="d-impl"/>
+  <text x="505" y="956" class="d-name">NoCallVacancyDetailsCrawler</text>
+  <text x="505" y="972" class="d-st">default for configureVacancyDetailsCrawler()</text>
+  <line x1="375" y1="982" x2="635" y2="982" class="d-div"/>
+  <text x="387" y="999" class="d-note">no I/O · returns a copy of the preview</text>
+  <rect x="680" y="775" width="260" height="125" rx="3" class="d-type"/>
+  <text x="810" y="793" class="d-st">«type» · a preview, then its details</text>
+  <text x="810" y="809" class="d-name">VacancyDTO</text>
+  <line x1="680" y1="819" x2="940" y2="819" class="d-div"/>
+  <text x="692" y="836" class="d-mem">link              identity, keep it</text>
+  <text x="692" y="851" class="d-mem">title, countries, ...</text>
+  <text x="692" y="866" class="d-mem">description       from a details call</text>
+  <text x="692" y="881" class="d-mem">toBuilder()</text>
+  <rect x="990" y="775" width="210" height="70" rx="3" class="d-iface"/>
+  <text x="1095" y="793" class="d-st">«interface» · parsing only</text>
+  <text x="1095" y="809" class="d-name">PageParser</text>
+  <line x1="990" y1="819" x2="1200" y2="819" class="d-div"/>
+  <text x="1002" y="835" class="d-mem">parsePage(page, company)</text>
+  <text x="350" y="1050" class="d-note">a crawler returns its parser and calls as private nested classes that implement</text>
+  <text x="350" y="1065" class="d-note">PageParser, CompanyMetadataCrawler or VacancyDetailsCrawler</text>
 </svg>

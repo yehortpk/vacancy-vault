@@ -1,0 +1,280 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1345" width="1240" height="1345" role="img" aria-label="UML class diagram of the crawler&#x27;s scraper: the scrapeCompanyVacancies half of CompanyCrawler. CrawlerRunnerService holds a map of CompanyCrawler beans and a CrawlingProgressService. DefaultCompanyCrawler realizes CompanyCrawler and implements scrapeCompanyVacancies over the abstract configurePageScrapeSettings and the configurePageScraper and configureMetadataCrawler hooks. It uses a CompanyMetadataCrawler, NoCallMetadataCrawler by default, and creates StaticPageScraper by default. StaticPageScraper, NoCallPageScraper and DynamicPageScraper realize PageScraper; DynamicPageScraper holds a BrowserPool. The models package holds ScrapeSettings, MetadataParams and PageScraperResponse. MetadataScrapeException, MetadataParseException, VacancyPageScrapeException and UnresolvedPlaceholderException extend RuntimeException.">
+  <style>
+    svg {
+      --panel: #fdfdfe; --fg: #1b2230; --muted: #5d6778; --line: #3a4456;
+      --note: #fbf6dc; --note-line: #9a8a45;
+      --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      svg { --panel: #171b23; --fg: #e4e8ef; --muted: #97a1b2; --line: #aab3c2; --note: #2a2716; --note-line: #b8a65e; }
+    }
+    .bg { fill: var(--panel); }
+    .u-box   { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+    .u-div   { stroke: var(--line); stroke-width: 1; }
+    .u-name  { font: 600 12.5px var(--sans); fill: var(--fg); text-anchor: middle; }
+    .u-stereo{ font: 400 10px var(--sans); fill: var(--muted); text-anchor: middle; }
+    .u-mem   { font: 400 10px var(--mono); fill: var(--fg); }
+    .u-italic{ font-style: italic; }
+    .u-static{ text-decoration: underline; }
+    .u-edge  { stroke: var(--line); stroke-width: 1.1; fill: none; }
+    .u-dash  { stroke-dasharray: 5 4; }
+    .u-lbl   { font: 400 10px var(--sans); fill: var(--fg); }
+    .u-note  { fill: var(--note); stroke: var(--note-line); stroke-width: 1; }
+    .u-note-fold { fill: none; stroke: var(--note-line); stroke-width: 1; }
+    .u-note-text { font: 400 10px var(--sans); fill: var(--fg); }
+    .u-anchor { stroke: var(--note-line); stroke-width: 1; stroke-dasharray: 2 3; }
+    .u-frame { fill: none; stroke: var(--muted); stroke-width: 1; }
+    .u-frame-tab { fill: var(--panel); stroke: var(--muted); stroke-width: 1; }
+    .u-frame-name { font: 600 10.5px var(--sans); fill: var(--fg); }
+    .m-tri { fill: var(--panel); stroke: var(--line); stroke-width: 1.1; }
+    .m-arr { fill: none; stroke: var(--line); stroke-width: 1.1; }
+  </style>
+  <defs>
+    <marker id="u-tri" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5 L13 7 L1.5 12.5 Z" class="m-tri"/></marker>
+    <marker id="u-arr" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto"><path d="M2 1.5 L11 6 L2 10.5" class="m-arr"/></marker>
+  </defs>
+  <rect class="bg" width="1240" height="1345"/>
+<rect x="450" y="730" width="330" height="245" class="u-frame"/>
+<path d="M450 730 V712 H538.0 V730" class="u-frame-tab"/>
+<text x="460" y="725" class="u-frame-name">exceptions</text>
+<rect x="20" y="1025" width="1000" height="300" class="u-frame"/>
+<path d="M20 1025 V1007 H80.0 V1025" class="u-frame-tab"/>
+<text x="30" y="1020" class="u-frame-name">models</text>
+<polyline points="120,84 120,200" class="u-edge" marker-end="url(#u-arr)"/>
+<text x="128" y="192" class="u-lbl" text-anchor="start">-crawlers  0..*</text>
+<polyline points="220,62 880,62" class="u-edge" marker-end="url(#u-arr)"/>
+<text x="872" y="56" class="u-lbl" text-anchor="end">-crawlingProgressService  1</text>
+<polyline points="360,400 360,370 840,370 840,100 880,100" class="u-edge" marker-end="url(#u-arr)"/>
+<text x="872" y="94" class="u-lbl" text-anchor="end">-crawlingProgressService  1</text>
+<polyline points="1035,140 1035,200" class="u-edge" marker-end="url(#u-arr)"/>
+<text x="1043" y="192" class="u-lbl" text-anchor="start">-crawlers  0..*</text>
+<polyline points="200,400 200,312" class="u-edge u-dash" marker-end="url(#u-tri)"/>
+<polyline points="372,455 460,455" class="u-edge u-dash" marker-end="url(#u-arr)"/>
+<text x="416" y="449" class="u-lbl" text-anchor="middle">«use»</text>
+<polyline points="372,610 460,610" class="u-edge u-dash" marker-end="url(#u-arr)"/>
+<text x="416" y="604" class="u-lbl" text-anchor="middle">«create»</text>
+<polyline points="611,560 611,526" class="u-edge u-dash" marker-end="url(#u-tri)"/>
+<polyline points="372,420 400,420 400,385 860,385 860,535 900,535" class="u-edge u-dash" marker-end="url(#u-arr)"/>
+<text x="630" y="379" class="u-lbl" text-anchor="middle">«create»</text>
+<polyline points="1060,535 1228,535" class="u-edge u-dash"/>
+<polyline points="1060,590 1228,590" class="u-edge u-dash"/>
+<polyline points="1214,676 1228,676" class="u-edge u-dash"/>
+<polyline points="1228,676 1228,441 1176,441" class="u-edge u-dash" marker-end="url(#u-tri)"/>
+<polyline points="1050,722 1050,770" class="u-edge" marker-end="url(#u-arr)"/>
+<text x="1058" y="762" class="u-lbl" text-anchor="start">-browserPool  1</text>
+<polyline points="675,830 755,830" class="u-edge"/>
+<polyline points="666,875 755,875" class="u-edge"/>
+<polyline points="699,920 755,920" class="u-edge"/>
+<polyline points="732,965 755,965" class="u-edge"/>
+<polyline points="755,965 755,772 608,772" class="u-edge" marker-end="url(#u-tri)"/>
+<g class="u-class">
+<rect x="40" y="40" width="180" height="44" class="u-box"/>
+<text x="130.0" y="55" class="u-stereo">«service»</text>
+<text x="130.0" y="71" class="u-name">CrawlerRunnerService</text>
+</g>
+<g class="u-class">
+<rect x="880" y="30" width="310" height="112" class="u-box"/>
+<text x="1035.0" y="45" class="u-stereo">«service»</text>
+<text x="1035.0" y="61" class="u-name">CrawlingProgressService</text>
+<line x1="880" y1="74" x2="1190" y2="74" class="u-div"/>
+<text x="890" y="90" class="u-mem" xml:space="preserve">+ isStopRequested(): boolean</text>
+<text x="890" y="104" class="u-mem" xml:space="preserve">+ getStopSignal(): CompletableFuture&lt;Void&gt;</text>
+<text x="890" y="118" class="u-mem" xml:space="preserve">+ getCrawlers(): Map&lt;Integer, CrawlerProgress&gt;</text>
+<text x="890" y="132" class="u-mem" xml:space="preserve">...</text>
+</g>
+<g class="u-class">
+<rect x="880" y="200" width="326" height="126" class="u-box"/>
+<text x="1043.0" y="219" class="u-name">CrawlerProgress</text>
+<line x1="880" y1="230" x2="1206" y2="230" class="u-div"/>
+<text x="890" y="246" class="u-mem" xml:space="preserve">+ initPages(totalPages: int): void</text>
+<text x="890" y="260" class="u-mem" xml:space="preserve">+ markPageError(page: int): void</text>
+<text x="890" y="274" class="u-mem" xml:space="preserve">+ markAllPagesError(): void</text>
+<text x="890" y="288" class="u-mem" xml:space="preserve">+ addPageLog(page: int, level: LogLevelEnum,</text>
+<text x="890" y="302" class="u-mem" xml:space="preserve">      message: String): void</text>
+<text x="890" y="316" class="u-mem" xml:space="preserve">...</text>
+</g>
+<g class="u-class">
+<rect x="40" y="200" width="320" height="112" class="u-box"/>
+<text x="200.0" y="215" class="u-stereo">«interface»</text>
+<text x="200.0" y="231" class="u-name">CompanyCrawler</text>
+<line x1="40" y1="244" x2="360" y2="244" class="u-div"/>
+<text x="50" y="260" class="u-mem" xml:space="preserve">+ scrapeCompanyVacancies(company: CompanyDTO):</text>
+<text x="50" y="274" class="u-mem" xml:space="preserve">      List&lt;CompletableFuture&lt;PageScraperResponse&gt;&gt;</text>
+<text x="50" y="288" class="u-mem" xml:space="preserve">+ parsePageVacancies(page: PageScraperResponse,</text>
+<text x="50" y="302" class="u-mem" xml:space="preserve">      company: CompanyDTO): List&lt;VacancyDTO&gt;</text>
+</g>
+<path d="M460 100 H750 L760 110 V142 H460 Z" class="u-note"/>
+<path d="M750 100 V110 H760" class="u-note-fold"/>
+<text x="470" y="118" class="u-note-text" xml:space="preserve">crawlers: every CompanyCrawler bean,</text>
+<text x="470" y="132" class="u-note-text" xml:space="preserve">keyed by bean name (company.beanClass).</text>
+<line x1="220" y1="75" x2="460" y2="130" class="u-anchor"/>
+<g class="u-class">
+<rect x="40" y="400" width="332" height="234" class="u-box"/>
+<text x="206.0" y="415" class="u-stereo">{abstract}</text>
+<text x="206.0" y="431" class="u-name u-italic">DefaultCompanyCrawler</text>
+<line x1="40" y1="444" x2="372" y2="444" class="u-div"/>
+<text x="50" y="460" class="u-mem u-static" xml:space="preserve">- PAGE_EXECUTOR: ExecutorService {readOnly}</text>
+<text x="50" y="474" class="u-mem u-static" xml:space="preserve">- PAGE_PLACEHOLDER: String = "page" {readOnly}</text>
+<line x1="40" y1="482" x2="372" y2="482" class="u-div"/>
+<text x="50" y="498" class="u-mem" xml:space="preserve">+ scrapeCompanyVacancies(company: CompanyDTO):</text>
+<text x="50" y="512" class="u-mem" xml:space="preserve">      List&lt;CompletableFuture&lt;PageScraperResponse&gt;&gt;</text>
+<text x="50" y="526" class="u-mem" xml:space="preserve">      {throws MetadataScrapeException,</text>
+<text x="50" y="540" class="u-mem" xml:space="preserve">              MetadataParseException,</text>
+<text x="50" y="554" class="u-mem" xml:space="preserve">              UnresolvedPlaceholderException}</text>
+<text x="50" y="568" class="u-mem u-italic" xml:space="preserve"># configurePageScrapeSettings(company: CompanyDTO,</text>
+<text x="50" y="582" class="u-mem u-italic" xml:space="preserve">      pageId: int): ScrapeSettings</text>
+<text x="50" y="596" class="u-mem" xml:space="preserve"># configurePageScraper(pageId: int): PageScraper</text>
+<text x="50" y="610" class="u-mem" xml:space="preserve"># configureMetadataCrawler(): CompanyMetadataCrawler</text>
+<text x="50" y="624" class="u-mem" xml:space="preserve">...  (the parser's members: see its diagram)</text>
+</g>
+<g class="u-class">
+<rect x="460" y="400" width="302" height="126" class="u-box"/>
+<text x="611.0" y="415" class="u-stereo">«interface»</text>
+<text x="611.0" y="431" class="u-name">CompanyMetadataCrawler</text>
+<line x1="460" y1="444" x2="762" y2="444" class="u-div"/>
+<text x="470" y="460" class="u-mem" xml:space="preserve">+ configureScrapeSettings(company: CompanyDTO):</text>
+<text x="470" y="474" class="u-mem" xml:space="preserve">      ScrapeSettings</text>
+<text x="470" y="488" class="u-mem" xml:space="preserve">+ configurePageScraper(): PageScraper</text>
+<text x="470" y="502" class="u-mem" xml:space="preserve">+ parseMetadata(response: PageScraperResponse):</text>
+<text x="470" y="516" class="u-mem" xml:space="preserve">      MetadataParams</text>
+</g>
+<g class="u-class">
+<rect x="460" y="560" width="302" height="112" class="u-box"/>
+<text x="611.0" y="579" class="u-name">NoCallMetadataCrawler</text>
+<line x1="460" y1="590" x2="762" y2="590" class="u-div"/>
+<text x="470" y="606" class="u-mem" xml:space="preserve">+ configureScrapeSettings(company: CompanyDTO):</text>
+<text x="470" y="620" class="u-mem" xml:space="preserve">      ScrapeSettings</text>
+<text x="470" y="634" class="u-mem" xml:space="preserve">+ configurePageScraper(): PageScraper</text>
+<text x="470" y="648" class="u-mem" xml:space="preserve">+ parseMetadata(response: PageScraperResponse):</text>
+<text x="470" y="662" class="u-mem" xml:space="preserve">      MetadataParams</text>
+</g>
+<g class="u-class">
+<rect x="880" y="400" width="296" height="84" class="u-box"/>
+<text x="1028.0" y="415" class="u-stereo">«interface»</text>
+<text x="1028.0" y="431" class="u-name">PageScraper</text>
+<line x1="880" y1="444" x2="1176" y2="444" class="u-div"/>
+<text x="890" y="460" class="u-mem" xml:space="preserve">+ scrapePage(settings: ScrapeSettings):</text>
+<text x="890" y="474" class="u-mem" xml:space="preserve">      PageScraperResponse {throws IOException}</text>
+</g>
+<g class="u-class">
+<rect x="900" y="520" width="160" height="30" class="u-box"/>
+<text x="980.0" y="539" class="u-name">StaticPageScraper</text>
+</g>
+<g class="u-class">
+<rect x="900" y="575" width="160" height="30" class="u-box"/>
+<text x="980.0" y="594" class="u-name">NoCallPageScraper</text>
+</g>
+<g class="u-class">
+<rect x="900" y="630" width="314" height="94" class="u-box"/>
+<text x="1057.0" y="649" class="u-name">DynamicPageScraper</text>
+<line x1="900" y1="660" x2="1214" y2="660" class="u-div"/>
+<text x="910" y="676" class="u-mem" xml:space="preserve">- readySelector: String {readOnly}</text>
+<line x1="900" y1="684" x2="1214" y2="684" class="u-div"/>
+<text x="910" y="700" class="u-mem" xml:space="preserve">+ DynamicPageScraper(browserPool: BrowserPool,</text>
+<text x="910" y="714" class="u-mem" xml:space="preserve">      readySelector: String)</text>
+</g>
+<g class="u-class">
+<rect x="900" y="770" width="314" height="98" class="u-box"/>
+<text x="1057.0" y="785" class="u-stereo">«component»</text>
+<text x="1057.0" y="801" class="u-name">BrowserPool</text>
+<line x1="900" y1="814" x2="1214" y2="814" class="u-div"/>
+<text x="910" y="830" class="u-mem" xml:space="preserve">+ borrowInstance(): BrowserInstance</text>
+<text x="910" y="844" class="u-mem" xml:space="preserve">      {throws IOException}</text>
+<text x="910" y="858" class="u-mem" xml:space="preserve">+ returnInstance(instance: BrowserInstance): void</text>
+</g>
+<path d="M900 890 H1190 L1200 900 V946 H900 Z" class="u-note"/>
+<path d="M1190 890 V900 H1200" class="u-note-fold"/>
+<text x="910" y="908" class="u-note-text" xml:space="preserve">Page scrapers are created with new</text>
+<text x="910" y="922" class="u-note-text" xml:space="preserve">inside the crawlers and are not</text>
+<text x="910" y="936" class="u-note-text" xml:space="preserve">Spring beans. BrowserPool is a bean.</text>
+<line x1="1050" y1="866" x2="1050" y2="890" class="u-anchor"/>
+<path d="M40 674 H370 L380 684 V940 H40 Z" class="u-note"/>
+<path d="M370 674 V684 H380" class="u-note-fold"/>
+<text x="50" y="692" class="u-note-text" xml:space="preserve">Company crawlers (@Component, one per bean_class)</text>
+<text x="50" y="706" class="u-note-text" xml:space="preserve">implement CompanyCrawler, usually by extending</text>
+<text x="50" y="720" class="u-note-text" xml:space="preserve">DefaultCompanyCrawler, which runs the main flow.</text>
+<text x="50" y="748" class="u-note-text" xml:space="preserve">scrapeCompanyVacancies(company):</text>
+<text x="50" y="762" class="u-note-text" xml:space="preserve">1. metadata crawler: configurePageScraper().scrapePage(</text>
+<text x="50" y="776" class="u-note-text" xml:space="preserve">   configureScrapeSettings(company)) (fails: MetadataScrape-</text>
+<text x="50" y="790" class="u-note-text" xml:space="preserve">   Exception), then parseMetadata (fails: MetadataParse-</text>
+<text x="50" y="804" class="u-note-text" xml:space="preserve">   Exception)</text>
+<text x="50" y="818" class="u-note-text" xml:space="preserve">2. initPages(metadata.pagesCount)</text>
+<text x="50" y="832" class="u-note-text" xml:space="preserve">3. for every page, before any request:</text>
+<text x="50" y="846" class="u-note-text" xml:space="preserve">   configurePageScrapeSettings, set pageId, fill unset data,</text>
+<text x="50" y="860" class="u-note-text" xml:space="preserve">   headers and cookies from company, merge metadata</text>
+<text x="50" y="874" class="u-note-text" xml:space="preserve">   headers and cookies by key, fillPlaceholders(+ {page})</text>
+<text x="50" y="888" class="u-note-text" xml:space="preserve">   (fails: UnresolvedPlaceholderException)</text>
+<text x="50" y="902" class="u-note-text" xml:space="preserve">4. wait delay on the stop signal, then</text>
+<text x="50" y="916" class="u-note-text" xml:space="preserve">   configurePageScraper(pageId).scrapePage</text>
+<text x="50" y="930" class="u-note-text" xml:space="preserve">   (fails: VacancyPageScrapeException)</text>
+<line x1="200" y1="634" x2="200" y2="674" class="u-anchor"/>
+<g class="u-class">
+<rect x="470" y="750" width="138" height="44" class="u-box"/>
+<text x="539.0" y="765" class="u-stereo">java.lang</text>
+<text x="539.0" y="781" class="u-name">RuntimeException</text>
+</g>
+<g class="u-class">
+<rect x="470" y="815" width="205" height="30" class="u-box"/>
+<text x="572.5" y="834" class="u-name">MetadataScrapeException</text>
+</g>
+<g class="u-class">
+<rect x="470" y="860" width="196" height="30" class="u-box"/>
+<text x="568.0" y="879" class="u-name">MetadataParseException</text>
+</g>
+<g class="u-class">
+<rect x="470" y="905" width="229" height="30" class="u-box"/>
+<text x="584.5" y="924" class="u-name">VacancyPageScrapeException</text>
+</g>
+<g class="u-class">
+<rect x="470" y="950" width="262" height="30" class="u-box"/>
+<text x="601.0" y="969" class="u-name">UnresolvedPlaceholderException</text>
+</g>
+<g class="u-class">
+<rect x="40" y="1045" width="374" height="262" class="u-box"/>
+<text x="227.0" y="1060" class="u-stereo">{immutable}</text>
+<text x="227.0" y="1076" class="u-name">ScrapeSettings</text>
+<line x1="40" y1="1089" x2="414" y2="1089" class="u-div"/>
+<text x="50" y="1105" class="u-mem" xml:space="preserve">- pageId: int</text>
+<text x="50" y="1119" class="u-mem" xml:space="preserve">- pageURL: String</text>
+<text x="50" y="1133" class="u-mem" xml:space="preserve">- data: Map&lt;String, String&gt; [0..1]</text>
+<text x="50" y="1147" class="u-mem" xml:space="preserve">- headers: Map&lt;String, String&gt; [0..1]</text>
+<text x="50" y="1161" class="u-mem" xml:space="preserve">- cookies: Map&lt;String, String&gt; [0..1]</text>
+<text x="50" y="1175" class="u-mem" xml:space="preserve">- connectionMethod: Connection.Method = GET</text>
+<text x="50" y="1189" class="u-mem" xml:space="preserve">- timeoutSec: int = 60</text>
+<text x="50" y="1203" class="u-mem" xml:space="preserve">- followRedirects: boolean = true</text>
+<text x="50" y="1217" class="u-mem" xml:space="preserve">- delay: Duration = Duration.ZERO</text>
+<line x1="40" y1="1225" x2="414" y2="1225" class="u-div"/>
+<text x="50" y="1241" class="u-mem u-static" xml:space="preserve">+ builder(): ScrapeSettingsBuilder</text>
+<text x="50" y="1255" class="u-mem" xml:space="preserve">+ toBuilder(): ScrapeSettingsBuilder</text>
+<text x="50" y="1269" class="u-mem" xml:space="preserve">+ fillPlaceholders(placeholders: Map&lt;String, String&gt;):</text>
+<text x="50" y="1283" class="u-mem" xml:space="preserve">      ScrapeSettings {throws UnresolvedPlaceholderException}</text>
+<text x="50" y="1297" class="u-mem" xml:space="preserve">...</text>
+</g>
+<g class="u-class">
+<rect x="460" y="1045" width="272" height="98" class="u-box"/>
+<text x="596.0" y="1064" class="u-name">MetadataParams</text>
+<line x1="460" y1="1075" x2="732" y2="1075" class="u-div"/>
+<text x="470" y="1091" class="u-mem" xml:space="preserve">- pagesCount: int = 1</text>
+<text x="470" y="1105" class="u-mem" xml:space="preserve">- placeholders: Map&lt;String, String&gt; = {}</text>
+<text x="470" y="1119" class="u-mem" xml:space="preserve">- requestHeaders: Map&lt;String, String&gt; = {}</text>
+<text x="470" y="1133" class="u-mem" xml:space="preserve">- requestCookies: Map&lt;String, String&gt; = {}</text>
+</g>
+<g class="u-class">
+<rect x="780" y="1045" width="220" height="112" class="u-box"/>
+<text x="890.0" y="1064" class="u-name">PageScraperResponse</text>
+<line x1="780" y1="1075" x2="1000" y2="1075" class="u-div"/>
+<text x="790" y="1091" class="u-mem" xml:space="preserve">- pageId: int</text>
+<text x="790" y="1105" class="u-mem" xml:space="preserve">- pageURL: String</text>
+<text x="790" y="1119" class="u-mem" xml:space="preserve">- headers: Map&lt;String, String&gt;</text>
+<text x="790" y="1133" class="u-mem" xml:space="preserve">- cookies: Map&lt;String, String&gt;</text>
+<text x="790" y="1147" class="u-mem" xml:space="preserve">- body: String</text>
+</g>
+<path d="M460 1175 H780 L790 1185 V1245 H460 Z" class="u-note"/>
+<path d="M780 1175 V1185 H790" class="u-note-fold"/>
+<text x="470" y="1193" class="u-note-text" xml:space="preserve">[0..1]: left null by a page crawler, then filled</text>
+<text x="470" y="1207" class="u-note-text" xml:space="preserve">from the company. Metadata settings are used</text>
+<text x="470" y="1221" class="u-note-text" xml:space="preserve">as the crawler returns them.</text>
+<text x="470" y="1235" class="u-note-text" xml:space="preserve">delay: wait before this page starts.</text>
+<line x1="414" y1="1205" x2="460" y2="1205" class="u-anchor"/>
+</svg>
