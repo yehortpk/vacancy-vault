@@ -1,163 +1,104 @@
-<div class="container px-6 mx-auto grid" *ngIf="vacancies.length > 0; else noVacancies">
-    <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
-      Dashboard
-    </h2>
-    <!-- Material Table -->
-    <div class="w-full overflow-hidden rounded-lg shadow-xs">
-      <div class="w-full overflow-x-auto">
-        <table
-          mat-table
-          [dataSource]="dataSource"
-          matSort
-          class="w-full whitespace-no-wrap"
-          (matSortChange)="onSortChange($event)"
-        >
-          <!-- Title Column -->
-          <ng-container matColumnDef="title">
-            <th
-              mat-header-cell
-              *matHeaderCellDef
-              mat-sort-header
-              class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"
-            >
-              Title
-            </th>
-            <td mat-cell *matCellDef="let vacancy" class="px-4 py-3">
-              <div class="flex items-center text-sm">
-                <div>
-                  <p class="font-semibold">
-                    <a [href]="vacancy.url">{{ vacancy.title }}</a>
-                  </p>
-                </div>
-              </div>
-            </td>
-          </ng-container>
-  
-          <!-- Min Salary Column -->
-          <ng-container matColumnDef="minSalary">
-            <th
-              mat-header-cell
-              *matHeaderCellDef
-              mat-sort-header
-              class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"
-            >
-              Min Salary
-            </th>
-            <td mat-cell *matCellDef="let vacancy" class="px-4 py-3 text-sm">
-              {{ vacancy.minSalary }}
-            </td>
-          </ng-container>
-  
-          <!-- Max Salary Column -->
-          <ng-container matColumnDef="maxSalary">
-            <th
-              mat-header-cell
-              *matHeaderCellDef
-              mat-sort-header
-              class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"
-            >
-              Max Salary
-            </th>
-            <td mat-cell *matCellDef="let vacancy" class="px-4 py-3 text-sm">
-              {{ vacancy.maxSalary }}
-            </td>
-          </ng-container>
-  
-          <!-- Company Column -->
-          <ng-container matColumnDef="company">
-            <th
-              mat-header-cell
-              *matHeaderCellDef
-              mat-sort-header
-              class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"
-            >
-              Company
-            </th>
-            <td mat-cell *matCellDef="let vacancy" class="px-4 py-3">
-              <div class="flex items-center text-sm">
-                <div
-                  class="relative hidden w-8 h-8 mr-3 rounded-full md:block"
-                >
-                  <img
-                    class="object-cover w-full h-full rounded-full"
-                    [src]="vacancy.company.imageUrl"
-                    [alt]="vacancy.company.title"
-                    loading="lazy"
-                  />
-                  <div
-                    class="absolute inset-0 rounded-full shadow-inner"
-                    aria-hidden="true"
-                  ></div>
-                </div>
-                <div>
-                  <p class="font-semibold">
-                    <a
-                      [href]="vacancy.company.company_url"
-                      >{{ vacancy.company.title }}</a
-                    >
-                  </p>
-                </div>
-              </div>
-            </td>
-          </ng-container>
-  
-          <!-- Parsed At Column -->
-          <ng-container matColumnDef="parsedAt">
-            <th
-              mat-header-cell
-              *matHeaderCellDef
-              mat-sort-header
-              class="px-4 py-3 text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"
-            >
-              Parsed At
-            </th>
-            <td mat-cell *matCellDef="let vacancy" class="px-4 py-3 text-sm">
-              {{ vacancy.parsedAt | date: 'yyyy-MM-dd HH:mm' }}
-            </td>
-          </ng-container>
-  
-          <tr
-            mat-header-row
-            *matHeaderRowDef="displayedColumns"
-          ></tr>
-          <tr
-            mat-row
-            *matRowDef="let row; columns: displayedColumns;"
-            class="text-gray-700 dark:text-gray-400 bg-white dark:bg-gray-800"
-          ></tr>
-        </table>
-      </div>
-  
-      <!-- Filters and Paginator Section -->
-      <div class="flex justify-between items-center px-4 py-3 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
-        <mat-form-field>
-            <mat-label>Filter</mat-label>
-            <mat-select (selectionChange)="onFilterChange($event)">
-                @for (filter of filters; track filter) {
-                <mat-option [value]="filter.filterId" [title]="filter.filter">{{filter.filter | truncate:20}}</mat-option>
-                }
-            </mat-select>
-        </mat-form-field>
+<div class="py-8 px-4 sm:px-6 lg:px-8" *ngIf="vacancies.length > 0; else noVacancies">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">Job Listings</h1>
+    <p class="text-slate-600 dark:text-slate-400">{{totalVacancies}} vacancies available</p>
+  </div>
 
-        <mat-paginator
-          [pageSizeOptions]="[5, 10, 25, 100]"
-          [pageSize]="pageSize"
-          [length]="totalVacancies"
-          [pageIndex]="currentPage"
-          (page)="onPageChange($event)"
-          showFirstLastButtons
-          class="bg-transparent"
-        >
-        </mat-paginator>
-      </div>
+  <!-- Filters Bar -->
+  <div class="mb-6">
+    <mat-form-field class="w-full sm:w-64">
+      <mat-label>Filter by source</mat-label>
+      <mat-select (selectionChange)="onFilterChange($event)">
+        @for (filter of filters; track filter) {
+        <mat-option [value]="filter.filterId" [title]="filter.filter">{{filter.filter | truncate:20}}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Jobs Table -->
+  <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table mat-table [dataSource]="dataSource" matSort class="w-full" (matSortChange)="onSortChange($event)">
+        <!-- Title Column -->
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50">
+            Job Title
+          </th>
+          <td mat-cell *matCellDef="let vacancy" class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+            <a [href]="vacancy.url" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors">
+              {{ vacancy.title }}
+            </a>
+          </td>
+        </ng-container>
+
+        <!-- Min Salary Column -->
+        <ng-container matColumnDef="minSalary">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50">
+            Min Salary
+          </th>
+          <td mat-cell *matCellDef="let vacancy" class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-slate-100">
+            {{ vacancy.minSalary || '—' }}
+          </td>
+        </ng-container>
+
+        <!-- Max Salary Column -->
+        <ng-container matColumnDef="maxSalary">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50">
+            Max Salary
+          </th>
+          <td mat-cell *matCellDef="let vacancy" class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-slate-100">
+            {{ vacancy.maxSalary || '—' }}
+          </td>
+        </ng-container>
+
+        <!-- Company Column -->
+        <ng-container matColumnDef="company">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50">
+            Company
+          </th>
+          <td mat-cell *matCellDef="let vacancy" class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3">
+              <img class="w-8 h-8 rounded-lg object-cover" [src]="vacancy.company.imageUrl" [alt]="vacancy.company.title" loading="lazy" />
+              <a [href]="vacancy.company.company_url" target="_blank" rel="noopener noreferrer" class="text-slate-900 dark:text-slate-100 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {{ vacancy.company.title }}
+              </a>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Parsed At Column -->
+        <ng-container matColumnDef="parsedAt">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header class="px-6 py-4 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/50">
+            Posted
+          </th>
+          <td mat-cell *matCellDef="let vacancy" class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400">
+            {{ vacancy.parsedAt | date: 'short' }}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"></tr>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+      <mat-paginator [pageSizeOptions]="[5, 10, 25, 100]" [pageSize]="pageSize" [length]="totalVacancies" [pageIndex]="currentPage" (page)="onPageChange($event)" showFirstLastButtons></mat-paginator>
     </div>
   </div>
-  
-  <ng-template #noVacancies>
-    <div class="container px-6 mx-auto grid">
-      <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
-        There are currently no vacancies.
-      </h2>
-    </div>
-  </ng-template>
-  
+</div>
+
+<ng-template #noVacancies>
+  <div class="py-16 px-4 sm:px-6 lg:px-8 text-center">
+    <svg class="mx-auto w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+    <h2 class="text-2xl font-semibold text-slate-900 dark:text-white mb-2">No vacancies found</h2>
+    <p class="text-slate-600 dark:text-slate-400 mb-8">Start parsing to load job listings</p>
+    <a href="/parser" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+      Start Parser
+    </a>
+  </div>
+</ng-template>
