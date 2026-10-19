@@ -36,9 +36,17 @@ public class ParserRunnerService {
     private final ParsingHistoryService parsingHistoryService;
     private final VacancyService vacancyService;
 
-    private final Map<Integer, List<VacancyDTO>> persistedVacanciesByCompany = new HashMap<>();
-
     private Thread runnerThread;
+
+    public void runParsing() throws ParsingAlreadyStartedException {
+        if (runnerThread == null || !runnerThread.isAlive()) {
+            parsingProgressService.init();
+            runnerThread = new Thread(this::runParsers);
+            runnerThread.start();
+        } else {
+            throw new ParsingAlreadyStartedException("Parsing process has already started");
+        }
+    }
 
     private void runParsers() {
         List<CompanyDTO> companies = companyService.getCompaniesList();
@@ -48,87 +56,105 @@ public class ParserRunnerService {
         }
 
         ExecutorService executor = Executors.newCachedThreadPool();
-        List<CompletableFuture<Void>> parsedVacanciesListFut = new ArrayList<>();
+        try {
+            List<CompletableFuture<Void>> companyFutures = companies.stream()
+                    .map(company -> parseCompanyAsync(company, executor))
+                    .filter(Objects::nonNull)
+                    .toList();
 
-        for (CompanyDTO company : companies) {
-            String beanClass = company.getBeanClass();
-            SiteScrapper siteScrapper;
-            try {
-                siteScrapper = (SiteScrapper) applicationContext.getBean(beanClass);
-            } catch (BeansException ignored) {
-                log.error("{} scrapper implementation doesn't exist", beanClass);
-                continue;
-            }
-
-            int companyId = company.getCompanyId();
-            List<VacancyDTO> persistedVacancies = companyService.getPersistedVacancies(companyId);
-            persistedVacanciesByCompany.put(companyId, persistedVacancies);
-            parsingProgressService.addParserProgress(companyId, company.getTitle());
-
-            CompletableFuture<List<CompletableFuture<PageDTO>>> companyPageScrappersFut =
-                    CompletableFuture.supplyAsync(() -> siteScrapper.scrapCompanyVacancies(company), executor)
-                            .exceptionally(ex -> {
-                                handleCompanyScrapperException(ex, company);
-                                return List.of();
-                            });
-
-            CompletableFuture<Void> parsedVacanciesFut = companyPageScrappersFut.thenCompose(pages ->
-                    CompletableFuture.supplyAsync(() -> {
-                        List<CompletableFuture<List<VacancyDTO>>> vacancyFutures = pages.stream()
-                                .map(scrapPageFut -> scrapPageFut
-                                        .exceptionally(ex -> {
-                                            int pageID = pages.indexOf(scrapPageFut) + 1;
-                                            handlePageScrapperException(ex, company, pageID);
-                                            return null;
-                                        })
-                                        .thenCompose(page -> {
-                                            if (page == null) {
-                                                return CompletableFuture.completedFuture(List.of());
-                                            }
-                                            return CompletableFuture.supplyAsync(
-                                                            () -> parsePageVacancies(page, company), executor)
-                                                    .exceptionally(ex -> {
-                                                        handlePageParserException(ex, company, pages.indexOf(scrapPageFut) + 1);
-                                                        return List.of(); // Return empty list on exception
-                                                    });
-                                        })
-                                )
-                                .toList();
-
-                        // Wait for all futures to complete and collect results
-                        List<VacancyDTO> parsedVacancies = vacancyFutures.stream()
-                                .map(CompletableFuture::join)
-                                .flatMap(List::stream)
-                                .toList();
-
-
-                        handleOutdatedVacancies(parsedVacancies, persistedVacancies);
-
-                        return null;
-                    }, executor)
-            );
-
-            parsedVacanciesListFut.add(parsedVacanciesFut);
+            CompletableFuture.allOf(companyFutures.toArray(new CompletableFuture[0])).join();
+        } finally {
+            executor.shutdown();
         }
 
-        CompletableFuture.allOf(parsedVacanciesListFut.toArray(new CompletableFuture[0])).join();
-        executor.shutdown();
+        finishParsing();
+    }
 
-
+    private void finishParsing() {
         parsingProgressService.setFinished(true);
         parsingHistoryService.saveProgress(parsingProgressService.getProgress());
 
-        String parsingResultOutput = String.format("""
+        log.info("""
                 Parsing completed.\s
                 Total vacancies parsed: %s\s
                 New vacancies count: %s\s
                 Outdated vacancies count: %s
-                """,
+                """.formatted(
                 parsingProgressService.getParsedVacanciesCnt(),
                 parsingProgressService.getNewVacanciesCnt(),
                 parsingProgressService.getOutdatedVacanciesCnt()
-        );
-        log.info(parsingResultOutput);
+        ));
+    }
+
+    /**
+     * Kicks off scrapping and parsing for a single company: scrap its pages, parse vacancies from
+     * each page in parallel, then reconcile parsed vacancies against what's already persisted.
+     * Returns null (instead of a future) if the company has no registered scrapper bean.
+     */
+    private CompletableFuture<Void> parseCompanyAsync(CompanyDTO company, ExecutorService executor) {
+        SiteScrapper siteScrapper = resolveScrapper(company);
+        if (siteScrapper == null) {
+            return null;
+        }
+
+        int companyId = company.getCompanyId();
+        List<VacancyDTO> persistedVacancies = companyService.getPersistedVacancies(companyId);
+        parsingProgressService.addParserProgress(companyId, company.getTitle());
+
+        return CompletableFuture
+                .supplyAsync(() -> siteScrapper.scrapCompanyVacancies(company), executor)
+                .exceptionally(ex -> {
+                    handleCompanyScrapperException(ex, company);
+                    return List.of();
+                })
+                .thenCompose(pageFutures -> parseAllPages(pageFutures, company, persistedVacancies, executor))
+                .thenAccept(parsedVacancies -> handleOutdatedVacancies(parsedVacancies, persistedVacancies));
+    }
+
+    private SiteScrapper resolveScrapper(CompanyDTO company) {
+        try {
+            return (SiteScrapper) applicationContext.getBean(company.getBeanClass());
+        } catch (BeansException ignored) {
+            log.error("{} scrapper implementation doesn't exist", company.getBeanClass());
+            return null;
+        }
+    }
+
+    /**
+     * Parses every scrapped page of a company concurrently and joins the results once all pages
+     * are done, without blocking a shared thread inside the async chain.
+     */
+    private CompletableFuture<List<VacancyDTO>> parseAllPages(
+            List<CompletableFuture<PageDTO>> pageFutures,
+            CompanyDTO company,
+            List<VacancyDTO> persistedVacancies,
+            ExecutorService executor
+    ) {
+        List<CompletableFuture<List<VacancyDTO>>> pageResultFutures = new ArrayList<>();
+        for (int i = 0; i < pageFutures.size(); i++) {
+            int pageID = i + 1;
+            pageResultFutures.add(
+                    pageFutures.get(i)
+                            .exceptionally(ex -> {
+                                handlePageScrapperException(ex, company, pageID);
+                                return null;
+                            })
+                            .thenCompose(page -> page == null
+                                    ? CompletableFuture.completedFuture(List.<VacancyDTO>of())
+                                    : CompletableFuture.supplyAsync(() -> parsePageVacancies(page, company, persistedVacancies), executor)
+                                            .exceptionally(ex -> {
+                                                handlePageParserException(ex, company, pageID);
+                                                return List.of();
+                                            })
+                            )
+            );
+        }
+
+        return CompletableFuture.allOf(pageResultFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> pageResultFutures.stream()
+                        .map(CompletableFuture::join)
+                        .flatMap(List::stream)
+                        .toList());
     }
 
     private void handleCompanyScrapperException(Throwable ex, CompanyDTO company) {
@@ -195,7 +221,7 @@ public class ParserRunnerService {
         parsingProgressService.addOutdatedVacancies(outdatedVacanciesCnt);
     }
 
-    private List<VacancyDTO> parsePageVacancies(PageDTO page, CompanyDTO company) {
+    private List<VacancyDTO> parsePageVacancies(PageDTO page, CompanyDTO company, List<VacancyDTO> persistedVacancies) {
         SiteParser siteParser = (SiteParser) applicationContext.getBean(company.getBeanClass());
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
 
@@ -218,12 +244,9 @@ public class ParserRunnerService {
             vacancy.setParsedAt(LocalDateTime.now());
         }
 
-        List<VacancyDTO> persistedCompanyVacancies =
-                persistedVacanciesByCompany.getOrDefault(company.getCompanyId(), new ArrayList<>());
-
         ParserProgress.PageProgress pageProgress = parserProgress.getPages().get(pageID - 1);
 
-        Set<VacancyDTO> newVacancies = calculateNewVacancies(parsedVacancies, persistedCompanyVacancies);
+        Set<VacancyDTO> newVacancies = calculateNewVacancies(parsedVacancies, persistedVacancies);
 
         int parsedVacanciesCnt = parsedVacancies.size();
         int newVacanciesCnt = newVacancies.size();
@@ -247,16 +270,6 @@ public class ParserRunnerService {
         notifierService.notifyNewVacancies(newVacancies);
 
         return parsedVacancies;
-    }
-
-    public void runParsing() throws ParsingAlreadyStartedException {
-        if (runnerThread == null || !runnerThread.isAlive()) {
-            parsingProgressService.init();
-            runnerThread = new Thread(this::runParsers);
-            runnerThread.start();
-        } else {
-            throw new ParsingAlreadyStartedException("Parsing process has already started");
-        }
     }
 
     /**
@@ -283,6 +296,4 @@ public class ParserRunnerService {
         return persistedVacanciesSet;
     }
 
-
 }
-
