@@ -15,9 +15,6 @@ services:
     depends_on:
       router:
         condition: service_healthy
-    profiles:
-      - parser
-      - app
 
   router:
     container_name: notifier-router
@@ -46,11 +43,6 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
-    profiles:
-      - router
-      - parser
-      - bot
-      - app
 
   bot:
     container_name: notifier-bot
@@ -70,9 +62,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    profiles:
-      - bot
-      - app
 
   frontend:
     container_name: notifier-frontend
@@ -86,9 +75,6 @@ services:
     networks:
       - notifier-network
     command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
-    profiles:
-      - frontend
-      - app
 
   redis:
     image: redis:7.2.4
@@ -104,9 +90,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    profiles:
-      - bot
-      - app
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
@@ -127,11 +110,6 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-    profiles:
-      - parser
-      - router
-      - bot
-      - app
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
@@ -163,11 +141,6 @@ services:
       timeout: 10s
       retries: 10
       start_period: 40s
-    profiles:
-      - parser
-      - router
-      - bot
-      - app
 
   mysql:
     image: mysql:8.3.0
@@ -187,11 +160,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    profiles:
-      - parser
-      - router
-      - bot
-      - app
 
   mongo:
     image: mongo:6.0

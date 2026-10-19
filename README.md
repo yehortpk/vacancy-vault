@@ -44,7 +44,7 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
 5. Create and run with docker
 ```
-docker compose --profile=app --env-file=.env.local -f docker-compose.local.yaml up --build
+docker compose --env-file=.env.local up --build
 ```
 
 ## Usage
