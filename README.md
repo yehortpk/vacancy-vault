@@ -1,4 +1,4 @@
-# Job notification bot
+# VacancyVault
 
 [![Static Badge](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
 [![Static Badge](https://img.shields.io/badge/SpringBoot-3-green.svg)](https://docs.spring.io/spring-boot/docs/3.1.5/reference/html/)
@@ -32,7 +32,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 2. Extract API Token and Username of the bot;
 3. Clone the repository:
 ```
-git clone https://github.com/yehortpk/job-notification-bot.git
+git clone https://github.com/yehortpk/vacancy-vault.git
 ```
 4. Create .env.local environment file with the next variables:
    - MYSQL_USERNAME - username that will be used to access <code>notifier</code> db;

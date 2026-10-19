@@ -9,11 +9,11 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.github.yehortpk</groupId>
-	<artifactId>job-notification-bot</artifactId>
+	<artifactId>vacancy-vault</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
-	<name>job-notification-bot</name>
-	<description>Job notification bot</description>
+	<name>vacancy-vault</name>
+	<description>VacancyVault</description>
 	<modules>
 		<module>parser</module>
 		<module>router</module>
