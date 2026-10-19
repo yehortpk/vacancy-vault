@@ -76,12 +76,16 @@ services:
 
   frontend:
     container_name: notifier-frontend
-    build:
-      dockerfile: ./frontend/Dockerfile
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
     ports:
-      - 4200:4200
+      - "4200:4200"
     networks:
       - notifier-network
+    command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
     profiles:
       - frontend
       - app
@@ -209,3 +213,4 @@ volumes:
   notifier-zookeeper-data:
   notifier-zookeeper-log:
   notifier-mongo-data:
+  frontend-node-modules:
