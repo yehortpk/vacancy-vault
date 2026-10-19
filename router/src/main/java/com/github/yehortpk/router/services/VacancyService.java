@@ -46,14 +46,25 @@ public class VacancyService {
         vacancyRepository.saveAll(newVacancies);
     }
 
+    /**
+     * Persists a single vacancy, skipping it if its link is already known. Duplicates are expected
+     * under Kafka's at-least-once delivery, so they are not treated as errors.
+     * @return whether the vacancy was actually persisted
+     */
     public boolean addVacancy(VacancyDTO vacancy) {
+        if (vacancyRepository.existsByLink(vacancy.getLink())) {
+            log.debug("Vacancy {} already persisted, skipping", vacancy.getLink());
+            return false;
+        }
+
         Vacancy newVacancy = modelMapper.map(vacancy, Vacancy.class);
 
         try {
             vacancyRepository.save(newVacancy);
             return true;
         } catch (DataIntegrityViolationException e) {
-            log.error("Duplicated vacancy {}", vacancy.getLink());
+            // Backstop for the race between the check above and this insert
+            log.debug("Duplicated vacancy {}", vacancy.getLink());
             return false;
         } catch (Exception e) {
             log.error(e.getMessage());

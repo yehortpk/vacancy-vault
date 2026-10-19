@@ -19,4 +19,6 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
     List<Vacancy> findAll();
 
     Page<Vacancy> findByTitleContaining(String title, Pageable pageable);
+
+    boolean existsByLink(String link);
 }

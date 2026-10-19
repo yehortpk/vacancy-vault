@@ -71,6 +71,7 @@ public class ParserRunnerService {
     }
 
     private void finishParsing() {
+        notifierService.resetPublishedLinks();
         parsingProgressService.setFinished(true);
         parsingHistoryService.saveProgress(parsingProgressService.getProgress());
 

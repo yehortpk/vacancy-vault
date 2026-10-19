@@ -59,7 +59,10 @@ public class InfrastructureConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "2000");
+        // Must stay well above the time a full batch of records takes to process, otherwise the
+        // broker evicts the consumer mid-batch and redelivers everything it hadn't committed yet.
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "300000");
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "50");
 
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
