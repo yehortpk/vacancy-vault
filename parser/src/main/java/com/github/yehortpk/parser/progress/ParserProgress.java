@@ -1,23 +1,37 @@
 package com.github.yehortpk.parser.progress;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Getter
-@Setter
 public class ParserProgress {
-    private int id;
-    private String title;
-    private int totalPages;
-    private List<PageProgress> pages = new ArrayList<>();
+    @Getter
+    private final int id;
+    @Getter
+    private final String title;
+    @Getter
+    private volatile int totalPages;
+    /**
+     * Pages of one company are parsed concurrently, so both this list and every page's counters
+     * are accessed from several threads at once.
+     */
+    @Getter
+    private volatile List<PageProgress> pages = new CopyOnWriteArrayList<>();
 
-    private int parsedVacanciesCnt = 0;
-    private int newVacanciesCnt = 0;
-    private int outdatedVacanciesCnt = 0;
+    /**
+     * Accumulated atomically rather than with a plain {@code +=}, which loses updates when the
+     * pages of this company report their counts from different threads.
+     */
+    private final AtomicInteger parsedVacanciesCnt = new AtomicInteger();
+    private final AtomicInteger newVacanciesCnt = new AtomicInteger();
+    private final AtomicInteger outdatedVacanciesCnt = new AtomicInteger();
 
     public ParserProgress(int id, String title) {
         this.id = id;
@@ -27,11 +41,12 @@ public class ParserProgress {
     }
 
     public void initPages(int totalPages) {
-        this.pages = new ArrayList<>();
-        this.totalPages = totalPages;
+        List<PageProgress> newPages = new ArrayList<>();
         for (int i = 0; i < totalPages; i++) {
-            pages.add(new PageProgress(i + 1));
+            newPages.add(new PageProgress(i + 1));
         }
+        this.pages = new CopyOnWriteArrayList<>(newPages);
+        this.totalPages = totalPages;
     }
 
     public void markPageDone(int page) {
@@ -42,28 +57,70 @@ public class ParserProgress {
         pages.get(page - 1).setStatus(PageProgressStatusEnum.STEP_ERROR);
     }
 
+    /**
+     * Whether every page of this company was parsed successfully. Outdated vacancies may only be
+     * reconciled when this holds: a company whose pages partly failed yields an incomplete parsed
+     * set, in which every vacancy that lived on a failed page looks outdated.
+     */
+    @JsonIgnore
+    public boolean hasAllPagesParsed() {
+        return pages.stream().allMatch(page -> page.getStatus() == PageProgressStatusEnum.STEP_DONE);
+    }
+
+    @JsonIgnore
+    public List<Integer> getUnparsedPageIds() {
+        return pages.stream()
+                .filter(page -> page.getStatus() != PageProgressStatusEnum.STEP_DONE)
+                .map(PageProgress::getId)
+                .toList();
+    }
+
     public void addPageLog(int page, LogLevelEnum level, String message) {
         pages.get(page - 1).addLog(new PageProgress.PageLog(page, level, LocalDateTime.now(), message));
     }
 
     public void addParsedVacancies(int parsedVacancies) {
-        parsedVacanciesCnt += parsedVacancies;
+        parsedVacanciesCnt.addAndGet(parsedVacancies);
     }
 
     public void addNewVacancies(int newVacancies) {
-        newVacanciesCnt += newVacancies;
+        newVacanciesCnt.addAndGet(newVacancies);
+    }
+
+    public int getParsedVacanciesCnt() {
+        return parsedVacanciesCnt.get();
+    }
+
+    public int getNewVacanciesCnt() {
+        return newVacanciesCnt.get();
+    }
+
+    public int getOutdatedVacanciesCnt() {
+        return outdatedVacanciesCnt.get();
+    }
+
+    public void setParsedVacanciesCnt(int parsedVacanciesCnt) {
+        this.parsedVacanciesCnt.set(parsedVacanciesCnt);
+    }
+
+    public void setNewVacanciesCnt(int newVacanciesCnt) {
+        this.newVacanciesCnt.set(newVacanciesCnt);
+    }
+
+    public void setOutdatedVacanciesCnt(int outdatedVacanciesCnt) {
+        this.outdatedVacanciesCnt.set(outdatedVacanciesCnt);
     }
 
     @Getter
     public static class PageProgress {
         private final int id;
         @Setter
-        private PageProgressStatusEnum status = PageProgressStatusEnum.STEP_PENDING;
+        private volatile PageProgressStatusEnum status = PageProgressStatusEnum.STEP_PENDING;
         @Setter
-        private int parsedVacanciesCnt = 0;
+        private volatile int parsedVacanciesCnt = 0;
         @Setter
-        private int newVacanciesCnt = 0;
-        private final List<PageLog> logs = new ArrayList<>();
+        private volatile int newVacanciesCnt = 0;
+        private final List<PageLog> logs = Collections.synchronizedList(new ArrayList<>());
 
         public PageProgress(int id) {
             this.id = id;

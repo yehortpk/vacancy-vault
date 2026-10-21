@@ -102,14 +102,21 @@ public class ParserRunnerService {
         List<VacancyDTO> persistedVacancies = companyService.getPersistedVacancies(companyId);
         parsingProgressService.addParserProgress(companyId, company.getTitle());
 
+        // Pages are parsed concurrently against one snapshot of the persisted vacancies, so the
+        // same vacancy can be classified as new by several pages. Links claimed here keep every
+        // such vacancy counted once per company.
+        Set<String> claimedNewLinks = ConcurrentHashMap.newKeySet();
+
         return CompletableFuture
                 .supplyAsync(() -> siteScrapper.scrapCompanyVacancies(company), executor)
                 .exceptionally(ex -> {
                     handleCompanyScrapperException(ex, company);
                     return List.of();
                 })
-                .thenCompose(pageFutures -> parseAllPages(pageFutures, company, persistedVacancies, executor))
-                .thenAccept(parsedVacancies -> handleOutdatedVacancies(parsedVacancies, persistedVacancies));
+                .thenCompose(pageFutures ->
+                        parseAllPages(pageFutures, company, persistedVacancies, claimedNewLinks, executor))
+                .thenAccept(parsedVacancies ->
+                        reconcileOutdatedVacancies(parsedVacancies, persistedVacancies, company));
     }
 
     private SiteScrapper resolveScrapper(CompanyDTO company) {
@@ -129,6 +136,7 @@ public class ParserRunnerService {
             List<CompletableFuture<PageDTO>> pageFutures,
             CompanyDTO company,
             List<VacancyDTO> persistedVacancies,
+            Set<String> claimedNewLinks,
             ExecutorService executor
     ) {
         List<CompletableFuture<List<VacancyDTO>>> pageResultFutures = new ArrayList<>();
@@ -142,7 +150,9 @@ public class ParserRunnerService {
                             })
                             .thenCompose(page -> page == null
                                     ? CompletableFuture.completedFuture(List.<VacancyDTO>of())
-                                    : CompletableFuture.supplyAsync(() -> parsePageVacancies(page, company, persistedVacancies), executor)
+                                    : CompletableFuture.supplyAsync(
+                                            () -> parsePageVacancies(page, company, persistedVacancies, claimedNewLinks),
+                                            executor)
                                             .exceptionally(ex -> {
                                                 handlePageParserException(ex, company, pageID);
                                                 return List.of();
@@ -186,14 +196,34 @@ public class ParserRunnerService {
         parserProgress.addPageLog(pageID, ParserProgress.LogLevelEnum.ERROR, errorLog);
     }
 
-    private void handleOutdatedVacancies(List<VacancyDTO> parsedVacancies, List<VacancyDTO> persistedVacancies) {
+    /**
+     * Marks the persisted vacancies of a company that are gone from the site, and lifts or acts on
+     * the deletion markers set by earlier runs.
+     * <p>
+     * Reconciliation is skipped entirely unless every page of the company was parsed successfully.
+     * A failed page contributes no vacancies, so its still-live vacancies would otherwise be
+     * indistinguishable from removed ones and be marked for deletion.
+     */
+    private void reconcileOutdatedVacancies(
+            List<VacancyDTO> parsedVacancies, List<VacancyDTO> persistedVacancies, CompanyDTO company) {
         if (persistedVacancies.isEmpty()) {
             return;
         }
 
-        int companyID = persistedVacancies.getFirst().getCompanyID();
+        int companyID = company.getCompanyId();
+        ParserProgress parserProgress = parsingProgressService.getParsers().get(companyID);
+
+        if (!parserProgress.hasAllPagesParsed()) {
+            String skipLog = String.format(
+                    "Company: %s, outdated vacancies reconciliation skipped: pages %s were not parsed",
+                    company.getTitle(), parserProgress.getUnparsedPageIds());
+            log.warn(skipLog);
+            parserProgress.addPageLog(1, ParserProgress.LogLevelEnum.ERROR, skipLog);
+            return;
+        }
 
         Set<VacancyDTO> outdatedVacancies = calculateOutdatedVacancies(parsedVacancies, persistedVacancies);
+        Set<VacancyDTO> parsedVacanciesSet = new HashSet<>(parsedVacancies);
         List<VacancyDTO> vacanciesOnDeletion =
                 persistedVacancies.stream().filter(vacancy -> vacancy.getDeleteAt() != null).toList();
 
@@ -201,7 +231,7 @@ public class ParserRunnerService {
             outdatedVacancies.remove(vacancyOnDeletion);
             // In case of an outdated vacancy actually was marked outdated by a mistake
             // (e.g. page wasn't parsed) we remove deletion marker
-            if (parsedVacancies.contains(vacancyOnDeletion)) {
+            if (parsedVacanciesSet.contains(vacancyOnDeletion)) {
                 vacancyOnDeletion.setDeleteAt(null);
                 vacancyService.updateVacancy(vacancyOnDeletion);
                 // In case of an outdated vacancy period is expired - remove it
@@ -218,11 +248,16 @@ public class ParserRunnerService {
         }
 
         int outdatedVacanciesCnt = outdatedVacancies.size();
-        parsingProgressService.getParsers().get(companyID).setOutdatedVacanciesCnt(outdatedVacanciesCnt);
+        parserProgress.setOutdatedVacanciesCnt(outdatedVacanciesCnt);
         parsingProgressService.addOutdatedVacancies(outdatedVacanciesCnt);
     }
 
-    private List<VacancyDTO> parsePageVacancies(PageDTO page, CompanyDTO company, List<VacancyDTO> persistedVacancies) {
+    private List<VacancyDTO> parsePageVacancies(
+            PageDTO page,
+            CompanyDTO company,
+            List<VacancyDTO> persistedVacancies,
+            Set<String> claimedNewLinks
+    ) {
         SiteParser siteParser = (SiteParser) applicationContext.getBean(company.getBeanClass());
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
 
@@ -247,7 +282,7 @@ public class ParserRunnerService {
 
         ParserProgress.PageProgress pageProgress = parserProgress.getPages().get(pageID - 1);
 
-        Set<VacancyDTO> newVacancies = calculateNewVacancies(parsedVacancies, persistedVacancies);
+        Set<VacancyDTO> newVacancies = calculateNewVacancies(parsedVacancies, persistedVacancies, claimedNewLinks);
 
         int parsedVacanciesCnt = parsedVacancies.size();
         int newVacanciesCnt = newVacancies.size();
@@ -274,16 +309,21 @@ public class ParserRunnerService {
     }
 
     /**
-     * Calculate difference between parsed and persistent vacancies
-     * @param parsedVacancies - total vacancies set
+     * Calculate difference between parsed and persistent vacancies, excluding the vacancies another
+     * page of the same company already claimed as new, so a vacancy listed on several pages is
+     * counted and published once.
+     * @param parsedVacancies - vacancies parsed from this page
      * @param persistedVacancies - persistent vacancies set
+     * @param claimedNewLinks - links already classified as new within this company's run
      * @return set of new vacancies
      */
-    private Set<VacancyDTO> calculateNewVacancies(List<VacancyDTO> parsedVacancies, List<VacancyDTO> persistedVacancies) {
+    private Set<VacancyDTO> calculateNewVacancies(
+            List<VacancyDTO> parsedVacancies, List<VacancyDTO> persistedVacancies, Set<String> claimedNewLinks) {
         Set<VacancyDTO> parsedVacanciesSet = new HashSet<>(parsedVacancies);
         Set<VacancyDTO> persistedVacanciesSet = new HashSet<>(persistedVacancies);
 
         parsedVacanciesSet.removeAll(persistedVacanciesSet);
+        parsedVacanciesSet.removeIf(vacancy -> !claimedNewLinks.add(vacancy.getLink()));
 
         return parsedVacanciesSet;
     }

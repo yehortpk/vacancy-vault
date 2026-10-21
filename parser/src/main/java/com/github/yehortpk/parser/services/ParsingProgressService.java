@@ -7,6 +7,8 @@ import lombok.Setter;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
@@ -14,24 +16,19 @@ public class ParsingProgressService {
     private String parsingHash;
     @Getter
     private Map<Integer, ParserProgress> parsers;
-    private ReentrantLock parsersLock;
     private final ReentrantLock progressLock = new ReentrantLock();
 
-    @Setter
-    @Getter
-    private int parsedVacanciesCnt;
+    /**
+     * Pages of every company are parsed concurrently, so the totals are accumulated atomically
+     * instead of with a plain {@code +=}, which loses updates under concurrent increments.
+     */
+    private final AtomicInteger parsedVacanciesCnt = new AtomicInteger();
+    private final AtomicInteger newVacanciesCnt = new AtomicInteger();
+    private final AtomicInteger outdatedVacanciesCnt = new AtomicInteger();
 
     @Setter
     @Getter
-    private int newVacanciesCnt;
-
-    @Setter
-    @Getter
-    private int outdatedVacanciesCnt;
-
-    @Setter
-    @Getter
-    private boolean finished;
+    private volatile boolean finished;
 
     public ParsingProgressService() {
         init();
@@ -39,38 +36,50 @@ public class ParsingProgressService {
 
     public void init() {
         progressLock.lock();
-        this.parsingHash = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
-        this.parsedVacanciesCnt = 0;
-        this.newVacanciesCnt = 0;
-        this.outdatedVacanciesCnt = 0;
-        this.finished = false;
-
-        this.parsers = new LinkedHashMap<>();
-        this.parsersLock = new ReentrantLock();
-        progressLock.unlock();
-    }
-
-    public ParserProgress addParserProgress(int id, String title) {
-        parsersLock.lock();
         try {
-            ParserProgress newPB = new ParserProgress(id, title);
-            if (!parsers.containsKey(id)) {
-                parsers.put(id, newPB);
-                return newPB;
-            } else {
-                throw new RuntimeException("Progress bar with this id is already exist");
-            }
+            this.parsingHash = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+            this.parsedVacanciesCnt.set(0);
+            this.newVacanciesCnt.set(0);
+            this.outdatedVacanciesCnt.set(0);
+            this.finished = false;
+
+            this.parsers = new ConcurrentHashMap<>();
         } finally {
-            parsersLock.unlock();
+            progressLock.unlock();
         }
     }
 
+    public ParserProgress addParserProgress(int id, String title) {
+        ParserProgress newParserProgress = new ParserProgress(id, title);
+        ParserProgress existing = parsers.putIfAbsent(id, newParserProgress);
+        if (existing != null) {
+            throw new RuntimeException("Progress bar with this id is already exist");
+        }
+        return newParserProgress;
+    }
+
+    public int getParsedVacanciesCnt() {
+        return parsedVacanciesCnt.get();
+    }
+
+    public int getNewVacanciesCnt() {
+        return newVacanciesCnt.get();
+    }
+
+    public int getOutdatedVacanciesCnt() {
+        return outdatedVacanciesCnt.get();
+    }
+
     public void addParsedVacancies(int parsedVacancies) {
-        parsedVacanciesCnt += parsedVacancies;
+        parsedVacanciesCnt.addAndGet(parsedVacancies);
     }
 
     public void addNewVacancies(int newVacancies) {
-        newVacanciesCnt += newVacancies;
+        newVacanciesCnt.addAndGet(newVacancies);
+    }
+
+    public void addOutdatedVacancies(int outdatedVacancies) {
+        outdatedVacanciesCnt.addAndGet(outdatedVacancies);
     }
 
     public ParsingProgressDTO getProgress() {
@@ -81,13 +90,9 @@ public class ParsingProgressService {
                 .parsingHash(parsingHash)
                 .parsers(parsers)
                 .finished(finished)
-                .parsedVacanciesTotalCount(parsedVacanciesCnt)
-                .newVacanciesTotalCount(newVacanciesCnt)
-                .outdatedVacanciesTotalCount(outdatedVacanciesCnt)
+                .parsedVacanciesTotalCount(parsedVacanciesCnt.get())
+                .newVacanciesTotalCount(newVacanciesCnt.get())
+                .outdatedVacanciesTotalCount(outdatedVacanciesCnt.get())
                 .build();
-    }
-
-    public void addOutdatedVacancies(int outdatedVacancies) {
-        outdatedVacanciesCnt += outdatedVacancies;
     }
 }
