@@ -33,6 +33,9 @@ build/
 .vscode/
 .env*
 *.sql
+# Flyway owns the schema, so its migrations must be tracked despite the blanket *.sql rule
+!router/src/main/resources/db/migration/*.sql
 frontend/.editorconfig
 frontend/package-lock.json
 /logs/
+docker-compose.test.yaml
