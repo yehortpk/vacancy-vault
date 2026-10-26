@@ -1,6 +1,7 @@
 package com.github.yehortpk.parser.crawler;
 
 import com.github.yehortpk.parser.parser.SiteParser;
+import com.github.yehortpk.parser.scrapper.browser.BrowserPool;
 import com.github.yehortpk.parser.scrapper.page.PlaywrightPageScrapper;
 import com.github.yehortpk.parser.scrapper.page.PageScrapper;
 import com.github.yehortpk.parser.scrapper.page.PageScrapperResponse;
@@ -10,6 +11,7 @@ import lombok.*;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -22,6 +24,9 @@ import java.util.Map;
 @ToString(callSuper = true)
 public abstract class DynamicSiteCrawler extends SiteScrapperImpl implements SiteMetadataParser, SiteParser {
     private final int DELAY_SEC = 1;
+
+    @Autowired
+    protected BrowserPool browserPool;
 
     @Override
     protected String generateVacanciesPageURL(int pageID) {
@@ -40,7 +45,7 @@ public abstract class DynamicSiteCrawler extends SiteScrapperImpl implements Sit
 
     @Override
     protected PageScrapper generatePageScrapper(int pageID) {
-        return new PlaywrightPageScrapper(createDynamicElementQuerySelector());
+        return new PlaywrightPageScrapper(createDynamicElementQuerySelector(), browserPool);
     }
 
     /**
