@@ -11,6 +11,7 @@ import com.github.yehortpk.parser.scrapper.site.SiteScrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,9 @@ public class ParserRunnerService {
     private final ParsingHistoryService parsingHistoryService;
     private final VacancyService vacancyService;
 
+    @Value("${parser.company-concurrency}")
+    private int companyConcurrency;
+
     private Thread runnerThread;
 
     public void runParsing() throws ParsingAlreadyStartedException {
@@ -55,7 +59,7 @@ public class ParserRunnerService {
             return;
         }
 
-        ExecutorService executor = Executors.newCachedThreadPool();
+        ExecutorService executor = Executors.newFixedThreadPool(companyConcurrency);
         try {
             List<CompletableFuture<Void>> companyFutures = companies.stream()
                     .map(company -> parseCompanyAsync(company, executor))

@@ -84,8 +84,10 @@ public abstract class SiteScrapperImpl implements SiteScrapper {
             PageRequestParams localPageRequestParams = generatePageRequestParams(pageRequestParams, pageID);
 
             int finalPageID = pageID;
-            Executor delayedExecutor =
-                    CompletableFuture.delayedExecutor((long) (finalPageID - 1) * generateDelayBetweenPagesMS(), TimeUnit.MILLISECONDS);
+            // Pages of one company are staggered to keep the site from seeing a burst of requests.
+            // The scrapping itself is throttled further downstream by the browser pool.
+            Executor delayedExecutor = CompletableFuture.delayedExecutor(
+                    (long) (finalPageID - 1) * generateDelayBetweenPagesMS(), TimeUnit.MILLISECONDS);
             CompletableFuture<PageDTO> scheduledFuture = CompletableFuture.supplyAsync(
                     () -> scrapPage(finalPageID, localPageRequestParams), delayedExecutor);
 
