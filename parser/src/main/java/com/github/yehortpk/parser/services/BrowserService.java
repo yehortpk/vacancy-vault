@@ -14,8 +14,21 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class BrowserService {
+    private static final String USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
+
+    private static final String STEALTH_INIT_SCRIPT =
+            "Object.defineProperty(navigator, 'webdriver', { get: () => undefined }); " +
+            "Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] }); " +
+            "Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] }); " +
+            "window.chrome = { runtime: {} };";
+
     private Browser.NewPageOptions createPageOptions(Map<String, String> headers, String proxy) {
-        Browser.NewPageOptions newPageOptions = new Browser.NewPageOptions();
+        Browser.NewPageOptions newPageOptions = new Browser.NewPageOptions()
+                .setUserAgent(USER_AGENT)
+                .setViewportSize(1920, 1080)
+                .setLocale("en-US")
+                .setTimezoneId("Europe/Kyiv");
 
         if (!headers.isEmpty()) {
             newPageOptions.setExtraHTTPHeaders(headers);
@@ -49,13 +62,15 @@ public class BrowserService {
                                             "--disable-gpu",
                                             "--disable-dev-shm-usage",
                                             "--no-sandbox",
-                                            "--blink-settings=imagesEnabled=false"
+                                            "--blink-settings=imagesEnabled=false",
+                                            "--disable-blink-features=AutomationControlled"
                                     )
                             )
             );
 
             Page page = browser.newPage(pageOptions)
         ) {
+            page.addInitScript(STEALTH_INIT_SCRIPT);
 
             page.route("**/*.{png,jpg,jpeg,gif,webp}", Route::abort); // Block images
             page.route("**/*.css", Route::abort); // Block stylesheets
