@@ -20,4 +20,8 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY --from=builder /opt/app/parser/target/parser-0.0.1-SNAPSHOT.jar .
 
-CMD ["java", "-jar", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "/app/parser-0.0.1-SNAPSHOT.jar"]
+# Chromium runs beside the JVM in this container, so the heap is capped well below the container
+# limit to leave the browsers room. Shell form, so JAVA_OPTS is expanded at startup.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=35"
+
+CMD java $JAVA_OPTS -jar /app/parser-0.0.1-SNAPSHOT.jar

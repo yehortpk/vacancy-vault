@@ -42,6 +42,21 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    - MONGO_ROOT_USERNAME - username that will be used to access <code>parser-progress</code> db. 
    - MONGO_ROOT_PASS - password that will be used to access <code>parser-progress</code> db.
 
+   The parser resource limits below are optional - each one falls back to a default that fits a
+   host with about 2GB of free memory. Lower them to run somewhere smaller:
+   - PARSER_BROWSER_POOL_SIZE (default <code>2</code>) - how many Chromium instances may run at
+     once. Chromium dominates the parser's memory and CPU, so this is the main knob: one instance
+     costs roughly 300MB. Use <code>1</code> on a host with 1GB of memory;
+   - PARSER_BROWSER_BORROW_TIMEOUT_SEC (default <code>120</code>) - how long a page waits for a free
+     browser before failing. Raise it alongside a smaller pool, since pages then queue longer;
+   - PARSER_COMPANY_CONCURRENCY (default <code>6</code>) - how many companies are parsed in parallel;
+   - PARSER_JAVA_OPTS (default <code>-XX:MaxRAMPercentage=35</code>) - JVM options. The heap stays
+     well below the container limit on purpose, because Chromium runs beside the JVM rather than
+     inside its heap;
+   - PARSER_MEM_LIMIT (default <code>2g</code>) - container memory limit, the only hard ceiling of
+     these. Keep it above <code>PARSER_BROWSER_POOL_SIZE</code> x 350MB plus the heap;
+   - PARSER_CPUS (default <code>2</code>) - container CPU limit.
+
 5. Create and run with docker
 ```
 docker compose --env-file=.env.local up --build
