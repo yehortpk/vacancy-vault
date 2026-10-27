@@ -27,7 +27,7 @@ public class CorsConfig {
         // An Origin header carries no path or trailing slash, so "http://localhost:4200/"
         // never matched what the browser actually sends.
         configuration.setAllowedOrigins(List.of(frontendServiceURL, "http://localhost:4200"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 

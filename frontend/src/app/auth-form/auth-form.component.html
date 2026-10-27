@@ -1,0 +1,37 @@
+<div class="py-16 px-4 flex justify-center">
+  <div class="w-full max-w-sm bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-8">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+      {{ mode === 'login' ? 'Log in' : 'Create an account' }}
+    </h1>
+
+    <form (ngSubmit)="onSubmit()" class="space-y-4">
+      <div>
+        <label for="email" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email" [(ngModel)]="email"
+          class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
+        <input id="password" name="password" type="password" required minlength="8" maxlength="72"
+          [autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" [(ngModel)]="password"
+          class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      <p *ngIf="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+
+      <button type="submit" [disabled]="isSubmitting"
+        class="w-full px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+        {{ mode === 'login' ? 'Log in' : 'Register' }}
+      </button>
+    </form>
+
+    <p class="mt-6 text-sm text-slate-600 dark:text-slate-400">
+      <ng-container *ngIf="mode === 'login'; else toLogin">
+        No account yet? <a routerLink="/register" queryParamsHandling="preserve" class="text-blue-600 dark:text-blue-400 hover:underline">Register</a>
+      </ng-container>
+      <ng-template #toLogin>
+        Already registered? <a routerLink="/login" queryParamsHandling="preserve" class="text-blue-600 dark:text-blue-400 hover:underline">Log in</a>
+      </ng-template>
+    </p>
+  </div>
+</div>

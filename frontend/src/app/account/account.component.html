@@ -1,0 +1,79 @@
+<div class="py-8 px-4 sm:px-6 lg:px-8 space-y-6" *ngIf="authService.account() as account">
+  <div>
+    <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">My account</h1>
+    <p class="text-slate-600 dark:text-slate-400">
+      {{ account.email }}
+      <span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold"
+        [ngClass]="account.role === 'ADMIN' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'">
+        {{ account.role }}
+      </span>
+      · member since {{ account.createdAt | date:'mediumDate' }}
+    </p>
+  </div>
+
+  <p *ngIf="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+
+  <!-- API key -->
+  <section class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">API key</h2>
+    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+      Link a Telegram chat by sending <code class="px-1 rounded bg-slate-100 dark:bg-slate-700">/link &lt;key&gt;</code> to the bot.
+    </p>
+
+    <p class="text-sm text-slate-700 dark:text-slate-300 mb-4">
+      <ng-container *ngIf="account.hasApiKey; else noKey">
+        Current key: <code class="px-1 rounded bg-slate-100 dark:bg-slate-700">vv_{{ account.apiKeyPrefix }}_…</code>
+      </ng-container>
+      <ng-template #noKey>You have no API key yet.</ng-template>
+    </p>
+
+    <div *ngIf="generatedApiKey" class="mb-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+      <p class="text-sm text-amber-800 dark:text-amber-300 mb-2">
+        Copy this key now — it will not be shown again. If it leaks, generate a new one.
+      </p>
+      <div class="flex items-center gap-2">
+        <code class="flex-1 break-all px-2 py-1 rounded bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100">{{ generatedApiKey }}</code>
+        <button (click)="copyApiKey()" class="px-3 py-1 rounded-lg text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600">
+          {{ isApiKeyCopied ? 'Copied' : 'Copy' }}
+        </button>
+      </div>
+    </div>
+
+    <button (click)="generateApiKey()" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+      {{ account.hasApiKey ? 'Regenerate key' : 'Generate key' }}
+    </button>
+  </section>
+
+  <!-- Linked messengers -->
+  <section class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Linked messengers</h2>
+
+    <p *ngIf="connections.length === 0" class="text-sm text-slate-600 dark:text-slate-400">No chats linked yet.</p>
+
+    <ul class="divide-y divide-slate-200 dark:divide-slate-700">
+      <li *ngFor="let connection of connections" class="py-3 flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-0">
+          <ng-container *ngIf="editedConnectionId === connection.id; else showTitle">
+            <input [(ngModel)]="editedTitle" (keydown.enter)="saveRename(connection)" (keydown.escape)="cancelRename()" maxlength="255"
+              class="w-full px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </ng-container>
+          <ng-template #showTitle>
+            <p class="font-medium text-slate-900 dark:text-white truncate">{{ connection.title || 'Untitled chat' }}</p>
+          </ng-template>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            {{ connection.provider | titlecase }} · {{ connection.address }} · linked {{ connection.linkedAt | date:'mediumDate' }}
+          </p>
+        </div>
+
+        <ng-container *ngIf="editedConnectionId === connection.id; else actions">
+          <button (click)="saveRename(connection)" class="px-3 py-1 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700">Save</button>
+          <button (click)="cancelRename()" class="px-3 py-1 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancel</button>
+        </ng-container>
+        <ng-template #actions>
+          <button (click)="startRename(connection)" class="px-3 py-1 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Rename</button>
+          <button (click)="deleteConnection(connection)" class="px-3 py-1 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">Unlink</button>
+        </ng-template>
+      </li>
+    </ul>
+  </section>
+</div>
