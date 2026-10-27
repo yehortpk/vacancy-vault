@@ -27,8 +27,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ex.getMessage());
     }
 
-    @ExceptionHandler(ParsingAlreadyStartedException.class)
-    public ResponseEntity<Object> handleParsingAlreadyStarterException(Exception ex) {
+    @ExceptionHandler({ParsingAlreadyStartedException.class, ParsingNotRunningException.class})
+    public ResponseEntity<Object> handleParsingStateException(Exception ex) {
         return ResponseEntity.badRequest().body(new APIResponse(400, ex.getMessage()));
     }
 

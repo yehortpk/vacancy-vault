@@ -59,10 +59,32 @@ public class ParsingProgressService {
         this.parsers = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Asks the running parsing to stop. Steps already in flight finish, every later one is
+     * skipped; the status turns {@link ParsingStatusEnum#STOPPED} once they are done.
+     * @return false if parsing is not running, or is already stopping
+     */
+    public boolean requestStop() {
+        progressLock.lock();
+        try {
+            if (status != ParsingStatusEnum.RUNNING) {
+                return false;
+            }
+            this.status = ParsingStatusEnum.STOPPING;
+            return true;
+        } finally {
+            progressLock.unlock();
+        }
+    }
+
+    public boolean isStopRequested() {
+        return status == ParsingStatusEnum.STOPPING;
+    }
+
     public void markCompleted() {
         progressLock.lock();
         try {
-            this.status = ParsingStatusEnum.FINISHED;
+            this.status = status == ParsingStatusEnum.STOPPING ? ParsingStatusEnum.STOPPED : ParsingStatusEnum.FINISHED;
             this.finishedAt = LocalDateTime.now();
         } finally {
             progressLock.unlock();
@@ -110,7 +132,7 @@ public class ParsingProgressService {
                 .parsingHash(parsingHash)
                 .parsers(parsers)
                 .status(status)
-                .finished(status == ParsingStatusEnum.FINISHED)
+                .finished(status == ParsingStatusEnum.FINISHED || status == ParsingStatusEnum.STOPPED)
                 .parsedVacanciesTotalCount(parsedVacanciesCnt.get())
                 .newVacanciesTotalCount(newVacanciesCnt.get())
                 .outdatedVacanciesTotalCount(outdatedVacanciesCnt.get())

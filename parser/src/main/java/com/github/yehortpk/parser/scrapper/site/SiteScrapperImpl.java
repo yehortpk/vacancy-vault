@@ -1,5 +1,6 @@
 package com.github.yehortpk.parser.scrapper.site;
 
+import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
 import com.github.yehortpk.parser.exceptions.RequestMetadataConnectionException;
 import com.github.yehortpk.parser.exceptions.RequestMetadataParamNotImplemented;
 import com.github.yehortpk.parser.exceptions.RequestMetadataNotImplementedException;
@@ -119,6 +120,11 @@ public abstract class SiteScrapperImpl implements SiteScrapper {
     }
 
     private PageDTO scrapPage(int pageID, PageRequestParams pageRequestParams) {
+        // Pages are staggered, so most of them start long after a stop request may have come in
+        if (parsingProgressService.isStopRequested()) {
+            throw new ParsingStoppedException();
+        }
+
         PageScrapper pageScrapper = generatePageScrapper(pageID);
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         PageScrapperResponse pageScrapperResponse;
