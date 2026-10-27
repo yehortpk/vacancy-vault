@@ -1,14 +1,9 @@
 package com.github.yehortpk.router.migration;
 
+import com.github.yehortpk.router.PostgresContainerTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -28,18 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * assertion, since Hibernate checks every entity against the migrated schema on startup.
  */
 @DataJpaTest
-@ActiveProfiles("test")
-@Testcontainers
-class FlywayMigrationTest {
-
-    @TestConfiguration
-    static class PostgresContainerConfig {
-        @Bean
-        @ServiceConnection
-        PostgreSQLContainer<?> postgresContainer() {
-            return new PostgreSQLContainer<>("postgres:16.2");
-        }
-    }
+class FlywayMigrationTest extends PostgresContainerTest {
 
     @Autowired
     private DataSource dataSource;
@@ -72,6 +56,25 @@ class FlywayMigrationTest {
                              + " AND column_name = '" + column + "'")) {
             resultSet.next();
             return resultSet.getString(1);
+        }
+    }
+
+    /**
+     * Runs the same insert twice in a rolled-back transaction and reports whether the
+     * second was refused, which is how a UNIQUE constraint is observed from outside JPA.
+     */
+    private boolean isSecondInsertRejected(String insert) throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute(insert);
+                statement.execute(insert);
+                return false;
+            } catch (SQLException ex) {
+                return true;
+            } finally {
+                connection.rollback();
+            }
         }
     }
 
@@ -118,6 +121,7 @@ class FlywayMigrationTest {
         assertThat(countRows("vacancy")).isZero();
         assertThat(countRows("client")).isZero();
         assertThat(countRows("filter")).isZero();
+        assertThat(countRows("app_user")).isZero();
     }
 
     @Test
@@ -126,6 +130,25 @@ class FlywayMigrationTest {
         // entities' `boolean` fields fail to bind
         assertThat(columnType("company", "parsing_enabled")).isEqualTo("boolean");
         assertThat(columnType("vacancy", "is_remote")).isEqualTo("boolean");
+    }
+
+    @Test
+    void Migrate_AppUserTable_ShouldEnforceUniqueEmail() throws SQLException {
+        // Two accounts on one address would make login ambiguous, and the duplicate is what
+        // the registration race relies on the database to reject
+        assertThat(isSecondInsertRejected(
+                "INSERT INTO app_user (email, password_hash, created_at, enabled)"
+                        + " VALUES ('dup@example.com', 'hash', now(), true)")).isTrue();
+    }
+
+    @Test
+    void Migrate_AppUserTable_ShouldEnforceUniqueApiKeyPrefix() throws SQLException {
+        // The prefix is the lookup key for a pasted API key; two accounts sharing one would
+        // make that lookup pick an arbitrary owner
+        assertThat(isSecondInsertRejected(
+                "INSERT INTO app_user (email, password_hash, created_at, enabled, api_key_prefix)"
+                        + " VALUES ('prefix' || floor(random() * 1e9) || '@example.com',"
+                        + " 'hash', now(), true, 'samepref')")).isTrue();
     }
 
     @Test

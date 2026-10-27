@@ -35,12 +35,18 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 git clone https://github.com/yehortpk/vacancy-vault.git
 ```
 4. Create .env.local environment file with the next variables:
-   - MYSQL_USERNAME - username that will be used to access <code>notifier</code> db;
-   - MYSQL_PASSWORD - password that will be used to access <code>notifier</code> db;
+   - POSTGRES_USERNAME - username that will be used to access <code>notifier</code> db;
+   - POSTGRES_PASSWORD - password that will be used to access <code>notifier</code> db;
    - TG_BOT_API_KEY - API key from your bot extracted on previous step;
    - TG_BOT_USERNAME - username of your bot extracted on previous step;
-   - MONGO_ROOT_USERNAME - username that will be used to access <code>parser-progress</code> db. 
-   - MONGO_ROOT_PASS - password that will be used to access <code>parser-progress</code> db.
+   - MONGO_ROOT_USERNAME - username that will be used to access <code>parser-progress</code> db;
+   - MONGO_ROOT_PASS - password that will be used to access <code>parser-progress</code> db;
+   - JWT_SECRET - key used to sign the login tokens. At least 32 bytes, either Base64 or raw
+     text - generate one with <code>openssl rand -base64 32</code>. Changing it invalidates
+     every existing session;
+   - SERVICE_CONNECTOR_TOKEN - shared secret the bot presents to the router's
+     <code>/connector</code> endpoints. Must be identical for both services - generate one
+     with <code>openssl rand -hex 32</code>.
 
 5. Create and run with docker
 ```
