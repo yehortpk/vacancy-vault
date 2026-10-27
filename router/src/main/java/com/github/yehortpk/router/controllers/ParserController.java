@@ -29,6 +29,11 @@ public class ParserController {
         return restTemplate.postForEntity(parserServiceURL + "/parser/start", null, APIResponse.class).getBody();
     }
 
+    @PostMapping("/stop")
+    public APIResponse stopParsing() {
+        return restTemplate.postForEntity(parserServiceURL + "/parser/stop", null, APIResponse.class).getBody();
+    }
+
     @GetMapping("/progress")
     public ParsingProgressDTO getParsingProgress() {
         return restTemplate.getForEntity(parserServiceURL + "/parser/progress", ParsingProgressDTO.class).getBody();
