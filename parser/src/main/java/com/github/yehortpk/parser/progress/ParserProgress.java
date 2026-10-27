@@ -24,6 +24,9 @@ public class ParserProgress {
      */
     @Getter
     private volatile List<PageProgress> pages = new CopyOnWriteArrayList<>();
+    @Getter
+    @Setter
+    private volatile ParserProgressStatusEnum status = ParserProgressStatusEnum.RUNNING;
 
     /**
      * Accumulated atomically rather than with a plain {@code +=}, which loses updates when the

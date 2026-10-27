@@ -8,8 +8,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-
 @Service
 @RequiredArgsConstructor
 public class ParsingHistoryService {
@@ -19,7 +17,6 @@ public class ParsingHistoryService {
     private String routerParserProgressURL;
 
     public void saveProgress(ParsingProgressDTO parsingProgress) {
-        parsingProgress.setFinishedAt(LocalDateTime.now());
         HttpEntity<ParsingProgressDTO> request =
                 new HttpEntity<>(parsingProgress);
         restTemplate.exchange(routerParserProgressURL, HttpMethod.POST, request, Void.class);
