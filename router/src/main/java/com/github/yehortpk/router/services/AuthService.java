@@ -42,34 +42,44 @@ public class AuthService {
                 jwtService.generateRefreshToken(user.getId(), user.getEmail()));
     }
 
-    private String normalizeEmail(String email) {
+    /** Email is the login identifier, so Taken@ and taken@ must resolve to one account. */
+    public static String normalizeEmail(String email) {
         return email.strip().toLowerCase();
     }
 
+    /**
+     * Stores a new account with the password hashed.
+     *
+     * @param email already normalized
+     * @throws EmailAlreadyRegisteredException if the address is taken
+     */
     @Transactional
-    public TokenPairDTO register(RegisterRequestDTO request) {
-        String email = normalizeEmail(request.email());
-
+    public AppUser createAccount(String email, String password, UserRole role) {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyRegisteredException(email);
         }
 
         AppUser user = new AppUser();
         user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(password));
         user.setCreatedAt(LocalDateTime.now());
         user.setEnabled(true);
-        // Never taken from the request: ADMIN is only ever granted in the database
-        user.setRole(UserRole.USER);
+        user.setRole(role);
 
         try {
-            userRepository.save(user);
+            return userRepository.save(user);
         } catch (DataIntegrityViolationException ex) {
             // Two concurrent registrations both pass the existsByEmail check; the unique
             // constraint is what actually decides, so report it the same way.
             throw new EmailAlreadyRegisteredException(email);
         }
+    }
 
+    @Transactional
+    public TokenPairDTO register(RegisterRequestDTO request) {
+        // Never taken from the request: ADMIN only comes from the configured admin account
+        // or the database
+        AppUser user = createAccount(normalizeEmail(request.email()), request.password(), UserRole.USER);
         return issueTokens(user);
     }
 

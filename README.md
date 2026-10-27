@@ -46,7 +46,9 @@ git clone https://github.com/yehortpk/vacancy-vault.git
      every existing session;
    - SERVICE_CONNECTOR_TOKEN - shared secret the bot presents to the router's
      <code>/connector</code> endpoints. Must be identical for both services - generate one
-     with <code>openssl rand -hex 32</code>.
+     with <code>openssl rand -hex 32</code>;
+   - ADMIN_EMAIL, ADMIN_PASSWORD - optional. The admin account the router creates on startup, so you can log in
+     to the parser room. The password needs at least 8 characters. See <i>Access levels</i> below.
 
 5. Create and run with docker
 ```
@@ -57,10 +59,20 @@ docker compose --env-file=.env.local up --build
 - <b>Guests</b> (not logged in) browse the vacancy dashboard.
 - <b>Users</b> register at <code>/register</code> and get their own account room at <code>/account</code>: the API key
   for linking Telegram and the list of linked chats.
-- <b>Admins</b> also get the parser room at <code>/parser</code>, to start a parse and watch its progress.
+- <b>Admins</b> also get the parser room at <code>/parser</code>, to start a parse and watch its progress. It is
+  opened from the profile menu in the top right corner.
 
-Every new account is a user. There is no endpoint that grants the admin role, so promote an account directly in
-the <code>notifier</code> PostgreSQL database:
+Registering through the web app always creates a user; no endpoint grants the admin role. The admin account comes
+from <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> in the env file: on startup the router creates it if
+that address is not registered yet, and you log in with exactly those credentials.
+
+It only ever creates the account, never changes one:
+- If the address is already registered as a user, it is <b>not</b> promoted (the router logs a warning). Registration
+  does not prove you own an address, so promoting it would give the parser room to whoever registered it first.
+- Changing <code>ADMIN_PASSWORD</code> later does not change the stored password.
+
+In either case, or to make an existing account an admin, set the role in the <code>notifier</code> PostgreSQL
+database:
 ```
 UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
 ```
