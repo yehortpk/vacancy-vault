@@ -4,6 +4,8 @@ import com.github.yehortpk.parser.exceptions.NoVacanciesOnPageException;
 import com.github.yehortpk.parser.models.PageDTO;
 import com.github.yehortpk.parser.parser.SiteParser;
 import com.github.yehortpk.parser.exceptions.ParsingAlreadyStartedException;
+import com.github.yehortpk.parser.exceptions.ParsingNotRunningException;
+import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
@@ -43,7 +45,7 @@ public class ParserRunnerService {
 
     private Thread runnerThread;
 
-    public void runParsing() throws ParsingAlreadyStartedException {
+    public synchronized void runParsing() throws ParsingAlreadyStartedException {
         if (runnerThread == null || !runnerThread.isAlive()) {
             parsingProgressService.init();
             runnerThread = new Thread(this::runParsers);
@@ -51,6 +53,18 @@ public class ParserRunnerService {
         } else {
             throw new ParsingAlreadyStartedException("Parsing process has already started");
         }
+    }
+
+    /**
+     * Stops the running parsing cooperatively: every company and page step that has not started
+     * yet is skipped and marked as failed, while pages already being scrapped are left to finish,
+     * since interrupting a borrowed browser mid-navigation would break the browser pool.
+     */
+    public synchronized void stopParsing() throws ParsingNotRunningException {
+        if (runnerThread == null || !runnerThread.isAlive() || !parsingProgressService.requestStop()) {
+            throw new ParsingNotRunningException("Parsing process is not running or is already stopping");
+        }
+        log.info("Parsing stop requested, waiting for the pages already being scrapped");
     }
 
     private void runParsers() {
@@ -113,7 +127,12 @@ public class ParserRunnerService {
         Set<String> claimedNewLinks = ConcurrentHashMap.newKeySet();
 
         return CompletableFuture
-                .supplyAsync(() -> siteScrapper.scrapCompanyVacancies(company), executor)
+                .supplyAsync(() -> {
+                    if (parsingProgressService.isStopRequested()) {
+                        throw new ParsingStoppedException();
+                    }
+                    return siteScrapper.scrapCompanyVacancies(company);
+                }, executor)
                 .exceptionally(ex -> {
                     handleCompanyScrapperException(ex, company);
                     return List.of();
@@ -185,7 +204,7 @@ public class ParserRunnerService {
     private void handleCompanyScrapperException(Throwable ex, CompanyDTO company) {
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         String errorLog = String.format("Company: %s, error: %s",
-                company.getTitle(), createErrorMessage((Exception) ex));
+                company.getTitle(), createStepErrorMessage(ex));
 
         log.error(errorLog);
         parserProgress.markPageError(1);
@@ -195,7 +214,7 @@ public class ParserRunnerService {
     private void handlePageScrapperException(Throwable ex, CompanyDTO company, int pageID) {
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         String errorLog = String.format("Company: %s, pageID:%s, error: %s",
-                company.getTitle(), pageID, createErrorMessage((Exception) ex));
+                company.getTitle(), pageID, createStepErrorMessage(ex));
         log.error(errorLog);
         parserProgress.markPageError(pageID);
         parserProgress.addPageLog(pageID, ParserProgress.LogLevelEnum.ERROR, errorLog);
@@ -204,7 +223,7 @@ public class ParserRunnerService {
     private void handlePageParserException(Throwable ex, CompanyDTO company, int pageID) {
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         String errorLog = String.format("Company: %s, page: %s error: %s",
-                company.getTitle(), pageID, createErrorMessage((Exception) ex));
+                company.getTitle(), pageID, createStepErrorMessage(ex));
         log.error(errorLog);
         parserProgress.markPageError(pageID);
         parserProgress.addPageLog(pageID, ParserProgress.LogLevelEnum.ERROR, errorLog);
@@ -213,9 +232,21 @@ public class ParserRunnerService {
     private void handleReconciliationException(Throwable ex, CompanyDTO company) {
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         String errorLog = String.format("Company: %s, outdated vacancies reconciliation failed: %s",
-                company.getTitle(), createErrorMessage((Exception) ex));
+                company.getTitle(), createStepErrorMessage(ex));
         log.error(errorLog);
         parserProgress.addPageLog(1, ParserProgress.LogLevelEnum.ERROR, errorLog);
+    }
+
+    /**
+     * A step skipped because of a stop request is logged as such, without the stack trace a real
+     * failure gets.
+     */
+    private String createStepErrorMessage(Throwable ex) {
+        Throwable cause = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
+        if (cause instanceof ParsingStoppedException) {
+            return cause.getMessage();
+        }
+        return createErrorMessage((Exception) ex);
     }
 
     /**
@@ -280,6 +311,10 @@ public class ParserRunnerService {
             List<VacancyDTO> persistedVacancies,
             Set<String> claimedNewLinks
     ) {
+        if (parsingProgressService.isStopRequested()) {
+            throw new ParsingStoppedException();
+        }
+
         SiteParser siteParser = (SiteParser) applicationContext.getBean(company.getBeanClass());
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
 

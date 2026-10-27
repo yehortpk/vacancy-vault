@@ -22,6 +22,12 @@ public class ParserController {
         return new APIResponse(200, "Parsing has been started");
     }
 
+    @PostMapping("/stop")
+    public APIResponse stopParsing() {
+        parserRunnerService.stopParsing();
+        return new APIResponse(200, "Parsing is stopping");
+    }
+
     @GetMapping("/progress")
     public ParsingProgressDTO getProgress() {
         return parsingProgressService.getProgress();
