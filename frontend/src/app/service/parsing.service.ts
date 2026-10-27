@@ -12,12 +12,12 @@ import { environment } from '../../environment';
   
     constructor(private http: HttpClient) {}
   
-    startParsing(): void {
-      this.http.post(`${this.baseUrl}/start`, {}).subscribe(
-        {
-            error: console.error
-        }
-      );
+    startParsing(): Observable<unknown> {
+      return this.http.post(`${this.baseUrl}/start`, {});
+    }
+
+    stopParsing(): Observable<unknown> {
+      return this.http.post(`${this.baseUrl}/stop`, {});
     }
   
     getProgress(): Observable<ParsingProgress> {

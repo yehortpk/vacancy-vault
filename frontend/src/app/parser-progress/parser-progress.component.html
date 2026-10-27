@@ -1,6 +1,6 @@
 <div class="py-8 px-4 sm:px-6 lg:px-8">
   <!-- Empty State -->
-  <div *ngIf="progress.parsers.length === 0" class="flex flex-col items-center justify-center py-20">
+  <div *ngIf="progress.parsers.length === 0 && !isParsingRunning" class="flex flex-col items-center justify-center py-20">
     <svg class="w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
@@ -18,21 +18,47 @@
   </div>
 
   <!-- Active Parsing -->
-  <div *ngIf="progress.parsers.length > 0" class="space-y-8">
+  <div *ngIf="progress.parsers.length > 0 || isParsingRunning" class="space-y-8">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">Parser Status</h1>
+        <div class="flex items-center gap-3 mb-2">
+          <h1 class="text-4xl font-bold text-slate-900 dark:text-white">Parser Status</h1>
+          <span
+            class="inline-flex items-center gap-2 text-sm font-medium px-3 py-1 rounded-full"
+            [ngClass]="{
+              'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300': progress.status === 'RUNNING',
+              'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300': progress.status === 'STOPPING',
+              'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': progress.status === 'FINISHED',
+              'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300': progress.status === 'STOPPED' || progress.status === 'IDLE'
+            }"
+          >
+            <span *ngIf="isParsingRunning" class="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+            {{ parsingStatusLabels[progress.status] }}
+          </span>
+        </div>
         <p class="text-slate-600 dark:text-slate-400">Monitor your job parsing pipeline</p>
       </div>
       <button
+        *ngIf="isParsingRunning"
+        (click)="stopParsing()"
+        [disabled]="progress.status === 'STOPPING'"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-900 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
+      >
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+        </svg>
+        {{ progress.status === 'STOPPING' ? 'Stopping…' : 'Stop Parsing' }}
+      </button>
+      <button
+        *ngIf="!isParsingRunning"
         (click)="startParsing()"
         class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
       >
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
         </svg>
-        Restart Parsing
+        Start Parsing
       </button>
     </div>
 
@@ -46,13 +72,27 @@
         <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+              <div
+                class="w-2.5 h-2.5 rounded-full"
+                [ngClass]="{
+                  'bg-blue-500 animate-pulse': parserItem.status === 'RUNNING',
+                  'bg-emerald-500': parserItem.status === 'FINISHED',
+                  'bg-red-500': parserItem.status === 'ERROR'
+                }"
+              ></div>
               <h3 class="text-lg font-semibold text-slate-900 dark:text-white" *ngIf="parserItem.id">
                 {{ parserItem.title }}
               </h3>
             </div>
-            <span class="text-xs font-medium px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full">
-              {{ (parserItem.pages | slice:0:1 | slice:0:1).length > 0 ? 'Running' : 'Pending' }}
+            <span
+              class="text-xs font-medium px-3 py-1 rounded-full"
+              [ngClass]="{
+                'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300': parserItem.status === 'RUNNING',
+                'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': parserItem.status === 'FINISHED',
+                'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300': parserItem.status === 'ERROR'
+              }"
+            >
+              {{ parserStatusLabels[parserItem.status] }}
             </span>
           </div>
         </div>
