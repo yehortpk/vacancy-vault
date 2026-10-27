@@ -79,6 +79,32 @@ class FlywayMigrationTest extends PostgresContainerTest {
     }
 
     /**
+     * Links the same chat id to two freshly inserted accounts and reports whether the second
+     * attempt was refused. Rolled back, so neither probe row survives.
+     */
+    private boolean isChatIdRejectedTwice() throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("INSERT INTO app_user (email, password_hash, created_at, enabled)"
+                        + " VALUES ('chat-a@example.com', 'hash', now(), true),"
+                        + " ('chat-b@example.com', 'hash', now(), true)");
+                statement.execute("INSERT INTO telegram_connection (user_id, chat_id, linked_at)"
+                        + " SELECT id, 777000111, now() FROM app_user"
+                        + " WHERE email = 'chat-a@example.com'");
+                statement.execute("INSERT INTO telegram_connection (user_id, chat_id, linked_at)"
+                        + " SELECT id, 777000111, now() FROM app_user"
+                        + " WHERE email = 'chat-b@example.com'");
+                return false;
+            } catch (SQLException ex) {
+                return true;
+            } finally {
+                connection.rollback();
+            }
+        }
+    }
+
+    /**
      * Inserts a row without an id and returns the generated one.
      *
      * <p>Rolled back explicitly: these helpers open their own JDBC connection, which the
@@ -122,6 +148,7 @@ class FlywayMigrationTest extends PostgresContainerTest {
         assertThat(countRows("client")).isZero();
         assertThat(countRows("filter")).isZero();
         assertThat(countRows("app_user")).isZero();
+        assertThat(countRows("telegram_connection")).isZero();
     }
 
     @Test
@@ -149,6 +176,26 @@ class FlywayMigrationTest extends PostgresContainerTest {
                 "INSERT INTO app_user (email, password_hash, created_at, enabled, api_key_prefix)"
                         + " VALUES ('prefix' || floor(random() * 1e9) || '@example.com',"
                         + " 'hash', now(), true, 'samepref')")).isTrue();
+    }
+
+    @Test
+    void Migrate_ProviderCatalog_ShouldContainTheTelegramRow() throws SQLException {
+        // V3 seeds the catalog; ChannelProvider.TELEGRAM has to have a row to join against
+        assertThat(countWhere("provider", "code = 'TELEGRAM' AND enabled")).isEqualTo(1);
+    }
+
+    @Test
+    void Migrate_TelegramConnectionTable_ShouldEnforceOneAccountPerChat() throws SQLException {
+        // The UNIQUE on chat_id is the whole guarantee that a chat has a single owner; the
+        // bot would otherwise deliver one chat's notifications to two accounts
+        assertThat(isChatIdRejectedTwice()).isTrue();
+    }
+
+    @Test
+    void Migrate_TelegramConnectionChatId_ShouldBeATypedInteger() throws SQLException {
+        // A stringified id in a column shared across platforms is exactly what the
+        // per-provider tables exist to avoid
+        assertThat(columnType("telegram_connection", "chat_id")).isEqualTo("bigint");
     }
 
     @Test

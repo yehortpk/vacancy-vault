@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @ControllerAdvice
@@ -50,6 +51,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadCredentialsException.class, DisabledException.class, AuthenticationException.class})
     public ResponseEntity<Object> handleAuthenticationException(AuthenticationException ex) {
         return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, "Invalid email or password"));
+    }
+
+    @ExceptionHandler(ChatAlreadyLinkedException.class)
+    public ResponseEntity<Object> handleChatAlreadyLinkedException(ChatAlreadyLinkedException ex) {
+        return ResponseEntity.status(CONFLICT).body(new APIResponse(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidApiKeyException.class)
+    public ResponseEntity<Object> handleInvalidApiKeyException(InvalidApiKeyException ex) {
+        return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, ex.getMessage()));
+    }
+
+    /**
+     * 404 rather than 403, so a caller cannot tell an id that does not exist from one that
+     * belongs to somebody else and therefore cannot enumerate connection ids.
+     */
+    @ExceptionHandler(ConnectionNotFoundException.class)
+    public ResponseEntity<Object> handleConnectionNotFoundException(ConnectionNotFoundException ex) {
+        return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidTokenException.class)

@@ -2,6 +2,8 @@ package com.github.yehortpk.router.config;
 
 import com.github.yehortpk.router.security.JwtAuthFilter;
 import com.github.yehortpk.router.security.JwtService;
+import com.github.yehortpk.router.security.ServiceTokenAuthFilter;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,8 +36,11 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 public class WebSecurityConfig {
     private final JwtService jwtService;
 
+    @Value("${service.connector-token}")
+    private String serviceConnectorToken;
+
     /**
-     * The authentication filter is built here rather than annotated {@code @Component},
+     * Both authentication filters are built here rather than annotated {@code @Component},
      * because a filter bean is also picked up by Boot's servlet filter registration and
      * would then run outside the security chain as well as inside it. Outside, it populates
      * the context before the chain's own filters get to it, and the chain then clears that
@@ -45,6 +50,11 @@ public class WebSecurityConfig {
     @Bean
     public JwtAuthFilter jwtAuthFilter() {
         return new JwtAuthFilter(jwtService);
+    }
+
+    @Bean
+    public ServiceTokenAuthFilter serviceTokenAuthFilter() {
+        return new ServiceTokenAuthFilter(serviceConnectorToken);
     }
 
     @Bean
@@ -91,11 +101,14 @@ public class WebSecurityConfig {
                         // service token on the parser side too, and is deliberately deferred.
                         .requestMatchers("/vacancy/**", "/company/**", "/parser/**").permitAll()
                         .requestMatchers("/filter/**").permitAll()
+                        // Called by the bot with a shared secret, never by a browser
+                        .requestMatchers("/connector/**").hasRole("SERVICE")
                         .requestMatchers("/me/**").authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(handling ->
                         handling.authenticationEntryPoint(authenticationEntryPoint()))
                 .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(serviceTokenAuthFilter(), UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable());
 
