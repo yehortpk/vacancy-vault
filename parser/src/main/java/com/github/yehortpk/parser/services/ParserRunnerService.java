@@ -6,6 +6,7 @@ import com.github.yehortpk.parser.parser.SiteParser;
 import com.github.yehortpk.parser.exceptions.ParsingAlreadyStartedException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.progress.ParserProgress;
+import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.scrapper.site.SiteScrapper;
 import lombok.RequiredArgsConstructor;
@@ -53,38 +54,38 @@ public class ParserRunnerService {
     }
 
     private void runParsers() {
-        List<CompanyDTO> companies = companyService.getCompaniesList();
-
-        if (companies.isEmpty()) {
-            return;
-        }
-
-        ExecutorService executor = Executors.newFixedThreadPool(companyConcurrency);
         try {
-            List<CompletableFuture<Void>> companyFutures = companies.stream()
-                    .map(company -> parseCompanyAsync(company, executor))
-                    .filter(Objects::nonNull)
-                    .toList();
+            List<CompanyDTO> companies = companyService.getCompaniesList();
 
-            CompletableFuture.allOf(companyFutures.toArray(new CompletableFuture[0])).join();
+            ExecutorService executor = Executors.newFixedThreadPool(companyConcurrency);
+            try {
+                List<CompletableFuture<Void>> companyFutures = companies.stream()
+                        .map(company -> parseCompanyAsync(company, executor))
+                        .filter(Objects::nonNull)
+                        .toList();
+
+                CompletableFuture.allOf(companyFutures.toArray(new CompletableFuture[0])).join();
+            } finally {
+                executor.shutdown();
+            }
         } finally {
-            executor.shutdown();
+            // Also reached with no companies or a failed run, so the status never stays RUNNING
+            finishParsing();
         }
-
-        finishParsing();
     }
 
     private void finishParsing() {
         notifierService.resetPublishedLinks();
-        parsingProgressService.setFinished(true);
+        parsingProgressService.markCompleted();
         parsingHistoryService.saveProgress(parsingProgressService.getProgress());
 
         log.info("""
-                Parsing completed.\s
+                Parsing completed with status %s.\s
                 Total vacancies parsed: %s\s
                 New vacancies count: %s\s
                 Outdated vacancies count: %s
                 """.formatted(
+                parsingProgressService.getStatus(),
                 parsingProgressService.getParsedVacanciesCnt(),
                 parsingProgressService.getNewVacanciesCnt(),
                 parsingProgressService.getOutdatedVacanciesCnt()
@@ -104,7 +105,7 @@ public class ParserRunnerService {
 
         int companyId = company.getCompanyId();
         List<VacancyDTO> persistedVacancies = companyService.getPersistedVacancies(companyId);
-        parsingProgressService.addParserProgress(companyId, company.getTitle());
+        ParserProgress parserProgress = parsingProgressService.addParserProgress(companyId, company.getTitle());
 
         // Pages are parsed concurrently against one snapshot of the persisted vacancies, so the
         // same vacancy can be classified as new by several pages. Links claimed here keep every
@@ -120,7 +121,16 @@ public class ParserRunnerService {
                 .thenCompose(pageFutures ->
                         parseAllPages(pageFutures, company, persistedVacancies, claimedNewLinks, executor))
                 .thenAccept(parsedVacancies ->
-                        reconcileOutdatedVacancies(parsedVacancies, persistedVacancies, company));
+                        reconcileOutdatedVacancies(parsedVacancies, persistedVacancies, company))
+                .handle((ignored, ex) -> {
+                    if (ex != null) {
+                        handleReconciliationException(ex, company);
+                    }
+                    parserProgress.setStatus(ex == null && parserProgress.hasAllPagesParsed()
+                            ? ParserProgressStatusEnum.FINISHED
+                            : ParserProgressStatusEnum.ERROR);
+                    return null;
+                });
     }
 
     private SiteScrapper resolveScrapper(CompanyDTO company) {
@@ -198,6 +208,14 @@ public class ParserRunnerService {
         log.error(errorLog);
         parserProgress.markPageError(pageID);
         parserProgress.addPageLog(pageID, ParserProgress.LogLevelEnum.ERROR, errorLog);
+    }
+
+    private void handleReconciliationException(Throwable ex, CompanyDTO company) {
+        ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
+        String errorLog = String.format("Company: %s, outdated vacancies reconciliation failed: %s",
+                company.getTitle(), createErrorMessage((Exception) ex));
+        log.error(errorLog);
+        parserProgress.addPageLog(1, ParserProgress.LogLevelEnum.ERROR, errorLog);
     }
 
     /**

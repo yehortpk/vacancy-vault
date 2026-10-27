@@ -2,10 +2,11 @@ package com.github.yehortpk.parser.services;
 
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
+import com.github.yehortpk.parser.progress.ParsingStatusEnum;
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,24 +27,43 @@ public class ParsingProgressService {
     private final AtomicInteger newVacanciesCnt = new AtomicInteger();
     private final AtomicInteger outdatedVacanciesCnt = new AtomicInteger();
 
-    @Setter
     @Getter
-    private volatile boolean finished;
+    private volatile ParsingStatusEnum status;
+    private volatile LocalDateTime startedAt;
+    private volatile LocalDateTime finishedAt;
 
     public ParsingProgressService() {
-        init();
+        resetProgress();
+        this.status = ParsingStatusEnum.IDLE;
     }
 
     public void init() {
         progressLock.lock();
         try {
-            this.parsingHash = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
-            this.parsedVacanciesCnt.set(0);
-            this.newVacanciesCnt.set(0);
-            this.outdatedVacanciesCnt.set(0);
-            this.finished = false;
+            resetProgress();
+            this.status = ParsingStatusEnum.RUNNING;
+            this.startedAt = LocalDateTime.now();
+        } finally {
+            progressLock.unlock();
+        }
+    }
 
-            this.parsers = new ConcurrentHashMap<>();
+    private void resetProgress() {
+        this.parsingHash = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        this.parsedVacanciesCnt.set(0);
+        this.newVacanciesCnt.set(0);
+        this.outdatedVacanciesCnt.set(0);
+        this.startedAt = null;
+        this.finishedAt = null;
+
+        this.parsers = new ConcurrentHashMap<>();
+    }
+
+    public void markCompleted() {
+        progressLock.lock();
+        try {
+            this.status = ParsingStatusEnum.FINISHED;
+            this.finishedAt = LocalDateTime.now();
         } finally {
             progressLock.unlock();
         }
@@ -89,10 +109,13 @@ public class ParsingProgressService {
         return ParsingProgressDTO.builder()
                 .parsingHash(parsingHash)
                 .parsers(parsers)
-                .finished(finished)
+                .status(status)
+                .finished(status == ParsingStatusEnum.FINISHED)
                 .parsedVacanciesTotalCount(parsedVacanciesCnt.get())
                 .newVacanciesTotalCount(newVacanciesCnt.get())
                 .outdatedVacanciesTotalCount(outdatedVacanciesCnt.get())
+                .startedAt(startedAt)
+                .finishedAt(finishedAt)
                 .build();
     }
 }
