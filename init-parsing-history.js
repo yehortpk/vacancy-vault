@@ -19,8 +19,14 @@ db.createCollection('parsing-history', {
         outdated_vacancies: {
           bsonType: 'int'
         },
+        status: {
+          enum: ['IDLE', 'RUNNING', 'STOPPING', 'FINISHED', 'STOPPED']
+        },
         finished: {
           bsonType: 'bool'
+        },
+        started_at: {
+          bsonType: 'date'
         },
         finished_at: {
           bsonType: 'date'
@@ -39,6 +45,9 @@ db.createCollection('parsing-history', {
               },
               parser_total_pages: {
                 bsonType: 'int'
+              },
+              parser_status: {
+                enum: ['RUNNING', 'FINISHED', 'ERROR']
               },
               parsed_vacancies: {
                 bsonType: 'int'

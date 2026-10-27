@@ -13,6 +13,7 @@ import java.util.List;
 @Builder
 public class ParsingProgressDTO {
     private String parsingHash;
+    private ParsingStatusEnum status;
     @Builder.Default
     private boolean finished = false;
     @Setter
@@ -27,6 +28,8 @@ public class ParsingProgressDTO {
     @JsonProperty("outdated")
     @Builder.Default
     private int outdatedVacanciesTotalCount = 0;
+    @JsonProperty("started_at")
+    private LocalDateTime startedAt;
     @JsonProperty("finished_at")
     private LocalDateTime finishedAt;
 }

@@ -30,10 +30,14 @@ public class ParsingProgress {
     private Integer newVacancies;
     @Field("outdated_vacancies")
     private Integer outdatedVacancies;
+    @Field("status")
+    private ParsingStatusEnum status;
     @Field("finished")
     private Boolean finished;
     @Field("parsers")
     private List<ParserProgress> parsers;
+    @Field("started_at")
+    private LocalDateTime startedAt;
     @Field("finished_at")
     private LocalDateTime finishedAt;
 }

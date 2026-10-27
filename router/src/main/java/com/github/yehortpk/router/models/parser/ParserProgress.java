@@ -19,6 +19,8 @@ public class ParserProgress {
     private String title;
     @Field("parser_total_pages")
     private int totalPages;
+    @Field("parser_status")
+    private ParserProgressStatusEnum status;
 
     @Field("parsed_vacancies")
     private int parsedVacanciesCnt;
