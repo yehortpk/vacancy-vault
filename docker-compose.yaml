@@ -130,9 +130,6 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://notifier-kafka:9092,PLAINTEXT_HOST://localhost:29092
-    # A stale /brokers/ids/1 znode left by an unclean shutdown makes the first start of the day
-    # fail with NodeExists until zookeeper expires the old session; restarting clears it.
-    restart: on-failure
     depends_on:
       zookeeper:
         condition: service_healthy
