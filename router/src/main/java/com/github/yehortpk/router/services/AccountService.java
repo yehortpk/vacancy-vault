@@ -24,6 +24,7 @@ public class AccountService {
         return new AccountDTO(
                 user.getId(),
                 user.getEmail(),
+                user.getRole(),
                 user.getCreatedAt(),
                 user.getApiKeyPrefix(),
                 user.getApiKeyHash() != null);

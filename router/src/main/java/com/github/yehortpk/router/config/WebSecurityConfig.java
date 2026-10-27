@@ -1,5 +1,6 @@
 package com.github.yehortpk.router.config;
 
+import com.github.yehortpk.router.models.user.UserRole;
 import com.github.yehortpk.router.security.JwtAuthFilter;
 import com.github.yehortpk.router.security.JwtService;
 import com.github.yehortpk.router.security.ServiceTokenAuthFilter;
@@ -28,7 +29,8 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
  *
  * <p>Adding spring-boot-starter-security switches on HTTP Basic over every endpoint by
  * default, which would 401 the parser's ingest calls and the dashboard's anonymous reads.
- * Those stay public; the per-user endpoints require a bearer token.
+ * Those stay public; the per-user endpoints require a bearer token, and the parser
+ * controls require an admin's.
  */
 @Configuration
 @EnableWebSecurity
@@ -99,11 +101,18 @@ public class WebSecurityConfig {
                         // The parser calls these with no credentials and the dashboard reads
                         // vacancies anonymously. Locking the ingest pipeline down needs a
                         // service token on the parser side too, and is deliberately deferred.
-                        .requestMatchers("/vacancy/**", "/company/**", "/parser/**").permitAll()
+                        .requestMatchers("/vacancy/**", "/company/**").permitAll()
                         .requestMatchers("/filter/**").permitAll()
+                        // The parser reports its progress here, unauthenticated like the rest
+                        // of the ingest pipeline. Must precede the admin rule below, which
+                        // would otherwise match it first.
+                        .requestMatchers(HttpMethod.POST, "/parser/progress").permitAll()
+                        // Starting a parse and watching it is the admin's room
+                        .requestMatchers("/parser/**").hasRole(UserRole.ADMIN.name())
                         // Called by the bot with a shared secret, never by a browser
                         .requestMatchers("/connector/**").hasRole("SERVICE")
-                        .requestMatchers("/me/**").authenticated()
+                        // Each account's own room; an admin has one too
+                        .requestMatchers("/me/**").hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
                         .anyRequest().permitAll())
                 .exceptionHandling(handling ->
                         handling.authenticationEntryPoint(authenticationEntryPoint()))

@@ -53,6 +53,20 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 docker compose --env-file=.env.local up --build
 ```
 
+### Access levels
+- <b>Guests</b> (not logged in) browse the vacancy dashboard.
+- <b>Users</b> register at <code>/register</code> and get their own account room at <code>/account</code>: the API key
+  for linking Telegram and the list of linked chats.
+- <b>Admins</b> also get the parser room at <code>/parser</code>, to start a parse and watch its progress.
+
+Every new account is a user. There is no endpoint that grants the admin role, so promote an account directly in
+the <code>notifier</code> PostgreSQL database:
+```
+UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+The role is read into the login token, so it takes effect after the next login, or within 15 minutes when the
+token refreshes.
+
 ## Usage
 The app needs the client to create parsing information for both sides - in the code itself and in the database. Let's look at the features of the code.
 

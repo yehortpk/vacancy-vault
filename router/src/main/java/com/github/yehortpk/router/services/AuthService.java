@@ -6,6 +6,7 @@ import com.github.yehortpk.router.models.auth.LoginRequestDTO;
 import com.github.yehortpk.router.models.auth.RegisterRequestDTO;
 import com.github.yehortpk.router.models.auth.TokenPairDTO;
 import com.github.yehortpk.router.models.user.AppUser;
+import com.github.yehortpk.router.models.user.UserRole;
 import com.github.yehortpk.router.repositories.UserRepository;
 import com.github.yehortpk.router.security.JwtService;
 import io.jsonwebtoken.Claims;
@@ -37,7 +38,7 @@ public class AuthService {
 
     private TokenPairDTO issueTokens(AppUser user) {
         return new TokenPairDTO(
-                jwtService.generateAccessToken(user.getId(), user.getEmail()),
+                jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole()),
                 jwtService.generateRefreshToken(user.getId(), user.getEmail()));
     }
 
@@ -58,6 +59,8 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setCreatedAt(LocalDateTime.now());
         user.setEnabled(true);
+        // Never taken from the request: ADMIN is only ever granted in the database
+        user.setRole(UserRole.USER);
 
         try {
             userRepository.save(user);

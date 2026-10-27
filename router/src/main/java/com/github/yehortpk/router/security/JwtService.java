@@ -1,6 +1,8 @@
 package com.github.yehortpk.router.security;
 
+import com.github.yehortpk.router.models.user.UserRole;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.DecodingException;
@@ -29,6 +31,7 @@ public class JwtService {
     static final String ACCESS_TOKEN_TYPE = "access";
     static final String REFRESH_TOKEN_TYPE = "refresh";
     private static final String EMAIL_CLAIM = "email";
+    private static final String ROLE_CLAIM = "role";
 
     private final SecretKey signingKey;
     private final Duration accessTokenTTL;
@@ -63,7 +66,7 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    private String generateToken(long userId, String email, String tokenType, Duration ttl) {
+    private JwtBuilder buildToken(long userId, String email, String tokenType, Duration ttl) {
         Instant issuedAt = Instant.now();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
@@ -71,16 +74,23 @@ public class JwtService {
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(issuedAt.plus(ttl)))
-                .signWith(signingKey)
+                .signWith(signingKey);
+    }
+
+    /**
+     * The role rides in the access token so authorization needs no database read per
+     * request. A role change therefore takes effect at the next refresh, which reloads the
+     * account, so within one access token lifetime at most.
+     */
+    public String generateAccessToken(long userId, String email, UserRole role) {
+        return buildToken(userId, email, ACCESS_TOKEN_TYPE, accessTokenTTL)
+                .claim(ROLE_CLAIM, role.name())
                 .compact();
     }
 
-    public String generateAccessToken(long userId, String email) {
-        return generateToken(userId, email, ACCESS_TOKEN_TYPE, accessTokenTTL);
-    }
-
+    /** Carries no role: refreshing reloads the account and reads the current one. */
     public String generateRefreshToken(long userId, String email) {
-        return generateToken(userId, email, REFRESH_TOKEN_TYPE, refreshTokenTTL);
+        return buildToken(userId, email, REFRESH_TOKEN_TYPE, refreshTokenTTL).compact();
     }
 
     /**
@@ -102,6 +112,17 @@ public class JwtService {
 
     public String extractEmail(Claims claims) {
         return claims.get(EMAIL_CLAIM, String.class);
+    }
+
+    /**
+     * Falls back to the least privileged role when the claim is missing, which is the case
+     * for access tokens issued before roles existed.
+     *
+     * @throws IllegalArgumentException if the claim names no known role
+     */
+    public UserRole extractRole(Claims claims) {
+        String role = claims.get(ROLE_CLAIM, String.class);
+        return role == null ? UserRole.USER : UserRole.valueOf(role);
     }
 
     public boolean isAccessToken(Claims claims) {

@@ -13,7 +13,8 @@ public class AppUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     private AuthenticatedUser toPrincipal(AppUser user) {
-        return new AuthenticatedUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.isEnabled());
+        return new AuthenticatedUser(
+                user.getId(), user.getEmail(), user.getPasswordHash(), user.isEnabled(), user.getRole());
     }
 
     @Override
