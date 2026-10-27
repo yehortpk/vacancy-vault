@@ -170,7 +170,7 @@ services:
       retries: 3
 
   mongo:
-    image: mongo:6.0
+    image: mongo:8.0
     container_name: notifier-mongo
     ports:
       - "27017:27017"

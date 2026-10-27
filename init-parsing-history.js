@@ -5,7 +5,7 @@ db.createCollection('parsing-history', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['parsing_hash', 'parsed_vacancies', 'new_vacancies', 'finished', 'parsers'],
+      required: ['parsing_hash', 'parsed_vacancies', 'new_vacancies', 'outdated_vacancies', 'finished', 'finished_at', 'parsers'],
       properties: {
         parsing_hash: {
           bsonType: 'string'
@@ -14,6 +14,9 @@ db.createCollection('parsing-history', {
           bsonType: 'int'
         },
         new_vacancies: {
+          bsonType: 'int'
+        },
+        outdated_vacancies: {
           bsonType: 'int'
         },
         finished: {
@@ -89,7 +92,3 @@ db.createCollection('parsing-history', {
     }
   }
 });
-
-// Create indexes if needed
-db.parsing_sessions.createIndex({ "parsing_hash": 1 }, { unique: true });
-db.parsing_sessions.createIndex({ "parsers.parser_id": 1 });
