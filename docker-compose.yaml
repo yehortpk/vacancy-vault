@@ -4,7 +4,8 @@ services:
     build:
       dockerfile: ./parser/Dockerfile
     volumes:
-      - ./logs:/app/logs
+      - ./:/opt/app
+      - maven-home:/home/ubuntu
     networks:
       - notifier-network
     ports:
@@ -28,6 +29,9 @@ services:
     container_name: notifier-router
     build:
       dockerfile: ./router/Dockerfile
+    volumes:
+      - ./:/opt/app
+      - maven-home:/home/ubuntu
     networks:
       - notifier-network
     ports:
@@ -46,6 +50,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 180s
     depends_on:
       kafka:
         condition: service_healthy
@@ -56,6 +61,9 @@ services:
     container_name: notifier-bot
     build:
       dockerfile: ./subscriber-bot/Dockerfile
+    volumes:
+      - ./:/opt/app
+      - maven-home:/home/ubuntu
     networks:
       - notifier-network
     ports:
@@ -196,3 +204,4 @@ volumes:
   notifier-zookeeper-log:
   notifier-mongo-data:
   frontend-node-modules:
+  maven-home:

@@ -36,3 +36,6 @@ build/
 frontend/.editorconfig
 frontend/package-lock.json
 /logs/
+
+### Claude Code ###
+.claude/

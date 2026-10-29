@@ -16,6 +16,7 @@ public class ParsingProgressDTO {
     @Builder.Default
     private boolean finished = false;
     @Setter
+    @Builder.Default
     private List<ParserProgress> parsers = new ArrayList<>();
 
     @JsonProperty("total")
