@@ -20,7 +20,7 @@ db.createCollection('parsing-history', {
           bsonType: 'int'
         },
         status: {
-          enum: ['IDLE', 'RUNNING', 'STOPPING', 'FINISHED', 'STOPPED']
+          enum: ['IDLE', 'RUNNING', 'STOPPING', 'FINISHED', 'STOPPED', 'FAILED']
         },
         finished: {
           bsonType: 'bool'

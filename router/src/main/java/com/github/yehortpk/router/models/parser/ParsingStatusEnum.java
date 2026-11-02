@@ -5,5 +5,6 @@ public enum ParsingStatusEnum {
     RUNNING,
     STOPPING,
     FINISHED,
-    STOPPED
+    STOPPED,
+    FAILED
 }
