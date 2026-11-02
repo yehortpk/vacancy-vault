@@ -91,6 +91,16 @@ public class ParsingProgressService {
         }
     }
 
+    public void markFailed() {
+        progressLock.lock();
+        try {
+            this.status = ParsingStatusEnum.FAILED;
+            this.finishedAt = LocalDateTime.now();
+        } finally {
+            progressLock.unlock();
+        }
+    }
+
     public ParserProgress addParserProgress(int id, String title) {
         ParserProgress newParserProgress = new ParserProgress(id, title);
         ParserProgress existing = parsers.putIfAbsent(id, newParserProgress);
@@ -132,7 +142,9 @@ public class ParsingProgressService {
                 .parsingHash(parsingHash)
                 .parsers(parsers)
                 .status(status)
-                .finished(status == ParsingStatusEnum.FINISHED || status == ParsingStatusEnum.STOPPED)
+                .finished(status == ParsingStatusEnum.FINISHED
+                        || status == ParsingStatusEnum.STOPPED
+                        || status == ParsingStatusEnum.FAILED)
                 .parsedVacanciesTotalCount(parsedVacanciesCnt.get())
                 .newVacanciesTotalCount(newVacanciesCnt.get())
                 .outdatedVacanciesTotalCount(outdatedVacanciesCnt.get())

@@ -69,28 +69,32 @@ public class ParserRunnerService {
 
     private void runParsers() {
         try {
-            List<CompanyDTO> companies = companyService.getCompaniesList();
+            parseCompanies(companyService.getCompaniesList());
+            parsingProgressService.markCompleted();
+        } catch (RuntimeException ex) {
+            log.error("Parsing failed: {}", createErrorMessage(ex));
+            parsingProgressService.markFailed();
+        }
 
-            ExecutorService executor = Executors.newFixedThreadPool(companyConcurrency);
-            try {
-                List<CompletableFuture<Void>> companyFutures = companies.stream()
-                        .map(company -> parseCompanyAsync(company, executor))
-                        .filter(Objects::nonNull)
-                        .toList();
+        finishParsing();
+    }
 
-                CompletableFuture.allOf(companyFutures.toArray(new CompletableFuture[0])).join();
-            } finally {
-                executor.shutdown();
-            }
+    private void parseCompanies(List<CompanyDTO> companies) {
+        ExecutorService executor = Executors.newFixedThreadPool(companyConcurrency);
+        try {
+            List<CompletableFuture<Void>> companyFutures = companies.stream()
+                    .map(company -> parseCompanyAsync(company, executor))
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            CompletableFuture.allOf(companyFutures.toArray(new CompletableFuture[0])).join();
         } finally {
-            // Also reached with no companies or a failed run, so the status never stays RUNNING
-            finishParsing();
+            executor.shutdown();
         }
     }
 
     private void finishParsing() {
         notifierService.resetPublishedLinks();
-        parsingProgressService.markCompleted();
         parsingHistoryService.saveProgress(parsingProgressService.getProgress());
 
         log.info("""
@@ -109,7 +113,8 @@ public class ParserRunnerService {
     /**
      * Kicks off scrapping and parsing for a single company: scrap its pages, parse vacancies from
      * each page in parallel, then reconcile parsed vacancies against what's already persisted.
-     * Returns null (instead of a future) if the company has no registered scrapper bean.
+     * Returns null (instead of a future) if the company has no registered scrapper bean, or its
+     * persisted vacancies could not be loaded.
      */
     private CompletableFuture<Void> parseCompanyAsync(CompanyDTO company, ExecutorService executor) {
         SiteScrapper siteScrapper = resolveScrapper(company);
@@ -118,8 +123,17 @@ public class ParserRunnerService {
         }
 
         int companyId = company.getCompanyId();
-        List<VacancyDTO> persistedVacancies = companyService.getPersistedVacancies(companyId);
         ParserProgress parserProgress = parsingProgressService.addParserProgress(companyId, company.getTitle());
+
+        List<VacancyDTO> persistedVacancies;
+        try {
+            persistedVacancies = companyService.getPersistedVacancies(companyId);
+        } catch (RuntimeException ex) {
+            // Handled here, since the companies before this one are already being parsed
+            handleCompanyScrapperException(ex, company);
+            parserProgress.setStatus(ParserProgressStatusEnum.ERROR);
+            return null;
+        }
 
         // Pages are parsed concurrently against one snapshot of the persisted vacancies, so the
         // same vacancy can be classified as new by several pages. Links claimed here keep every
