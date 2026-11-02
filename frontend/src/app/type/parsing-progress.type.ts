@@ -12,7 +12,7 @@ export interface PageProgress {
 
 export type ParserStatus = 'RUNNING' | 'FINISHED' | 'ERROR';
 
-export type ParsingStatus = 'IDLE' | 'RUNNING' | 'STOPPING' | 'FINISHED' | 'STOPPED';
+export type ParsingStatus = 'IDLE' | 'RUNNING' | 'STOPPING' | 'FINISHED' | 'STOPPED' | 'FAILED';
 
 export interface ParserProgress {
     id: number

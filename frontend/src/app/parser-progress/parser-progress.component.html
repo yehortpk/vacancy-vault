@@ -1,6 +1,11 @@
 <div class="py-8 px-4 sm:px-6 lg:px-8">
+  <!-- Start or Stop Error -->
+  <div *ngIf="actionError" role="alert" class="mb-6 px-4 py-3 rounded-lg text-sm bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
+    {{ actionError }}
+  </div>
+
   <!-- Empty State -->
-  <div *ngIf="progress.parsers.length === 0 && !isParsingRunning" class="flex flex-col items-center justify-center py-20">
+  <div *ngIf="!isProgressShown" class="flex flex-col items-center justify-center py-20">
     <svg class="w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
@@ -18,7 +23,7 @@
   </div>
 
   <!-- Active Parsing -->
-  <div *ngIf="progress.parsers.length > 0 || isParsingRunning" class="space-y-8">
+  <div *ngIf="isProgressShown" class="space-y-8">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div>
@@ -30,7 +35,8 @@
               'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300': progress.status === 'RUNNING',
               'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300': progress.status === 'STOPPING',
               'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300': progress.status === 'FINISHED',
-              'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300': progress.status === 'STOPPED' || progress.status === 'IDLE'
+              'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300': progress.status === 'STOPPED' || progress.status === 'IDLE',
+              'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300': progress.status === 'FAILED'
             }"
           >
             <span *ngIf="isParsingRunning" class="w-2 h-2 rounded-full bg-current animate-pulse"></span>

@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,7 +17,8 @@ const PARSING_STATUS_LABELS: Record<ParsingStatus, string> = {
   RUNNING: 'Running',
   STOPPING: 'Stopping',
   FINISHED: 'Finished',
-  STOPPED: 'Stopped'
+  STOPPED: 'Stopped',
+  FAILED: 'Failed'
 };
 
 @Component({
@@ -42,6 +44,7 @@ export class ParserProgressComponent implements OnInit, OnDestroy {
     started_at: null,
     finished_at: null
   };
+  protected actionError: string | null = null;
   private progressInterval: any;
   constructor(private parsingService: ParsingService){};
 
@@ -63,7 +66,13 @@ export class ParserProgressComponent implements OnInit, OnDestroy {
     return this.progress.status === 'RUNNING' || this.progress.status === 'STOPPING';
   }
 
+  // A run can fail before any company is registered, and the empty state would hide that
+  protected get isProgressShown(): boolean {
+    return this.progress.parsers.length > 0 || this.isParsingRunning || this.progress.status === 'FAILED';
+  }
+
   startParsing() {
+    this.actionError = null;
     // Polling starts only once the parser has reset its progress, otherwise the first poll can
     // still see the previous run as finished and stop right away
     this.parsingService.startParsing().subscribe({
@@ -71,14 +80,15 @@ export class ParserProgressComponent implements OnInit, OnDestroy {
         this.progress = { ...this.progress, status: 'RUNNING' };
         this.pollProgress();
       },
-      error: console.error
+      error: (error: HttpErrorResponse) => this.actionError = error.error?.message ?? 'Could not start parsing'
     });
   }
 
   stopParsing() {
+    this.actionError = null;
     this.parsingService.stopParsing().subscribe({
       next: () => this.progress = { ...this.progress, status: 'STOPPING' },
-      error: console.error
+      error: (error: HttpErrorResponse) => this.actionError = error.error?.message ?? 'Could not stop parsing'
     });
   }
 
