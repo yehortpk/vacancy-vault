@@ -1,6 +1,8 @@
 package com.github.yehortpk.parser.services;
 
 import com.github.yehortpk.parser.models.CompanyDTO;
+import com.github.yehortpk.parser.models.PageDTO;
+import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
@@ -23,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ParserRunnerServiceTest {
@@ -31,6 +34,7 @@ class ParserRunnerServiceTest {
     private final ApplicationContext applicationContext = mock(ApplicationContext.class);
     private final CompanyService companyService = mock(CompanyService.class);
     private final ParsingHistoryService parsingHistoryService = mock(ParsingHistoryService.class);
+    private final VacancyService vacancyService = mock(VacancyService.class);
     private final ParsingProgressService parsingProgressService = new ParsingProgressService();
     private final ParserRunnerService parserRunnerService = new ParserRunnerService(
             applicationContext,
@@ -38,7 +42,7 @@ class ParserRunnerServiceTest {
             mock(NotifierService.class),
             parsingProgressService,
             parsingHistoryService,
-            mock(VacancyService.class)
+            vacancyService
     );
 
     private CompanyDTO createCompany(int companyId, String beanClass) {
@@ -74,6 +78,24 @@ class ParserRunnerServiceTest {
 
         ParsingProgressDTO progress = awaitSavedProgress();
         assertEquals(ParsingStatusEnum.FINISHED, progress.getStatus());
+    }
+
+    @Test
+    void RunParsing_PageFails_ShouldFinishCompanyWithoutReconciliation() {
+        SiteScrapper siteScrapper = mock(SiteScrapper.class);
+        CompletableFuture<PageDTO> failedPage = CompletableFuture.failedFuture(new IllegalStateException("Page failed"));
+        when(siteScrapper.scrapCompanyVacancies(any())).thenReturn(List.of(failedPage));
+        when(applicationContext.getBean("siteScrapper")).thenReturn(siteScrapper);
+        when(companyService.getCompaniesList()).thenReturn(List.of(createCompany(1, "siteScrapper")));
+        when(companyService.getPersistedVacancies(1)).thenReturn(List.of(mock(VacancyDTO.class)));
+
+        parserRunnerService.runParsing();
+
+        awaitSavedProgress();
+        ParserProgress company = parsingProgressService.getParsers().get(1);
+        assertEquals(ParserProgressStatusEnum.FINISHED, company.getStatus());
+        assertEquals(List.of(1), company.getUnparsedPageIds());
+        verifyNoInteractions(vacancyService);
     }
 
     @Test

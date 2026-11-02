@@ -159,9 +159,10 @@ public class ParserRunnerService {
                     if (ex != null) {
                         handleReconciliationException(ex, company);
                     }
-                    parserProgress.setStatus(ex == null && parserProgress.hasAllPagesParsed()
-                            ? ParserProgressStatusEnum.FINISHED
-                            : ParserProgressStatusEnum.ERROR);
+                    // Stays ERROR after a failed metadata precall. Failed pages don't affect it
+                    if (parserProgress.getStatus() == ParserProgressStatusEnum.RUNNING) {
+                        parserProgress.setStatus(ParserProgressStatusEnum.FINISHED);
+                    }
                     return null;
                 });
     }

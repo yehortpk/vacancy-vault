@@ -1,9 +1,11 @@
 package com.github.yehortpk.parser.scrapper.site;
 
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
+import com.github.yehortpk.parser.exceptions.RequestMetadataNotImplementedException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.PageDTO;
 import com.github.yehortpk.parser.models.PageRequestParams;
+import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.scrapper.page.PageScrapper;
 import com.github.yehortpk.parser.services.ParsingProgressService;
 import org.jsoup.Connection;
@@ -13,10 +15,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -57,11 +61,38 @@ class SiteScrapperImplTest {
                 .build();
     }
 
+    private CompanyDTO createCompany(Map<String, String> data) {
+        return CompanyDTO.builder()
+                .companyId(1)
+                .title("Company")
+                .vacanciesURL("https://example.com/vacancies")
+                .data(data)
+                .headers(Map.of())
+                .cookies(Map.of())
+                .build();
+    }
+
     @BeforeEach
     void initProgress() {
         parsingProgressService.init();
         parsingProgressService.addParserProgress(1, "Company");
         siteScrapper.parsingProgressService = parsingProgressService;
+    }
+
+    @Test
+    void ScrapCompanyVacancies_MetadataPrecallFails_ShouldMarkCompanyError() {
+        CompanyDTO company = createCompany(Map.of("token", "{token}"));
+
+        assertThrows(RequestMetadataNotImplementedException.class, () -> siteScrapper.scrapCompanyVacancies(company));
+
+        assertEquals(ParserProgressStatusEnum.ERROR, parsingProgressService.getParsers().get(1).getStatus());
+    }
+
+    @Test
+    void ScrapCompanyVacancies_MetadataNotNeeded_ShouldKeepCompanyRunning() {
+        siteScrapper.scrapCompanyVacancies(createCompany(Map.of()));
+
+        assertEquals(ParserProgressStatusEnum.RUNNING, parsingProgressService.getParsers().get(1).getStatus());
     }
 
     @Test

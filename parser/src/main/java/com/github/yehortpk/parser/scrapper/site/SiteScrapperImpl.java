@@ -6,6 +6,7 @@ import com.github.yehortpk.parser.exceptions.RequestMetadataParamNotImplemented;
 import com.github.yehortpk.parser.exceptions.RequestMetadataNotImplementedException;
 import com.github.yehortpk.parser.models.*;
 import com.github.yehortpk.parser.progress.ParserProgress;
+import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.services.ParsingProgressService;
 import com.github.yehortpk.parser.scrapper.page.PageScrapper;
 import com.github.yehortpk.parser.scrapper.page.PageScrapperResponse;
@@ -43,7 +44,13 @@ public abstract class SiteScrapperImpl implements SiteScrapper {
         int pagesCount = 1;
 
         if (isRequestNeedMetadata()) {
-            MetadataParams metadataParams = generateRequestMetadata();
+            MetadataParams metadataParams;
+            try {
+                metadataParams = generateRequestMetadata();
+            } catch (RuntimeException ex) {
+                parserProgress.setStatus(ParserProgressStatusEnum.ERROR);
+                throw ex;
+            }
 
             for (Map.Entry<String, String> dataES : requestData.entrySet()) {
                 String value = dataES.getValue();
