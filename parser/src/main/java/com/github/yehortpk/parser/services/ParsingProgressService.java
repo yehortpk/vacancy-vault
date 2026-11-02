@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,6 +32,11 @@ public class ParsingProgressService {
     private volatile ParsingStatusEnum status;
     private volatile LocalDateTime startedAt;
     private volatile LocalDateTime finishedAt;
+    /**
+     * Completed by a stop request, so pages waiting out their stagger delay are released at once.
+     */
+    @Getter
+    private volatile CompletableFuture<Void> stopSignal;
 
     public ParsingProgressService() {
         resetProgress();
@@ -55,6 +61,7 @@ public class ParsingProgressService {
         this.outdatedVacanciesCnt.set(0);
         this.startedAt = null;
         this.finishedAt = null;
+        this.stopSignal = new CompletableFuture<>();
 
         this.parsers = new ConcurrentHashMap<>();
     }
@@ -71,6 +78,7 @@ public class ParsingProgressService {
                 return false;
             }
             this.status = ParsingStatusEnum.STOPPING;
+            this.stopSignal.complete(null);
             return true;
         } finally {
             progressLock.unlock();

@@ -86,11 +86,12 @@ public abstract class SiteScrapperImpl implements SiteScrapper {
 
             int finalPageID = pageID;
             // Pages of one company are staggered to keep the site from seeing a burst of requests.
-            // The scrapping itself is throttled further downstream by the browser pool.
-            Executor delayedExecutor = CompletableFuture.delayedExecutor(
-                    (long) (finalPageID - 1) * generateDelayBetweenPagesMS(), TimeUnit.MILLISECONDS);
-            CompletableFuture<PageDTO> scheduledFuture = CompletableFuture.supplyAsync(
-                    () -> scrapPage(finalPageID, localPageRequestParams), delayedExecutor);
+            // The scrapping itself is throttled further downstream by the browser pool. A stop
+            // request ends the wait early, so scrapPage skips the page right away.
+            long delayMS = (long) (finalPageID - 1) * generateDelayBetweenPagesMS();
+            CompletableFuture<PageDTO> scheduledFuture = parsingProgressService.getStopSignal().copy()
+                    .completeOnTimeout(null, delayMS, TimeUnit.MILLISECONDS)
+                    .thenApplyAsync(ignored -> scrapPage(finalPageID, localPageRequestParams));
 
             pageScrapperListFut.add(scheduledFuture);
         }
@@ -120,7 +121,6 @@ public abstract class SiteScrapperImpl implements SiteScrapper {
     }
 
     private PageDTO scrapPage(int pageID, PageRequestParams pageRequestParams) {
-        // Pages are staggered, so most of them start long after a stop request may have come in
         if (parsingProgressService.isStopRequested()) {
             throw new ParsingStoppedException();
         }
