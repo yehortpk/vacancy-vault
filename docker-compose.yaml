@@ -40,10 +40,12 @@ services:
       KAFKA_PARSER_TOPIC: vacancies
       KAFKA_SUBSCRIBE_TOPIC: subscriptions
       KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
-      MYSQL_USERNAME: ${MYSQL_USERNAME}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_ROOT_PASS: ${MONGO_ROOT_PASS}
+      # Optional database credentials, see README. Keep the defaults in sync with the mysql and
+      # mongo services below
+      MYSQL_USERNAME: ${MYSQL_USERNAME:-notifier}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-notifier}
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
+      MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1" ]
       interval: 10s
@@ -174,9 +176,13 @@ services:
       - notifier-network
     environment:
       MYSQL_DATABASE: notifier
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      # Applied only when the data volume is first created. The router connects as this user, which
+      # gets full access to the notifier database; root shares its password
+      MYSQL_USER: ${MYSQL_USERNAME:-notifier}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-notifier}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-notifier}
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD}" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-notifier}" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -187,8 +193,9 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS}
+      # Applied only when the data volume is first created
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS:-progress}
       MONGO_INITDB_DATABASE: parser-progress
     networks:
       - notifier-network
