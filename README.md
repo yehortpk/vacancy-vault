@@ -34,32 +34,63 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 ```
 git clone https://github.com/yehortpk/vacancy-vault.git
 ```
-4. Create .env.local environment file with the next variables:
-   - MYSQL_USERNAME - username that will be used to access <code>notifier</code> db;
-   - MYSQL_PASSWORD - password that will be used to access <code>notifier</code> db;
-   - TG_BOT_API_KEY - API key from your bot extracted on previous step;
-   - TG_BOT_USERNAME - username of your bot extracted on previous step;
-   - MONGO_ROOT_USERNAME - username that will be used to access <code>parser-progress</code> db. 
-   - MONGO_ROOT_PASS - password that will be used to access <code>parser-progress</code> db.
+4. Create a <code>.env</code> file in the project root.
 
-   The parser resource limits below are optional - each one falls back to a default that fits a
-   host with about 2GB of free memory. Lower them to run somewhere smaller:
-   - PARSER_BROWSER_POOL_SIZE (default <code>2</code>) - how many Chromium instances may run at
-     once. Chromium dominates the parser's memory and CPU, so this is the main knob: one instance
-     costs roughly 300MB. Use <code>1</code> on a host with 1GB of memory;
-   - PARSER_BROWSER_BORROW_TIMEOUT_SEC (default <code>120</code>) - how long a page waits for a free
-     browser before failing. Raise it alongside a smaller pool, since pages then queue longer;
-   - PARSER_COMPANY_CONCURRENCY (default <code>6</code>) - how many companies are parsed in parallel;
-   - PARSER_JAVA_OPTS (default <code>-XX:MaxRAMPercentage=35</code>) - JVM options. The heap stays
-     well below the container limit on purpose, because Chromium runs beside the JVM rather than
-     inside its heap;
-   - PARSER_MEM_LIMIT (default <code>2g</code>) - container memory limit, the only hard ceiling of
-     these. Keep it above <code>PARSER_BROWSER_POOL_SIZE</code> x 350MB plus the heap;
-   - PARSER_CPUS (default <code>2</code>) - container CPU limit.
+   **Mandatory**
+
+   Services (only Telegram for now):
+   ```env
+   # API token of the bot from step 2
+   TG_BOT_API_KEY=
+   # Username of the bot from step 2
+   TG_BOT_USERNAME=
+   ```
+
+   **Optional**
+
+   Every variable below falls back to the value shown, so add only the ones you want to change.
+
+   Databases:
+   ```env
+   # Credentials of the notifier MySQL database. The username can't be root, and MySQL's own root
+   # account shares the password
+   MYSQL_USERNAME=notifier
+   MYSQL_PASSWORD=notifier
+   # Root credentials of the parser-progress MongoDB database
+   MONGO_ROOT_USERNAME=progress
+   MONGO_ROOT_PASS=progress
+   ```
+   The credentials are applied only when the database volumes are first created, so changing them
+   later also means changing them inside the database. The database ports are published on the
+   host, so pick your own passwords on a server reachable from the internet.
+
+   Parser load:
+   ```env
+   # How many Chromium instances may render dynamic sites at once, or max
+   PARSER_BROWSER_POOL_SIZE=2
+   ```
+   Chromium dominates the parser's memory, at roughly 400MB per instance, so this is the main
+   knob. Raise it to parse dynamic sites faster, or set <code>max</code> for as many as the host
+   can afford: half of its CPUs, but no more than fit into its memory once about 3GB is left to
+   the rest of the stack, and never less than <code>1</code>. The parser logs the size it picked
+   at startup.
+
+   The parser runs without CPU or memory limits by default. To cap it, for example on a server
+   shared with other apps, add a <code>docker-compose.override.yaml</code> next to
+   <code>docker-compose.yaml</code>; docker compose picks it up on its own:
+   ```yaml
+   services:
+     parser:
+       mem_limit: 2g # hard ceiling, the parser is killed when it runs out
+       cpus: 2       # soft ceiling, the parser only slows down
+   ```
+   With a memory limit, <code>max</code> sizes the pool from the limit rather than the host, still
+   leaving the 3GB reserve, so it picks <code>1</code> below about 4GB. Set a number instead if the
+   limit allows more: the parser itself takes about 1GB, each instance about 400MB more.
 
 5. Create and run with docker
 ```
-docker compose --env-file=.env.local up --build
+docker compose up --build
 ```
 
 ## Usage
