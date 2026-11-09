@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -26,6 +27,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Instances are launched on first use rather than upfront, so a run that touches no dynamic site
  * never pays for a browser.
  * <p>
+ * The size is either set explicitly or, with {@code max}, the most the host can afford: half its
+ * CPUs, as each rendering Chromium keeps about one core busy, but never more than the memory left
+ * once the rest of the stack is accounted for. Both are read container-aware, so a compose limit
+ * counts.
+ * <p>
  * Borrowers queue without a deadline: every page of every dynamic company is queued at once, so a
  * deadline would fail healthy pages merely for waiting their turn. A page stuck in Chromium is
  * bounded by Playwright's own timeouts instead, and a stop request releases the queue.
@@ -34,6 +40,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class BrowserPool {
     private static final int STOP_CHECK_INTERVAL_SEC = 1;
+    private static final String MAX_POOL_SIZE = "max";
+    private static final long MB = 1024L * 1024;
+    private static final long CHROMIUM_INSTANCE_MEMORY_BYTES = 400 * MB;
+    /**
+     * Memory the browsers must leave alone on a host shared with the compose stack: about 2GB for
+     * Kafka, MySQL, the router and the rest, plus about 1GB for the parser's Maven and app JVMs.
+     */
+    private static final long RESERVED_MEMORY_BYTES = 3 * 1024 * MB;
 
     private final BlockingQueue<BrowserInstance> availableInstances;
     private final AtomicInteger launchedInstancesCnt = new AtomicInteger();
@@ -41,13 +55,47 @@ public class BrowserPool {
     private final ParsingProgressService parsingProgressService;
 
     public BrowserPool(
-            @Value("${parser.browser.pool-size}") int poolSize,
+            @Value("${parser.browser.pool-size}") String configuredPoolSize,
             ParsingProgressService parsingProgressService
     ) {
-        this.poolSize = poolSize;
+        this.poolSize = MAX_POOL_SIZE.equals(configuredPoolSize)
+                ? calculateHostPoolSize()
+                : parsePoolSize(configuredPoolSize);
         this.parsingProgressService = parsingProgressService;
         this.availableInstances = new ArrayBlockingQueue<>(poolSize);
         log.info("Browser pool configured with {} instance(s)", poolSize);
+    }
+
+    private static int parsePoolSize(String configuredPoolSize) {
+        try {
+            int poolSize = Integer.parseInt(configuredPoolSize.trim());
+            if (poolSize >= 1) {
+                return poolSize;
+            }
+        } catch (NumberFormatException ignored) {
+            // Reported below together with the out-of-range case
+        }
+        throw new IllegalArgumentException(String.format(
+                "Browser pool size must be '%s' or a positive number, got '%s'", MAX_POOL_SIZE, configuredPoolSize));
+    }
+
+    private static int calculateHostPoolSize() {
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        long totalMemoryBytes = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean())
+                .getTotalMemorySize();
+        int poolSize = calculatePoolSize(availableProcessors, totalMemoryBytes);
+        log.info("Browser pool sized from the host: {} CPU(s), {}MB of memory", availableProcessors, totalMemoryBytes / MB);
+        return poolSize;
+    }
+
+    /**
+     * Half the CPUs, capped by how many Chromium instances fit into the memory left after the
+     * reserve. Never below one, so a small host still renders dynamic sites, only slower.
+     */
+    static int calculatePoolSize(int availableProcessors, long totalMemoryBytes) {
+        long cpuBoundSize = availableProcessors / 2;
+        long memoryBoundSize = (totalMemoryBytes - RESERVED_MEMORY_BYTES) / CHROMIUM_INSTANCE_MEMORY_BYTES;
+        return (int) Math.max(1, Math.min(cpuBoundSize, memoryBoundSize));
     }
 
     /**
