@@ -6,9 +6,7 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Playwright;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * A single Playwright driver connection together with the Chromium instance it launched.
@@ -24,11 +22,8 @@ public class BrowserInstance implements AutoCloseable {
     private final Browser browser;
 
     public BrowserInstance() {
-        Map<String, String> env = new HashMap<>();
-        env.put("PLAYWRIGHT_BROWSERS_PATH", "/ms-playwright");
-        env.put("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1");
-
-        playwright = Playwright.create(new Playwright.CreateOptions().setEnv(env));
+        // The browsers path and the download skip come from the image's environment
+        playwright = Playwright.create();
         browser = playwright.chromium().launch(
                 new BrowserType.LaunchOptions()
                         .setHeadless(true)
