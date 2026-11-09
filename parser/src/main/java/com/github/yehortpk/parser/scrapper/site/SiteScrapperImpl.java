@@ -27,6 +27,12 @@ import static com.github.yehortpk.parser.utils.LogUtils.createErrorMessage;
 @Component
 @Slf4j
 public abstract class SiteScrapperImpl implements SiteScrapper {
+    /**
+     * Pages mostly wait on the network or on a free browser, so each gets a virtual thread of its
+     * own. The default async pool would instead tie page concurrency to the host's CPU count.
+     */
+    private static final ExecutorService PAGE_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+
     @Autowired
     protected ParsingProgressService parsingProgressService;
     protected CompanyDTO company;
@@ -98,7 +104,7 @@ public abstract class SiteScrapperImpl implements SiteScrapper {
             long delayMS = (long) (finalPageID - 1) * generateDelayBetweenPagesMS();
             CompletableFuture<PageDTO> scheduledFuture = parsingProgressService.getStopSignal().copy()
                     .completeOnTimeout(null, delayMS, TimeUnit.MILLISECONDS)
-                    .thenApplyAsync(ignored -> scrapPage(finalPageID, localPageRequestParams));
+                    .thenApplyAsync(ignored -> scrapPage(finalPageID, localPageRequestParams), PAGE_EXECUTOR);
 
             pageScrapperListFut.add(scheduledFuture);
         }

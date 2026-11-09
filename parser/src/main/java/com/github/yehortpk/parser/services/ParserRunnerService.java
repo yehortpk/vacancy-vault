@@ -14,7 +14,6 @@ import com.github.yehortpk.parser.scrapper.site.SiteScrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -39,9 +38,6 @@ public class ParserRunnerService {
     private final ParsingProgressService parsingProgressService;
     private final ParsingHistoryService parsingHistoryService;
     private final VacancyService vacancyService;
-
-    @Value("${parser.company-concurrency}")
-    private int companyConcurrency;
 
     private Thread runnerThread;
 
@@ -80,7 +76,9 @@ public class ParserRunnerService {
     }
 
     private void parseCompanies(List<CompanyDTO> companies) {
-        ExecutorService executor = Executors.newFixedThreadPool(companyConcurrency);
+        // Metadata precalls wait on the network or the browser pool, so they need no cap of their
+        // own, and the CPU-bound page parsing is already spread over a carrier thread per core
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         try {
             List<CompletableFuture<Void>> companyFutures = companies.stream()
                     .map(company -> parseCompanyAsync(company, executor))

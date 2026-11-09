@@ -8,11 +8,9 @@ import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
 import com.github.yehortpk.parser.progress.ParsingStatusEnum;
 import com.github.yehortpk.parser.scrapper.site.SiteScrapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationContext;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -53,11 +51,6 @@ class ParserRunnerServiceTest {
         ArgumentCaptor<ParsingProgressDTO> progress = ArgumentCaptor.forClass(ParsingProgressDTO.class);
         verify(parsingHistoryService, timeout(TIMEOUT_MS)).saveProgress(progress.capture());
         return progress.getValue();
-    }
-
-    @BeforeEach
-    void setCompanyConcurrency() {
-        ReflectionTestUtils.setField(parserRunnerService, "companyConcurrency", 2);
     }
 
     @Test
