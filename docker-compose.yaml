@@ -110,28 +110,8 @@ services:
       timeout: 5s
       retries: 3
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
-    container_name: notifier-zookeeper
-    volumes:
-      - notifier-zookeeper-data:/var/lib/zookeeper/data
-      - notifier-zookeeper-log:/var/lib/zookeeper/log
-    ports:
-      - "22181:2181"
-    networks:
-      - notifier-network
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    healthcheck:
-      # The ruok 4lw command is not whitelisted in this image, so query the znode tree instead
-      test: [ "CMD-SHELL", "zookeeper-shell localhost:2181 ls / >/dev/null 2>&1" ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
   kafka:
-    image: confluentinc/cp-kafka:7.6.0
+    image: apache/kafka:4.3.2
     container_name: notifier-kafka
     ports:
       - "29092:29092"
@@ -141,24 +121,26 @@ services:
     volumes:
       - notifier-kafka-data:/var/lib/kafka/data
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # KRaft: a single node that is both the broker and its own controller. The image formats its
+      # storage with a built-in CLUSTER_ID, enough for a node that forms a cluster with no other
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@notifier-kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://notifier-kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
-      # The image sets these three explicitly (the last two to TRACE), so the root level misses them
-      KAFKA_LOG4J_LOGGERS: kafka=WARN,kafka.controller=WARN,state.change.logger=WARN
-    # A stale /brokers/ids/1 znode left by an unclean shutdown makes the first start of the day
-    # fail with NodeExists until zookeeper expires the old session; restarting clears it.
-    restart: on-failure
-    depends_on:
-      zookeeper:
-        condition: service_healthy
+      # The image sets these loggers to INFO explicitly, so the root level misses them
+      KAFKA_LOG4J_LOGGERS: kafka=WARN,org.apache.kafka=WARN,org.apache.kafka.controller=WARN,state.change.logger=WARN
     healthcheck:
-      # Query the broker itself, so the check fails when registration with zookeeper failed
-      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
+      # Query the broker itself, so the check fails until it has joined its controller
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -211,8 +193,6 @@ volumes:
   notifier-kafka-data:
   notifier-mysql-data:
   notifier-redis-data:
-  notifier-zookeeper-data:
-  notifier-zookeeper-log:
   notifier-mongo-data:
   frontend-node-modules:
   maven-home:
