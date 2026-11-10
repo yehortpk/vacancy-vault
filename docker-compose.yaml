@@ -40,10 +40,10 @@ services:
       KAFKA_PARSER_TOPIC: vacancies
       KAFKA_SUBSCRIBE_TOPIC: subscriptions
       KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
-      # Optional database credentials, see README. Keep the defaults in sync with the mysql and
+      # Optional database credentials, see README. Keep the defaults in sync with the postgres and
       # mongo services below
-      MYSQL_USERNAME: ${MYSQL_USERNAME:-notifier}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-notifier}
+      POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
       MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
     healthcheck:
@@ -55,7 +55,7 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      mysql:
+      postgres:
         condition: service_healthy
 
   bot:
@@ -146,28 +146,26 @@ services:
       retries: 10
       start_period: 40s
 
-  mysql:
-    image: mysql:8.3.0
-    container_name: notifier-mysql
+  postgres:
+    image: postgres:16.2
+    container_name: notifier-postgres
     volumes:
-      - notifier-mysql-data:/var/lib/mysql
-      - ./notifier-dump.sql:/docker-entrypoint-initdb.d/notifier-dump.sql
+      - notifier-postgres-data:/var/lib/postgresql/data
     ports:
-      - "3306:3306"
+      - "5432:5432"
     networks:
       - notifier-network
     environment:
-      MYSQL_DATABASE: notifier
-      # Applied only when the data volume is first created. The router connects as this user, which
-      # gets full access to the notifier database; root shares its password
-      MYSQL_USER: ${MYSQL_USERNAME:-notifier}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-notifier}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-notifier}
+      POSTGRES_DB: notifier
+      # Applied only when the data volume is first created. The router connects as this user, the
+      # database superuser; Flyway builds the schema on the router's first start
+      POSTGRES_USER: ${POSTGRES_USERNAME:-notifier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-notifier}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME:-notifier} -d notifier" ]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
 
   mongo:
     image: mongo:8.0
@@ -191,7 +189,7 @@ networks:
 
 volumes:
   notifier-kafka-data:
-  notifier-mysql-data:
+  notifier-postgres-data:
   notifier-redis-data:
   notifier-mongo-data:
   frontend-node-modules:

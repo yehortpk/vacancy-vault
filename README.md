@@ -52,10 +52,9 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
    Databases:
    ```env
-   # Credentials of the notifier MySQL database. The username can't be root, and MySQL's own root
-   # account shares the password
-   MYSQL_USERNAME=notifier
-   MYSQL_PASSWORD=notifier
+   # Credentials of the notifier PostgreSQL database, created as its superuser
+   POSTGRES_USERNAME=notifier
+   POSTGRES_PASSWORD=notifier
    # Root credentials of the parser-progress MongoDB database
    MONGO_ROOT_USERNAME=progress
    MONGO_ROOT_PASS=progress
