@@ -3,12 +3,18 @@ package com.github.yehortpk.router.exception;
 import com.github.yehortpk.router.models.response.APIResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.List;
+
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -44,5 +50,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode())
                 .contentType(contentType != null ? contentType : MediaType.TEXT_PLAIN)
                 .body(ex.getResponseBodyAsString());
+    }
+
+    @ExceptionHandler(EmailAlreadyRegisteredException.class)
+    public ResponseEntity<Object> handleEmailAlreadyRegisteredException(EmailAlreadyRegisteredException ex) {
+        return ResponseEntity.status(CONFLICT).body(new APIResponse(409, ex.getMessage()));
+    }
+
+    /**
+     * A bad password, an unknown email and a disabled account all answer the same way, so
+     * the response cannot be used to enumerate registered addresses.
+     */
+    @ExceptionHandler({BadCredentialsException.class, DisabledException.class, AuthenticationException.class})
+    public ResponseEntity<Object> handleAuthenticationException(AuthenticationException ex) {
+        return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, "Invalid email or password"));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException ex) {
+        return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, ex.getMessage()));
     }
 }

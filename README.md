@@ -50,6 +50,14 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
    Every variable below falls back to the value shown, so add only the ones you want to change.
 
+   Security:
+   ```env
+   # Key used to sign the login tokens. At least 32 bytes, either Base64 or raw text - generate
+   # one with `openssl rand -base64 32`. Changing it invalidates every existing session
+   JWT_SECRET=bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=
+   ```
+   These defaults are public, so on a server reachable from the internet generate your own.
+
    Databases:
    ```env
    # Credentials of the notifier PostgreSQL database, created as its superuser
@@ -62,6 +70,16 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    The credentials are applied only when the database volumes are first created, so changing them
    later also means changing them inside the database. The database ports are published on the
    host, so pick your own passwords on a server reachable from the internet.
+
+   Admin account:
+   ```env
+   # The admin account the router creates on startup, so you can log in to the parser room. The
+   # password needs at least 8 characters. See Access levels below
+   ADMIN_EMAIL=admin@vacancy.vault
+   ADMIN_PASSWORD=f7b3175b5f
+   ```
+   These defaults are public, so set your own password on a server reachable from the internet. Set
+   both to empty values to create no admin account.
 
    Parser load:
    ```env
@@ -91,6 +109,31 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 ```
 docker compose up --build
 ```
+
+### Access levels
+- <b>Guests</b> (not logged in) browse the vacancy dashboard.
+- <b>Users</b> register at <code>/register</code> and get their own account room at <code>/account</code>: linking a
+  messenger with a one-time code (for Telegram, send <code>/link &lt;code&gt;</code> to the bot) and the list of
+  linked chats.
+- <b>Admins</b> also get the parser room at <code>/parser</code>, to start a parse and watch its progress. It is
+  opened from the profile menu in the top right corner.
+
+Registering through the web app always creates a user; no endpoint grants the admin role. The admin account comes
+from <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> (see their defaults in the optional env variables): on
+startup the router creates it if that address is not registered yet, and you log in with exactly those credentials.
+
+It only ever creates the account, never changes one:
+- If the address is already registered as a user, it is <b>not</b> promoted (the router logs a warning). Registration
+  does not prove you own an address, so promoting it would give the parser room to whoever registered it first.
+- Changing <code>ADMIN_PASSWORD</code> later does not change the stored password.
+
+In either case, or to make an existing account an admin, set the role in the <code>notifier</code> PostgreSQL
+database:
+```
+UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+The role is read into the login token, so it takes effect after the next login, or within 15 minutes when the
+token refreshes.
 
 ## Usage
 The app needs the client to create parsing information for both sides - in the code itself and in the database. Let's look at the features of the code.
