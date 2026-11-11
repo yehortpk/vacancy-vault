@@ -55,6 +55,9 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    # Key used to sign the login tokens. At least 32 bytes, either Base64 or raw text - generate
    # one with `openssl rand -base64 32`. Changing it invalidates every existing session
    JWT_SECRET=bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=
+   # Shared secret the bot presents to the router's /connector endpoints, the same for both
+   # services - generate one with `openssl rand -hex 32`
+   SERVICE_CONNECTOR_TOKEN=d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5
    ```
    These defaults are public, so on a server reachable from the internet generate your own.
 

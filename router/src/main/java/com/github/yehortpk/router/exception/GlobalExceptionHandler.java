@@ -14,6 +14,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @ControllerAdvice
@@ -64,6 +65,30 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadCredentialsException.class, DisabledException.class, AuthenticationException.class})
     public ResponseEntity<Object> handleAuthenticationException(AuthenticationException ex) {
         return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, "Invalid email or password"));
+    }
+
+    @ExceptionHandler(DestinationAlreadyLinkedException.class)
+    public ResponseEntity<Object> handleDestinationAlreadyLinkedException(DestinationAlreadyLinkedException ex) {
+        return ResponseEntity.status(CONFLICT).body(new APIResponse(409, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidLinkTokenException.class)
+    public ResponseEntity<Object> handleInvalidLinkTokenException(InvalidLinkTokenException ex) {
+        return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler({LinkSessionNotFoundException.class, ProviderNotAvailableException.class})
+    public ResponseEntity<Object> handleLinkNotFoundException(RuntimeException ex) {
+        return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
+    }
+
+    /**
+     * 404 rather than 403, so a caller cannot tell an id that does not exist from one that
+     * belongs to somebody else and therefore cannot enumerate connection ids.
+     */
+    @ExceptionHandler(ConnectionNotFoundException.class)
+    public ResponseEntity<Object> handleConnectionNotFoundException(ConnectionNotFoundException ex) {
+        return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidTokenException.class)

@@ -48,6 +48,8 @@ services:
       MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
       # Defaults documented in the README; generate your own on a server reachable from the internet
       JWT_SECRET: ${JWT_SECRET:-bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=}
+      # Keep the default in sync with the bot service below
+      SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5}
       # Defaults documented in the README; set both empty in .env to create no admin
       ADMIN_EMAIL: ${ADMIN_EMAIL-admin@vacancy.vault}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD-f7b3175b5f}
@@ -81,6 +83,8 @@ services:
       KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
       TG_BOT_API_KEY: ${TG_BOT_API_KEY}
       TG_BOT_USERNAME: ${TG_BOT_USERNAME}
+      # Keep the default in sync with the router service above
+      SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5}
     depends_on:
       router:
         condition: service_healthy
