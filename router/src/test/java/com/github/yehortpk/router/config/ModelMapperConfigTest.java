@@ -40,6 +40,16 @@ class ModelMapperConfigTest {
     }
 
     @Test
+    void MapVacancy_RemoteVacancy_ShouldCarryRemoteFlag() {
+        Vacancy vacancy = createVacancy();
+        vacancy.setRemote(true);
+
+        VacancyCompanyDTO dto = modelMapper.map(vacancy, VacancyCompanyDTO.class);
+
+        assertThat(dto.isRemote()).isTrue();
+    }
+
+    @Test
     void MapVacanciesPage_ParsedAtWithoutZone_ShouldCarryTheRouterOffset() {
         VacanciesPageDTO page = modelMapper.getTypeMap(org.springframework.data.domain.Page.class, VacanciesPageDTO.class)
                 .map(new PageImpl<>(List.of(createVacancy())));

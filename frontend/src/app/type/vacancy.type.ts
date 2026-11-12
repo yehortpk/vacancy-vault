@@ -1,15 +1,18 @@
 export type Vacancy = {
     title: string
-    minSalary: number|string
-    maxSalary: number|string
+    /** 0 when the source did not publish a lower bound */
+    minSalary: number
+    /** 0 when the source did not publish an upper bound */
+    maxSalary: number
     url: string
     company: {
         company_id: number
-        title: string
-        imageUrl: string|null
-        company_url: string
+        title: string|null
+        imageUrl?: string|null
+        company_url: string|null
     }
-    parsedAt: string
+    parsedAt: string|null
+    remote: boolean
 }
 
 export type VacanciesListDTO = {

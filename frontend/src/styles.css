@@ -40,3 +40,17 @@ select {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
+/* Blend the Material paginator into the Tailwind card around it */
+.vv-paginator .mat-mdc-paginator {
+  --mat-paginator-container-background-color: transparent;
+  --mat-paginator-container-text-font: inherit;
+  --mat-paginator-select-trigger-text-font: inherit;
+  --mat-paginator-container-text-color: #475569;
+  border-radius: 1rem;
+}
+
+html.dark .vv-paginator .mat-mdc-paginator {
+  --mat-paginator-container-text-color: #cbd5e1;
+  --mat-paginator-enabled-icon-color: #cbd5e1;
+  --mat-paginator-disabled-icon-color: #475569;
+}

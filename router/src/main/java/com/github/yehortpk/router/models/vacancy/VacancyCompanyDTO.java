@@ -14,4 +14,6 @@ public class VacancyCompanyDTO {
     private CompanyShortInfoDTO company;
     /** With the router's offset, so the dashboard shows the time in the viewer's zone. */
     private OffsetDateTime parsedAt;
+    /** Serialized as {@code remote}, after the Lombok accessor pair {@code isRemote()/setRemote()}. */
+    private boolean isRemote;
 }
