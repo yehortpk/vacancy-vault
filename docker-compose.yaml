@@ -48,7 +48,7 @@ services:
       MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
       # Defaults documented in the README; generate your own on a server reachable from the internet
       JWT_SECRET: ${JWT_SECRET:-bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=}
-      # Keep the default in sync with the bot service below
+      # Keep the default in sync with the telegram-bot service below
       SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5}
       # Defaults documented in the README; set both empty in .env to create no admin
       ADMIN_EMAIL: ${ADMIN_EMAIL-admin@vacancy.vault}
@@ -65,10 +65,10 @@ services:
       postgres:
         condition: service_healthy
 
-  bot:
-    container_name: notifier-bot
+  telegram-bot:
+    container_name: notifier-telegram-bot
     build:
-      dockerfile: ./subscriber-bot/Dockerfile
+      dockerfile: ./providers/telegram-bot/Dockerfile
     # Defaults to the image's "ubuntu" user (1000:1000); set HOST_UID/HOST_GID in .env if your Linux uid differs
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:

@@ -17,7 +17,7 @@
 	<modules>
 		<module>parser</module>
 		<module>router</module>
-		<module>subscriber-bot</module>
+		<module>providers/telegram-bot</module>
 	</modules>
 	<properties>
 		<java.version>21</java.version>
