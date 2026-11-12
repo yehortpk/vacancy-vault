@@ -22,7 +22,7 @@ public abstract class RequestHandlerImpl implements RequestHandler {
     @Override
     public void handle(UserRequestDTO userRequest) {
         SendMessage sendMessage = handleRequest(userRequest);
-        int chatId = Integer.parseInt(sendMessage.getChatId());
+        long chatId = Long.parseLong(sendMessage.getChatId());
         String text = sendMessage.getText();
         ReplyKeyboard markup = sendMessage.getReplyMarkup();
 

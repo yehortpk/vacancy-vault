@@ -18,11 +18,9 @@ public class UndefinedRequestTypeHandler extends RequestHandlerImpl implements R
 
     @Override
     public SendMessage handleRequest(UserRequestDTO userRequest) {
-        long chatId = userRequest.getUser().getChatId();
-
-        String text = "I can't handle this type of message. Use buttons or commands (e.g /start)";
+        String text = "I can't handle this type of message. Use the commands /start, /link, /status or /unlink";
         return SendMessage.builder()
-                .chatId(chatId)
+                .chatId(userRequest.getChatId())
                 .text(text)
                 .build();
     }

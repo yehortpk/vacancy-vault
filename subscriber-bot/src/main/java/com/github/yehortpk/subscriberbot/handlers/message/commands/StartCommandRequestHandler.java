@@ -1,18 +1,26 @@
 package com.github.yehortpk.subscriberbot.handlers.message.commands;
 
-import com.github.yehortpk.subscriberbot.models.UserDTO;
 import com.github.yehortpk.subscriberbot.models.UserRequestDTO;
-import com.github.yehortpk.subscriberbot.models.enums.UserState;
-import com.github.yehortpk.subscriberbot.markups.MainMenuMarkup;
-import com.github.yehortpk.subscriberbot.services.StateService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
+/**
+ * Explains what the bot is for. Filters are managed in the web app; the bot only delivers
+ * their notifications to the chats linked there.
+ */
 @Component
-@RequiredArgsConstructor
-public class StartCommandRequestHandler extends CommandRequestHandlerImpl{
-    private final StateService stateService;
+public class StartCommandRequestHandler extends CommandRequestHandlerImpl {
+    static final String START_TEXT = """
+            I deliver VacancyVault notifications about new vacancies that match your filters.
+
+            To receive them in this chat:
+            1. Open your account page in the VacancyVault web app and click <b>Link Telegram</b>.
+            2. Send me the command it shows: <code>/link your-code</code>.
+
+            Then create filters in the web app and choose this chat for them.
+
+            /status shows which account this chat is linked to
+            /unlink stops notifications to this chat""";
 
     @Override
     public String getCommand() {
@@ -21,14 +29,9 @@ public class StartCommandRequestHandler extends CommandRequestHandlerImpl{
 
     @Override
     public SendMessage handleRequest(UserRequestDTO userRequest) {
-        UserDTO user = userRequest.getUser();
-        user.setUserState(UserState.START_STATE);
-        stateService.saveUser(user);
-
         return SendMessage.builder()
-                .chatId(userRequest.getUser().getChatId())
-                .text("I can help you create and manage your filters.")
-                .replyMarkup(MainMenuMarkup.getMarkup())
+                .chatId(userRequest.getChatId())
+                .text(START_TEXT)
                 .build();
     }
 }

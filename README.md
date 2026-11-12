@@ -25,6 +25,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
     - [Request parameters](#request-parameters)
       - [Dynamic request parameters](#dynamic-request-parameters)
 - [Filters](#filters)
+- [Telegram bot](#telegram-bot)
 - [Frontend app](#frontend-app)
 
 ## Installation
@@ -228,6 +229,15 @@ Keywords can be combined. Examples:
 - Amazon,; will find all vacancies from company Amazon
 
 Also, you can view all stored vacancies filtered with chosen filter.
+
+### Telegram bot
+The bot only links chats and delivers notifications; filters are managed in the web app. It answers:
+- <code>/start</code>: how to link the chat from your account page.
+- <code>/link &lt;code&gt;</code>: links the chat with the one-time code from the account page. In a group, the bot
+  deletes the message, since anyone who sends the code links their chat to its owner, so give it the right to
+  delete messages.
+- <code>/status</code>: which account the chat is linked to, and how many of its filters notify it.
+- <code>/unlink</code>: stops notifications to the chat.
 
 ### Frontend app
 To start frontend app you have to run

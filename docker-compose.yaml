@@ -88,8 +88,6 @@ services:
     depends_on:
       router:
         condition: service_healthy
-      redis:
-        condition: service_healthy
 
   frontend:
     container_name: notifier-frontend
@@ -103,21 +101,6 @@ services:
     networks:
       - notifier-network
     command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
-
-  redis:
-    image: redis:7.2.4
-    container_name: notifier-redis
-    volumes:
-      - notifier-redis-data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - notifier-network
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   kafka:
     image: apache/kafka:4.3.2
@@ -199,7 +182,6 @@ networks:
 volumes:
   notifier-kafka-data:
   notifier-postgres-data:
-  notifier-redis-data:
   notifier-mongo-data:
   frontend-node-modules:
   maven-home:

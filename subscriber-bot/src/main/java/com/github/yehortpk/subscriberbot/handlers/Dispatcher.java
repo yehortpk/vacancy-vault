@@ -1,6 +1,5 @@
 package com.github.yehortpk.subscriberbot.handlers;
 
-import com.github.yehortpk.subscriberbot.models.UserDTO;
 import com.github.yehortpk.subscriberbot.models.UserRequestDTO;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
@@ -11,12 +10,11 @@ import java.util.List;
  */
 public class Dispatcher {
     private final List<RequestHandler> handlers;
-    private final UserDTO user;
+    private final long chatId;
 
-
-    public Dispatcher(List<RequestHandler> handlers, UserDTO user) {
+    public Dispatcher(List<RequestHandler> handlers, long chatId) {
         this.handlers = handlers;
-        this.user = user;
+        this.chatId = chatId;
     }
 
     /**
@@ -25,8 +23,8 @@ public class Dispatcher {
      * @param userRequest {@link Update} user request
      */
     public void dispatch(Update userRequest) {
-        // Wrap current user state and request to one DTO object
-        UserRequestDTO userRequestDTO = new UserRequestDTO(user, userRequest);
+        // Wrap the request and the chat it came from into one DTO object
+        UserRequestDTO userRequestDTO = new UserRequestDTO(chatId, userRequest);
 
         for (RequestHandler handler : handlers) {
             if (handler.isApplicable(userRequestDTO)) {
@@ -35,5 +33,4 @@ public class Dispatcher {
             }
         }
     }
-
 }

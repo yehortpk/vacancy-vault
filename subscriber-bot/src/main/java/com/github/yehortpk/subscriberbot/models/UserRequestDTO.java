@@ -7,14 +7,15 @@ import lombok.Setter;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 /**
- * Internal model that encapsulate two types - {@link UserDTO} and {@link Update}. {@link UserDTO} is responsible
- * for storing and transferring user state, and {@link Update} is user request from bot
+ * Internal model that encapsulates a user's {@link Update} request together with the chat it
+ * came from. The bot keeps no state of its own: whether a chat is linked, and to which account,
+ * is the router's to answer.
  */
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 public class UserRequestDTO {
-    private UserDTO user;
+    private long chatId;
     private Update update;
 }
