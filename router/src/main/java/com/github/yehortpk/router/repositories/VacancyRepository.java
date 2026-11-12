@@ -1,12 +1,14 @@
 package com.github.yehortpk.router.repositories;
 
 import com.github.yehortpk.router.models.vacancy.Vacancy;
+import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import lombok.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -18,7 +20,17 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
     @NonNull
     List<Vacancy> findAll();
 
-    Page<Vacancy> findByTitleContaining(String title, Pageable pageable);
+    /** Mirrors {@link VacancySearchCriteria#isSatisfiedBy}; an empty query or a false flag drops that condition. */
+    @Query("""
+            SELECT v FROM Vacancy v
+            WHERE (:query = '' OR v.title LIKE CONCAT('%', :query, '%'))
+              AND (:remoteRequired = FALSE OR v.isRemote = TRUE)
+              AND (:salaryRequired = FALSE OR v.minSalary > 0 OR v.maxSalary > 0)
+            """)
+    Page<Vacancy> search(@Param("query") String query,
+                         @Param("remoteRequired") boolean remoteRequired,
+                         @Param("salaryRequired") boolean salaryRequired,
+                         Pageable pageable);
 
     boolean existsByLink(String link);
 }

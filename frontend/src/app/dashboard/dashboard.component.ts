@@ -1,5 +1,5 @@
 import { VacancyService } from '../service/vacancy.service';
-import { VacanciesListDTO, Vacancy } from "../type/vacancy.type"
+import { VacanciesListDTO, Vacancy, VacancyConditions } from "../type/vacancy.type"
 
 import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute, ParamMap, RouterModule } from '@angular/router';
@@ -57,6 +57,8 @@ export class DashboardComponent implements OnInit {
   sortBy: string = ''
   sortDir: string = 'ASC'
   isLoading: boolean = true
+  /** Set from the `remote` and `withSalary` query params, so the toggles survive a reload or a shared link. */
+  conditions: VacancyConditions = { remoteRequired: false, salaryRequired: false }
 
   readonly sortOptions = [
     { field: 'parsedAt', label: 'Posted date' },
@@ -111,6 +113,10 @@ export class DashboardComponent implements OnInit {
     this.searchQuery = queryParam;
     this.sortBy = sortBy;
     this.sortDir = sortDir || 'ASC';
+    this.conditions = {
+      remoteRequired: params.get('remote') === 'true',
+      salaryRequired: params.get('withSalary') === 'true',
+    };
     this.isLoading = true;
 
     if (filterParam) {
@@ -121,7 +127,7 @@ export class DashboardComponent implements OnInit {
   }
 
   requestVacanciesByFilter(filterId: number, pageId: number, pageSize: number, sortBy: string, sortDir: string) {
-    this.filterService.getVacanciesByFilter(filterId, pageId, pageSize, sortBy, sortDir).subscribe({
+    this.filterService.getVacanciesByFilter(filterId, pageId, pageSize, sortBy, sortDir, this.conditions).subscribe({
       next: (response) => {
         this.updatePage(response)
       },
@@ -133,7 +139,7 @@ export class DashboardComponent implements OnInit {
   }
 
   requestVacanciesOnPage(pageId: number, pageSize: number, sortBy: string, sortDir: string, queryParam: string) {
-    this.vacancyService.getVacancies(pageId, pageSize, sortBy, sortDir, queryParam).subscribe({
+    this.vacancyService.getVacancies(pageId, pageSize, sortBy, sortDir, queryParam, this.conditions).subscribe({
       next: (response) => {
         this.updatePage(response)
       },
@@ -215,11 +221,38 @@ export class DashboardComponent implements OnInit {
   }
 
   onFilterChange(filterId: string) {
+    // A new filter starts over, except for the remote/salary toggles, which apply on top of any filter
     this.router.navigate(["/dashboard"], {
       relativeTo: this.route,
       queryParams: {
-        filter: filterId || null
+        filter: filterId || null,
+        remote: this.conditions.remoteRequired || null,
+        withSalary: this.conditions.salaryRequired || null
       }
+    });
+  }
+
+  toggleRemoteRequired() {
+    this.navigateWithConditions({ ...this.conditions, remoteRequired: !this.conditions.remoteRequired });
+  }
+
+  toggleSalaryRequired() {
+    this.navigateWithConditions({ ...this.conditions, salaryRequired: !this.conditions.salaryRequired });
+  }
+
+  hasActiveConditions(): boolean {
+    return this.conditions.remoteRequired || this.conditions.salaryRequired;
+  }
+
+  private navigateWithConditions(conditions: VacancyConditions) {
+    this.router.navigate(["/dashboard"], {
+      relativeTo: this.route,
+      queryParams: {
+        page: 0,
+        remote: conditions.remoteRequired || null,
+        withSalary: conditions.salaryRequired || null
+      },
+      queryParamsHandling: 'merge'
     });
   }
 }

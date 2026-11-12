@@ -3,6 +3,7 @@ package com.github.yehortpk.router.controllers;
 import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.services.VacancyService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -45,7 +46,9 @@ public class VacancyController {
                                                @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                @RequestParam(value = "sortBy", defaultValue = "parsedAt") String sortBy,
                                                @RequestParam(value = "sortDir", defaultValue = "DESC") String sortDir,
-                                               @RequestParam(value = "query", required = false) String query
+                                               @RequestParam(value = "query", required = false) String query,
+                                               @RequestParam(value = "remote", defaultValue = "false") boolean remoteRequired,
+                                               @RequestParam(value = "withSalary", defaultValue = "false") boolean salaryRequired
     ){
 
         // Check if field exists in Vacancy entity
@@ -63,12 +66,8 @@ public class VacancyController {
         PageRequest pageable = PageRequest.of(pageId, pageSize,
                 Sort.by(direction, sortBy));
 
-        Page<Vacancy> vacanciesOnPage;
-        if (query == null) {
-            vacanciesOnPage = vacancyService.getVacancies(pageable);
-        } else {
-            vacanciesOnPage = vacancyService.getVacancies(query, pageable);
-        }
+        Page<Vacancy> vacanciesOnPage = vacancyService.getVacancies(
+                new VacancySearchCriteria(query, remoteRequired, salaryRequired), pageable);
 
         return modelMapper.getTypeMap(Page.class, VacanciesPageDTO.class).map(vacanciesOnPage);
     }

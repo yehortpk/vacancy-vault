@@ -2,6 +2,7 @@ package com.github.yehortpk.router.services;
 
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.repositories.VacancyRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -9,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -76,12 +76,9 @@ public class VacancyService {
         return vacancyRepository.findAll();
     }
 
-    public Page<Vacancy> getVacancies(Pageable pageable) {
-        return vacancyRepository.findAll(pageable);
-    }
-
-    public Page<Vacancy> getVacancies(String query, PageRequest pageable) {
-        return vacancyRepository.findByTitleContaining(query, pageable);
+    public Page<Vacancy> getVacancies(VacancySearchCriteria criteria, Pageable pageable) {
+        return vacancyRepository.search(criteria.getQuery(), criteria.isRemoteRequired(),
+                criteria.isSalaryRequired(), pageable);
     }
 
     public void updateVacancy(VacancyDTO vacancy) {

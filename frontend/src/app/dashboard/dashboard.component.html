@@ -11,6 +11,29 @@
 
   <!-- Toolbar -->
   <div class="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+    <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Show only">
+      <button type="button" (click)="toggleRemoteRequired()" [attr.aria-pressed]="conditions.remoteRequired"
+        class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm ring-1 ring-inset"
+        [ngClass]="conditions.remoteRequired
+          ? 'bg-sky-600 text-white ring-sky-600 hover:bg-sky-700'
+          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2.5-2.5 3.75-5.5 3.75-9S14.5 5.5 12 3m0 18c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3M3.6 9h16.8M3.6 15h16.8" />
+        </svg>
+        Remote only
+      </button>
+      <button type="button" (click)="toggleSalaryRequired()" [attr.aria-pressed]="conditions.salaryRequired"
+        class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm ring-1 ring-inset"
+        [ngClass]="conditions.salaryRequired
+          ? 'bg-emerald-600 text-white ring-emerald-600 hover:bg-emerald-700'
+          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60 60 0 0115.8 2.1c.73.2 1.45-.34 1.45-1.1V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.38c0-.62.5-1.12 1.13-1.12H20.25M2.25 6v9m18-10.5v.75c0 .41.34.75.75.75h.75m-1.5-1.5h.38c.62 0 1.12.5 1.12 1.13v9.74c0 .62-.5 1.13-1.13 1.13h-.37m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.38a1.13 1.13 0 01-1.12-1.13V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.01v.01H18v-.01zm-12 0h.01v.01H6v-.01z" />
+        </svg>
+        With salary
+      </button>
+    </div>
+
     <div *ngIf="searchQuery" class="inline-flex items-center gap-2 self-start rounded-full bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 text-sm text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-200 dark:ring-blue-500/30">
       Results for “{{ searchQuery | truncate:30 }}”
       <a routerLink="/dashboard" class="rounded-full p-0.5 hover:bg-blue-100 dark:hover:bg-blue-500/20" aria-label="Clear search">
@@ -170,10 +193,12 @@
     </div>
     <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No vacancies found</h2>
     <p class="text-slate-500 dark:text-slate-400 mb-6">
-      {{ selectedFilterId !== null ? 'None of the stored vacancies match this filter.' : searchQuery ? 'Nothing matches your search.' : 'Start parsing to load job listings.' }}
+      {{ hasActiveConditions() ? 'Nothing matches the selected conditions. Try switching some off.'
+        : selectedFilterId !== null ? 'None of the stored vacancies match this filter.'
+        : searchQuery ? 'Nothing matches your search.' : 'Start parsing to load job listings.' }}
     </p>
-    <a *ngIf="selectedFilterId !== null || searchQuery" routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
-    <a *ngIf="authService.isAdmin() && selectedFilterId === null && !searchQuery" routerLink="/parser" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm">
+    <a *ngIf="selectedFilterId !== null || searchQuery || hasActiveConditions()" routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
+    <a *ngIf="authService.isAdmin() && selectedFilterId === null && !searchQuery && !hasActiveConditions()" routerLink="/parser" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm">
       Start parser
     </a>
   </div>

@@ -22,3 +22,17 @@ export type VacanciesListDTO = {
     totalVacancies: number
     totalPages: number
 }
+
+/** Narrowing a vacancy listing on top of its query or saved filter; false leaves that condition off. */
+export type VacancyConditions = {
+    remoteRequired: boolean
+    salaryRequired: boolean
+}
+
+/** Query params the router expects for the conditions; only the switched-on ones are sent. */
+export function createConditionParams(conditions: VacancyConditions): Record<string, boolean> {
+    return {
+        ...(conditions.remoteRequired ? { remote: true } : {}),
+        ...(conditions.salaryRequired ? { withSalary: true } : {}),
+    }
+}

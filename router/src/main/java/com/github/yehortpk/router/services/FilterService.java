@@ -10,6 +10,7 @@ import com.github.yehortpk.router.models.filter.FilterRequestDTO;
 import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyCompanyDTO;
+import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.repositories.ConnectionRepository;
 import com.github.yehortpk.router.repositories.FilterRepository;
 import com.github.yehortpk.router.repositories.UserRepository;
@@ -143,7 +144,7 @@ public class FilterService {
      * matching is not expressible in SQL.
      */
     public VacanciesPageDTO findVacanciesPage(long filterId, long userId, int pageId, int pageSize,
-                                              String sortBy, String sortDir) {
+                                              String sortBy, String sortDir, VacancySearchCriteria criteria) {
         if (pageId < 0) {
             throw new IllegalArgumentException("page parameter could not be less then 0");
         }
@@ -154,6 +155,7 @@ public class FilterService {
         FilterParser filterParser = parseExpression(findOwnedFilter(filterId, userId).getFilter());
 
         List<VacancyCompanyDTO> filteredVacancies = vacancyService.getAllVacancies().stream()
+                .filter(criteria::isSatisfiedBy)
                 .filter(vacancy -> filterParser.isVacancyApplicable(
                         vacancy.getCompany() == null ? null : vacancy.getCompany().getTitle(), vacancy.getTitle()))
                 .sorted(comparator)

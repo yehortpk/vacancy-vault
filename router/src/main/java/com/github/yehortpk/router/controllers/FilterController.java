@@ -3,6 +3,7 @@ package com.github.yehortpk.router.controllers;
 import com.github.yehortpk.router.models.filter.FilterDTO;
 import com.github.yehortpk.router.models.filter.FilterRequestDTO;
 import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
+import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.security.AuthenticatedUser;
 import com.github.yehortpk.router.services.FilterService;
 import jakarta.validation.Valid;
@@ -64,7 +65,10 @@ public class FilterController {
                                                  @RequestParam(value = "page") int pageId,
                                                  @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                  @RequestParam(value = "sortBy", defaultValue = "parsedAt") String sortBy,
-                                                 @RequestParam(value = "sortDir", defaultValue = "DESC") String sortDir) {
-        return filterService.findVacanciesPage(filterId, principal.getUserId(), pageId, pageSize, sortBy, sortDir);
+                                                 @RequestParam(value = "sortDir", defaultValue = "DESC") String sortDir,
+                                                 @RequestParam(value = "remote", defaultValue = "false") boolean remoteRequired,
+                                                 @RequestParam(value = "withSalary", defaultValue = "false") boolean salaryRequired) {
+        return filterService.findVacanciesPage(filterId, principal.getUserId(), pageId, pageSize, sortBy, sortDir,
+                new VacancySearchCriteria(null, remoteRequired, salaryRequired));
     }
 }
