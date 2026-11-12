@@ -1,7 +1,7 @@
 package com.github.yehortpk.router.config;
 
 import com.github.yehortpk.router.models.vacancy.VacancyDTO;
-import com.github.yehortpk.router.models.vacancy.VacancyNotificationDTO;
+import com.github.yehortpk.router.providers.telegram.TelegramNotificationDTO;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -95,20 +95,20 @@ public class InfrastructureConfig {
     private String kafkaBotNotifierTopic;
 
     @Bean
-    public ProducerFactory<String, VacancyNotificationDTO> producerFactory() {
+    public ProducerFactory<String, TelegramNotificationDTO> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         configProps.put(JsonSerializer.TYPE_MAPPINGS,
-                "vacancy:com.github.yehortpk.router.models.vacancy.VacancyNotificationDTO");
+                "vacancy:com.github.yehortpk.router.providers.telegram.TelegramNotificationDTO");
 
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
     @Bean
-    public KafkaTemplate<String, VacancyNotificationDTO> kafkaTemplate() {
-        KafkaTemplate<String, VacancyNotificationDTO> kafkaTemplate = new KafkaTemplate<>(producerFactory());
+    public KafkaTemplate<String, TelegramNotificationDTO> kafkaTemplate() {
+        KafkaTemplate<String, TelegramNotificationDTO> kafkaTemplate = new KafkaTemplate<>(producerFactory());
         kafkaTemplate.setDefaultTopic(kafkaBotNotifierTopic);
         return kafkaTemplate;
     }

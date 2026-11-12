@@ -3,7 +3,7 @@ package com.github.yehortpk.router.models.vacancy;
 import com.github.yehortpk.router.models.company.CompanyShortInfoDTO;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 public class VacancyCompanyDTO {
@@ -12,5 +12,6 @@ public class VacancyCompanyDTO {
     private int maxSalary;
     private String URL;
     private CompanyShortInfoDTO company;
-    private LocalDateTime parsedAt;
+    /** With the router's offset, so the dashboard shows the time in the viewer's zone. */
+    private OffsetDateTime parsedAt;
 }

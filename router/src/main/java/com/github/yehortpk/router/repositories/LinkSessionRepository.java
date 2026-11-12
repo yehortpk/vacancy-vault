@@ -19,9 +19,6 @@ public interface LinkSessionRepository extends JpaRepository<LinkSession, Long> 
     @Query("select s from LinkSession s where s.tokenHash = :tokenHash")
     Optional<LinkSession> findForUpdate(@Param("tokenHash") String tokenHash);
 
-    @Query("select s from LinkSession s where s.id = :id and s.user.id = :userId")
-    Optional<LinkSession> findByIdAndUserId(@Param("id") long id, @Param("userId") long userId);
-
     /** Drops the user's unconsumed sessions for a provider, when a new one supersedes them. */
     @Modifying
     @Query("delete from LinkSession s where s.user.id = :userId and s.provider.id = :providerId"

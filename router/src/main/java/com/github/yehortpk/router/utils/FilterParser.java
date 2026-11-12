@@ -22,6 +22,18 @@ public class FilterParser {
     private final List<String> mandatoryMatches = new ArrayList<>();
     private final String FILTER_REGEX = "^(.*,)?\\s*(\\([^)]+\\))?\\s*([^\\-\\s,][^\\-]*)?\\s*((?:\\s*-[^\\-\\s]+)+)?\\s*$";
 
+    /**
+     * The input is lowercased before matching, so the words are too; a blank word, left by a
+     * double space, would otherwise be "contained" in every input and veto every vacancy.
+     */
+    private static List<String> normalizeWords(String[] words) {
+        return Arrays.stream(words)
+                .map(String::strip)
+                .filter(word -> !word.isEmpty())
+                .map(String::toLowerCase)
+                .toList();
+    }
+
     public FilterParser(String filter) {
 
         Pattern pattern = Pattern.compile(FILTER_REGEX);
@@ -38,12 +50,11 @@ public class FilterParser {
             }
 
             if (mandatory != null) {
-                mandatoryMatches.addAll(Arrays.stream(mandatory.split(" ")).map(String::strip).toList());
+                mandatoryMatches.addAll(normalizeWords(mandatory.split("\\s+")));
             }
 
             if (negative != null) {
-                negativeMatches.addAll(Arrays.stream(negative.replace("-", "").split(" "))
-                        .map(String::strip).toList());
+                negativeMatches.addAll(normalizeWords(negative.replace("-", "").split("\\s+")));
             }
 
             if (multiChoice != null) {
@@ -51,11 +62,20 @@ public class FilterParser {
                         .replace("(", "")
                         .replace(")", "")
                         .split("\\|");
-                multiChoiceMatches.addAll(Arrays.stream(binaryParts).map(String::strip).toList());
+                multiChoiceMatches.addAll(normalizeWords(binaryParts));
             }
         } else {
             throw  new RuntimeException("Parser couldn't match this filter: " + filter);
         }
+    }
+
+    /**
+     * Whether a vacancy passes the filter. The company keyword is matched against the start of
+     * this string, so the company title comes first, followed by the vacancy title.
+     */
+    public boolean isVacancyApplicable(String companyTitle, String vacancyTitle) {
+        return isStringApplicable((companyTitle == null ? "" : companyTitle) + " "
+                + (vacancyTitle == null ? "" : vacancyTitle));
     }
 
     public boolean isStringApplicable(String string) {

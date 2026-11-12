@@ -2,7 +2,6 @@ package com.github.yehortpk.router.services;
 
 import com.github.yehortpk.router.exception.DestinationAlreadyLinkedException;
 import com.github.yehortpk.router.exception.InvalidLinkTokenException;
-import com.github.yehortpk.router.exception.LinkSessionNotFoundException;
 import com.github.yehortpk.router.exception.ProviderNotAvailableException;
 import com.github.yehortpk.router.models.connection.*;
 import com.github.yehortpk.router.models.connector.ConnectorStatusDTO;
@@ -11,9 +10,11 @@ import com.github.yehortpk.router.models.user.AppUser;
 import com.github.yehortpk.router.providers.ConnectionProvider;
 import com.github.yehortpk.router.providers.ConnectionProviderRegistry;
 import com.github.yehortpk.router.repositories.ConnectionRepository;
+import com.github.yehortpk.router.repositories.FilterRepository;
 import com.github.yehortpk.router.repositories.LinkSessionRepository;
 import com.github.yehortpk.router.repositories.ProviderRepository;
 import com.github.yehortpk.router.repositories.UserRepository;
+import com.github.yehortpk.router.utils.ServerClock;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,13 +46,14 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ConnectionLinkService {
-    private static final int TOKEN_BYTES = 32;
+    private static final int TOKEN_BYTES = 15;
     /** Where the token goes in a provider's {@code link_instructions}; a CHECK requires it. */
     private static final String TOKEN_PLACEHOLDER = "{token}";
 
     private final ConnectionProviderRegistry connectionProviderRegistry;
     private final ConnectionService connectionService;
     private final ConnectionRepository connectionRepository;
+    private final FilterRepository filterRepository;
     private final LinkSessionRepository linkSessionRepository;
     private final ProviderRepository providerRepository;
     private final UserRepository userRepository;
@@ -60,7 +62,10 @@ public class ConnectionLinkService {
     @Value("${link.session-ttl}")
     private Duration sessionTTL;
 
-    /** 256 random bits, Base64url: 43 characters, short enough for a Telegram deep link. */
+    /**
+     * 120 random bits, Base64url: 20 characters. Plenty for a single-use token that expires
+     * after {@code link.session-ttl}, and short enough to type.
+     */
     private String generateToken() {
         byte[] bytes = new byte[TOKEN_BYTES];
         secureRandom.nextBytes(bytes);
@@ -99,10 +104,9 @@ public class ConnectionLinkService {
                 session.getId(),
                 session.getProvider().getId(),
                 resolveStatus(session),
-                session.getExpiresAt(),
+                ServerClock.toOffsetDateTime(session.getExpiresAt()),
                 token,
-                instructions,
-                session.getConnection() == null ? null : connectionService.toDTO(session.getConnection()));
+                instructions);
     }
 
     private <D> Optional<Long> findConnectionId(ConnectionProvider<D> provider, Map<String, String> fields) {
@@ -217,13 +221,6 @@ public class ConnectionLinkService {
                 connectionProviderRegistry.findProvider(providerId), session, destination, title);
     }
 
-    /** Where one of the user's link sessions stands; the account panel polls this. */
-    public LinkSessionDTO findLinkSession(long sessionId, long userId) {
-        return linkSessionRepository.findByIdAndUserId(sessionId, userId)
-                .map(session -> toDTO(session, null, null))
-                .orElseThrow(LinkSessionNotFoundException::new);
-    }
-
     /**
      * A provider reporting that a destination should stop receiving notifications, e.g. the
      * bot's {@code /unlink}. A destination that is not linked is treated as done.
@@ -236,14 +233,17 @@ public class ConnectionLinkService {
     }
 
     /**
-     * What a provider may tell a destination about itself.
-     *
-     * <p>The filter counts are zero until filters belong to users and bind to connections.
+     * What a provider may tell a destination about itself: the owning account, how many
+     * filters it has, and how many of them deliver to this destination.
      */
     public ConnectorStatusDTO findConnectorStatus(long providerId, Map<String, String> destination) {
         return findConnectionId(connectionProviderRegistry.findProvider(providerId), destination)
                 .flatMap(connectionRepository::findById)
-                .map(connection -> new ConnectorStatusDTO(true, connection.getUser().getEmail(), 0, 0))
+                .map(connection -> new ConnectorStatusDTO(
+                        true,
+                        connection.getUser().getEmail(),
+                        filterRepository.countByUserId(connection.getUser().getId()),
+                        filterRepository.countByConnectionId(connection.getId())))
                 .orElseGet(ConnectorStatusDTO::notLinked);
     }
 }

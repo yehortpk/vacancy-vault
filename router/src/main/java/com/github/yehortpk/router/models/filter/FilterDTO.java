@@ -1,15 +1,13 @@
 package com.github.yehortpk.router.models.filter;
 
-import lombok.*;
+import java.util.List;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@ToString
-@EqualsAndHashCode
-public class FilterDTO {
-    private long filterId;
-    private long clientId;
-    private String filter;
+/**
+ * A filter as its owner sees it. An empty {@code connectionIds} marks a draft.
+ */
+public record FilterDTO(
+        long filterId,
+        String title,
+        String filter,
+        List<Long> connectionIds) {
 }

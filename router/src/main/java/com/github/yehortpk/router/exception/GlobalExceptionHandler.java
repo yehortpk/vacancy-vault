@@ -77,17 +77,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, ex.getMessage()));
     }
 
-    @ExceptionHandler({LinkSessionNotFoundException.class, ProviderNotAvailableException.class})
-    public ResponseEntity<Object> handleLinkNotFoundException(RuntimeException ex) {
+    @ExceptionHandler(ProviderNotAvailableException.class)
+    public ResponseEntity<Object> handleProviderNotAvailableException(RuntimeException ex) {
         return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
     }
 
     /**
      * 404 rather than 403, so a caller cannot tell an id that does not exist from one that
-     * belongs to somebody else and therefore cannot enumerate connection ids.
+     * belongs to somebody else and therefore cannot enumerate connection or filter ids.
      */
-    @ExceptionHandler(ConnectionNotFoundException.class)
-    public ResponseEntity<Object> handleConnectionNotFoundException(ConnectionNotFoundException ex) {
+    @ExceptionHandler({ConnectionNotFoundException.class, FilterNotFoundException.class})
+    public ResponseEntity<Object> handleOwnedResourceNotFoundException(RuntimeException ex) {
         return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
     }
 

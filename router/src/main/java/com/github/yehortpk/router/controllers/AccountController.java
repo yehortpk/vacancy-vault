@@ -60,12 +60,6 @@ public class AccountController {
         return connectionLinkService.startLink(principal.getUserId(), providerId);
     }
 
-    @GetMapping("/link-sessions/{session_id}")
-    public LinkSessionDTO getLinkSession(@AuthenticationPrincipal AuthenticatedUser principal,
-                                         @PathVariable("session_id") long sessionId) {
-        return connectionLinkService.findLinkSession(sessionId, principal.getUserId());
-    }
-
     @PatchMapping("/connections/{connection_id}")
     public ConnectionDTO renameConnection(@AuthenticationPrincipal AuthenticatedUser principal,
                                           @PathVariable("connection_id") long connectionId,

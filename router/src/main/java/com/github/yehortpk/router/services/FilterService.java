@@ -1,70 +1,181 @@
 package com.github.yehortpk.router.services;
 
+import com.github.yehortpk.router.exception.ConnectionNotFoundException;
+import com.github.yehortpk.router.exception.FilterNotFoundException;
+import com.github.yehortpk.router.exception.InvalidFilterExpressionException;
+import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
 import com.github.yehortpk.router.models.filter.FilterDTO;
+import com.github.yehortpk.router.models.filter.FilterRequestDTO;
+import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
+import com.github.yehortpk.router.models.vacancy.VacancyCompanyDTO;
+import com.github.yehortpk.router.repositories.ConnectionRepository;
 import com.github.yehortpk.router.repositories.FilterRepository;
+import com.github.yehortpk.router.repositories.UserRepository;
 import com.github.yehortpk.router.utils.FilterParser;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.apache.commons.beanutils.BeanComparator;
+import org.apache.commons.beanutils.PropertyUtils;
+import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
- * This service provides methods for work with {@link FilterRepository}
+ * An account's own filters: listing, writing, and the vacancies a filter matches.
+ *
+ * <p>Every filter id and every connection id a caller names is looked up scoped to the
+ * caller, and one that belongs to someone else answers 404. For bindings this check is the
+ * whole protection: the foreign key on {@code filter_connection} proves that a connection
+ * exists, not that it is the caller's, and without it a filter could be bound to a stranger's
+ * chat.
  */
-@Component
+@Service
 @RequiredArgsConstructor
 public class FilterService {
     private final FilterRepository filterRepository;
+    private final ConnectionRepository connectionRepository;
+    private final UserRepository userRepository;
     private final VacancyService vacancyService;
+    private final ModelMapper modelMapper;
 
-    public Optional<Filter> findById(long filterId) {
-        return filterRepository.findById(filterId);
+    /**
+     * @throws InvalidFilterExpressionException if the expression cannot be parsed
+     */
+    private static FilterParser parseExpression(String expression) {
+        try {
+            return new FilterParser(expression);
+        } catch (RuntimeException ex) {
+            throw new InvalidFilterExpressionException(expression);
+        }
     }
 
-    public void deleteFilter(long filterId) {
-        filterRepository.deleteById(filterId);
+    private static FilterDTO toDTO(Filter filter) {
+        List<Long> connectionIds = filter.getConnections().stream()
+                .map(Connection::getId)
+                .sorted()
+                .toList();
+        return new FilterDTO(filter.getId(), filter.getTitle(), filter.getFilter(), connectionIds);
+    }
+
+    private Filter findOwnedFilter(long filterId, long userId) {
+        return filterRepository.findByIdAndUserId(filterId, userId)
+                .orElseThrow(FilterNotFoundException::new);
     }
 
     /**
-     * Insert filter into database without create an entity
-     * @param clientId id of client
-     * @param filter filter as a string
+     * @throws ConnectionNotFoundException if any id is not one of the caller's connections
      */
-    public void addRawFilter(long clientId, String filter) {
-        filterRepository.saveByRawIds(clientId, filter);
+    private Set<Connection> findOwnedConnections(List<Long> connectionIds, long userId) {
+        Set<Connection> connections = new LinkedHashSet<>();
+        if (connectionIds == null) {
+            return connections;
+        }
+        for (Long connectionId : new LinkedHashSet<>(connectionIds)) {
+            connections.add(connectionRepository.findByIdAndUserId(connectionId, userId)
+                    .orElseThrow(ConnectionNotFoundException::new));
+        }
+        return connections;
     }
 
-    /**
-     * Returns vacancies that pass the filter
-     * @param filterId id of filter in database
-     * @return list of filtered vacancies
-     */
-    public List<Vacancy> getVacanciesByFilter(long filterId) {
-        Filter filter = findById(filterId).orElseThrow();
-        List<Vacancy> allVacancies = vacancyService.getAllVacancies();
-        FilterParser filterParser = new FilterParser(filter.getFilter());
+    private void applyRequest(Filter filter, FilterRequestDTO request, long userId) {
+        parseExpression(request.filter().strip());
 
-        List<Vacancy> result = new ArrayList<>();
-        for (Vacancy vacancy : allVacancies) {
-            if (filterParser.isStringApplicable(vacancy.getCompany().getTitle() + " " + vacancy.getTitle())) {
-                result.add(vacancy);
-            }
+        filter.setTitle(request.title().strip());
+        filter.setFilter(request.filter().strip());
+        filter.setConnections(findOwnedConnections(request.connectionIds(), userId));
+    }
+
+    private static Comparator<Vacancy> createVacancyComparator(String sortBy, String sortDir) {
+        // Check if field exists in Vacancy entity
+        if (!PropertyUtils.isReadable(new Vacancy(), sortBy)) {
+            throw new IllegalArgumentException(String.format("Property %s doesn't exist in the sorted entity", sortBy));
         }
 
-        return result;
+        Sort.Direction direction;
+        try {
+            direction = Sort.Direction.valueOf(sortDir);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Use only ASC/DESC for sortDir property");
+        }
+
+        Comparator<Vacancy> comparator = new BeanComparator<>(sortBy);
+        return direction.isDescending() ? comparator.reversed() : comparator;
+    }
+
+    public List<FilterDTO> findFilters(long userId) {
+        return filterRepository.findByUserId(userId).stream()
+                .map(FilterService::toDTO)
+                .toList();
+    }
+
+    public FilterDTO findFilter(long filterId, long userId) {
+        return toDTO(findOwnedFilter(filterId, userId));
     }
 
     @Transactional
-    public void addFilter(FilterDTO filter) {
-        addRawFilter(filter.getClientId(), filter.getFilter());
+    public FilterDTO createFilter(long userId, FilterRequestDTO request) {
+        Filter filter = new Filter();
+        filter.setUser(userRepository.findById(userId).orElseThrow(
+                () -> new IllegalStateException("Authenticated account " + userId + " no longer exists")));
+        applyRequest(filter, request, userId);
+        return toDTO(filterRepository.save(filter));
     }
 
-    public List<Filter> getAllFilters() {
-        return filterRepository.findAll();
+    /** Replaces the title, the expression and the bindings as a whole. */
+    @Transactional
+    public FilterDTO updateFilter(long filterId, long userId, FilterRequestDTO request) {
+        Filter filter = findOwnedFilter(filterId, userId);
+        applyRequest(filter, request, userId);
+        return toDTO(filterRepository.save(filter));
+    }
+
+    @Transactional
+    public void deleteFilter(long filterId, long userId) {
+        filterRepository.delete(findOwnedFilter(filterId, userId));
+    }
+
+    /**
+     * One page of the stored vacancies the caller's filter matches, sorted in memory since
+     * matching is not expressible in SQL.
+     */
+    public VacanciesPageDTO findVacanciesPage(long filterId, long userId, int pageId, int pageSize,
+                                              String sortBy, String sortDir) {
+        if (pageId < 0) {
+            throw new IllegalArgumentException("page parameter could not be less then 0");
+        }
+        if (pageSize < 1) {
+            throw new IllegalArgumentException("pageSize parameter could not be less then 1");
+        }
+        Comparator<Vacancy> comparator = createVacancyComparator(sortBy, sortDir);
+        FilterParser filterParser = parseExpression(findOwnedFilter(filterId, userId).getFilter());
+
+        List<VacancyCompanyDTO> filteredVacancies = vacancyService.getAllVacancies().stream()
+                .filter(vacancy -> filterParser.isVacancyApplicable(
+                        vacancy.getCompany() == null ? null : vacancy.getCompany().getTitle(), vacancy.getTitle()))
+                .sorted(comparator)
+                .map(vacancy -> modelMapper.map(vacancy, VacancyCompanyDTO.class))
+                .toList();
+
+        int totalSize = filteredVacancies.size();
+        int totalPages = Math.max((int) Math.ceil((double) totalSize / pageSize), 1);
+
+        if (pageId > totalPages) {
+            throw new IllegalArgumentException("page parameter could not be greater then total pages count");
+        }
+
+        int start = Math.min(pageId * pageSize, totalSize);
+        int end = Math.min(start + pageSize, totalSize);
+
+        return VacanciesPageDTO.builder()
+                .vacancies(filteredVacancies.subList(start, end))
+                .currentPage(pageId)
+                .totalVacancies(totalSize)
+                .pageSize(pageSize)
+                .totalPages(totalPages)
+                .build();
     }
 }

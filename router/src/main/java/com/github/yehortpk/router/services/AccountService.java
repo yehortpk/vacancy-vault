@@ -3,6 +3,7 @@ package com.github.yehortpk.router.services;
 import com.github.yehortpk.router.models.user.AccountDTO;
 import com.github.yehortpk.router.models.user.AppUser;
 import com.github.yehortpk.router.repositories.UserRepository;
+import com.github.yehortpk.router.utils.ServerClock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,6 @@ public class AccountService {
                 user.getId(),
                 user.getEmail(),
                 user.getRole(),
-                user.getCreatedAt());
+                ServerClock.toOffsetDateTime(user.getCreatedAt()));
     }
 }

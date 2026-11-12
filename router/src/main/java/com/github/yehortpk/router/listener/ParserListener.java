@@ -22,7 +22,7 @@ public class ParserListener {
     public synchronized void listenParserTopic(VacancyDTO vacancy) {
         boolean created = vacancyService.addVacancy(vacancy);
 
-        if (created && notifierService.isNotifierEnabled()) {
+        if (created) {
             notifierService.notifyUsers(vacancy);
         }
     }

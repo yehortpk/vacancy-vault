@@ -2,6 +2,7 @@ package com.github.yehortpk.router.migration;
 
 import com.github.yehortpk.router.PostgresContainerTest;
 import com.github.yehortpk.router.providers.stub.StubConnectionProvider;
+import com.github.yehortpk.router.providers.telegram.TelegramConnectionProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -27,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FlywayMigrationTest extends PostgresContainerTest {
     /** The test-only stub provider's id, inserted by R__create_stub_provider.sql. */
     private static final long STUB_ID = StubConnectionProvider.PROVIDER_ID;
+    /** Telegram's fixed id, inserted by V10__create_telegram_provider.sql. */
+    private static final long TELEGRAM_ID = TelegramConnectionProvider.PROVIDER_ID;
     /** A second provider, inserted inside the rolled-back probes only. */
     private static final long PROBE_ID = 900;
     private static final String INSERT_PROBE_PROVIDER =
@@ -142,6 +145,32 @@ class FlywayMigrationTest extends PostgresContainerTest {
                 + " VALUES (" + connectionId + ", '" + address + "')";
     }
 
+    private static String insertTelegramConnection(long connectionId, long chatId) {
+        return "INSERT INTO telegram_connection (connection_id, chat_id)"
+                + " VALUES (" + connectionId + ", " + chatId + ")";
+    }
+
+    private static String insertFilter(long id, String email) {
+        return "INSERT INTO filter (id, user_id, title, filter)"
+                + " SELECT " + id + ", id, 'Java', 'java -senior' FROM app_user"
+                + " WHERE email = '" + email + "'";
+    }
+
+    private static String bindFilter(long filterId, long connectionId) {
+        return "INSERT INTO filter_connection (filter_id, connection_id)"
+                + " VALUES (" + filterId + ", " + connectionId + ")";
+    }
+
+    private boolean isTablePresent(String table) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(
+                     "SELECT count(*) FROM information_schema.tables WHERE table_name = '" + table + "'")) {
+            resultSet.next();
+            return resultSet.getLong(1) > 0;
+        }
+    }
+
     /**
      * Inserts a row without an id and returns the generated one.
      *
@@ -183,12 +212,19 @@ class FlywayMigrationTest extends PostgresContainerTest {
         assertThat(countRows("company_headers")).isZero();
         assertThat(countRows("company_cookies")).isZero();
         assertThat(countRows("vacancy")).isZero();
-        assertThat(countRows("client")).isZero();
         assertThat(countRows("filter")).isZero();
         assertThat(countRows("app_user")).isZero();
         assertThat(countRows("connection")).isZero();
         assertThat(countRows("link_session")).isZero();
+        assertThat(countRows("filter_connection")).isZero();
+        assertThat(countRows("telegram_connection")).isZero();
         assertThat(countRows("stub_connection")).isZero();
+    }
+
+    @Test
+    void Migrate_FreshDatabase_ShouldDropTheClientTable() throws SQLException {
+        // Identity is app_user now; V9 drops the Telegram-chat identity table
+        assertThat(isTablePresent("client")).isFalse();
     }
 
     @Test
@@ -209,10 +245,82 @@ class FlywayMigrationTest extends PostgresContainerTest {
     }
 
     @Test
-    void Migrate_ProviderCatalog_ShouldHoldNoRowsOfItsOwn() throws SQLException {
-        // V3 creates an empty catalog; each provider's own migration inserts its row. The only
-        // row here is the test-only stub's
-        assertThat(countWhere("provider", "id <> " + STUB_ID)).isZero();
+    void Migrate_ProviderCatalog_ShouldHoldOnlyTheImplementedProviders() throws SQLException {
+        // V3 creates an empty catalog; each provider's own migration inserts its row: V10
+        // Telegram's, and the test-only repeatable migration the stub's
+        assertThat(countWhere("provider", "id = " + TELEGRAM_ID + " AND title = 'Telegram' AND enabled")).isOne();
+        assertThat(countWhere("provider", "id NOT IN (" + TELEGRAM_ID + ", " + STUB_ID + ")")).isZero();
+    }
+
+    @Test
+    void Migrate_TelegramDetailsTable_ShouldAcceptARowOfATelegramConnection() throws SQLException {
+        // The positive case for the tests below, so they fail for the reason they name
+        assertThat(isAnyStatementRejected(
+                insertUser("tg@example.com"),
+                insertConnection(900101, "tg@example.com", TELEGRAM_ID),
+                insertTelegramConnection(900101, -100123456789L))).isFalse();
+    }
+
+    @Test
+    void Migrate_TelegramDetailsTable_ShouldRejectARowOfAnotherProvidersConnection() throws SQLException {
+        assertThat(isAnyStatementRejected(
+                insertUser("tg-stub@example.com"),
+                insertConnection(900102, "tg-stub@example.com", STUB_ID),
+                insertTelegramConnection(900102, 473123822))).isTrue();
+    }
+
+    @Test
+    void Migrate_TelegramDetailsTable_ShouldEnforceOneAccountPerChat() throws SQLException {
+        assertThat(isAnyStatementRejected(
+                insertUser("tg-a@example.com"),
+                insertUser("tg-b@example.com"),
+                insertConnection(900103, "tg-a@example.com", TELEGRAM_ID),
+                insertConnection(900104, "tg-b@example.com", TELEGRAM_ID),
+                insertTelegramConnection(900103, 473123822),
+                insertTelegramConnection(900104, 473123822))).isTrue();
+    }
+
+    @Test
+    void Migrate_FilterTable_ShouldRequireATitle() throws SQLException {
+        assertThat(isAnyStatementRejected(
+                insertUser("untitled@example.com"),
+                "INSERT INTO filter (user_id, filter) SELECT id, 'java' FROM app_user"
+                        + " WHERE email = 'untitled@example.com'")).isTrue();
+    }
+
+    @Test
+    void Migrate_ConnectionDeleted_ShouldDropItsBindingsAndKeepTheFilter() throws SQLException {
+        // Unlinking turns a filter bound only to that connection into a draft, not into nothing
+        String[] statements = {
+                insertUser("unbind@example.com"),
+                insertConnection(900105, "unbind@example.com", STUB_ID),
+                insertFilter(900105, "unbind@example.com"),
+                bindFilter(900105, 900105),
+                "DELETE FROM connection WHERE id = 900105"};
+
+        assertThat(countAfter("SELECT count(*) FROM filter_connection WHERE filter_id = 900105", statements)).isZero();
+        assertThat(countAfter("SELECT count(*) FROM filter WHERE id = 900105", statements)).isOne();
+    }
+
+    @Test
+    void Migrate_FilterDeleted_ShouldDropItsBindingsAndKeepTheConnection() throws SQLException {
+        String[] statements = {
+                insertUser("filter-gone@example.com"),
+                insertConnection(900106, "filter-gone@example.com", STUB_ID),
+                insertFilter(900106, "filter-gone@example.com"),
+                bindFilter(900106, 900106),
+                "DELETE FROM filter WHERE id = 900106"};
+
+        assertThat(countAfter("SELECT count(*) FROM filter_connection WHERE connection_id = 900106", statements)).isZero();
+        assertThat(countAfter("SELECT count(*) FROM connection WHERE id = 900106", statements)).isOne();
+    }
+
+    @Test
+    void Migrate_UserDeleted_ShouldCascadeToItsFilters() throws SQLException {
+        assertThat(countAfter("SELECT count(*) FROM filter WHERE id = 900107",
+                insertUser("filter-owner@example.com"),
+                insertFilter(900107, "filter-owner@example.com"),
+                "DELETE FROM app_user WHERE email = 'filter-owner@example.com'")).isZero();
     }
 
     @Test

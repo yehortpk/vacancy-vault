@@ -1,6 +1,6 @@
 package com.github.yehortpk.router.models.connection;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * A linked destination as the account panel shows it.
@@ -14,5 +14,5 @@ public record ConnectionDTO(
         long providerId,
         String title,
         String address,
-        LocalDateTime linkedAt) {
+        OffsetDateTime linkedAt) {
 }

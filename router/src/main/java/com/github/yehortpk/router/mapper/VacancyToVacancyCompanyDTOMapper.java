@@ -8,6 +8,5 @@ public class VacancyToVacancyCompanyDTOMapper extends PropertyMap<Vacancy, Vacan
     @Override
     protected void configure() {
         map().setURL(source.getLink());
-        map().setParsedAt(source.getParsedAt());
     }
 }

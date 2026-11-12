@@ -1,4 +1,4 @@
-package com.github.yehortpk.router.models.vacancy;
+package com.github.yehortpk.router.providers.telegram;
 
 import lombok.*;
 
@@ -8,7 +8,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VacancyNotificationDTO {
+public class TelegramNotificationDTO {
     private long chatId;
     private long filterId;
     private String filter;

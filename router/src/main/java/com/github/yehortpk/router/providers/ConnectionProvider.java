@@ -1,6 +1,8 @@
 package com.github.yehortpk.router.providers;
 
 import com.github.yehortpk.router.models.connection.Connection;
+import com.github.yehortpk.router.models.filter.Filter;
+import com.github.yehortpk.router.models.vacancy.VacancyDTO;
 
 import java.util.Collection;
 import java.util.List;
@@ -63,4 +65,15 @@ public interface ConnectionProvider<D> {
      */
     default void releaseDestination(Connection connection) {
     }
+
+    /**
+     * Delivers a new vacancy to these connections of this provider, each with the filter that
+     * matched it for that connection.
+     *
+     * <p>A connection with no details row is skipped rather than failing the others.
+     *
+     * @param matchedFiltersByConnectionId the matched filter of each connection, keyed by
+     *        connection id; only connections of this provider
+     */
+    void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, VacancyDTO vacancy);
 }

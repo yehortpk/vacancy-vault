@@ -1,116 +1,70 @@
 package com.github.yehortpk.router.controllers;
 
-import com.github.yehortpk.router.models.filter.Filter;
 import com.github.yehortpk.router.models.filter.FilterDTO;
+import com.github.yehortpk.router.models.filter.FilterRequestDTO;
 import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
-import com.github.yehortpk.router.models.vacancy.Vacancy;
-import com.github.yehortpk.router.models.vacancy.VacancyCompanyDTO;
-import com.github.yehortpk.router.services.ClientService;
+import com.github.yehortpk.router.security.AuthenticatedUser;
 import com.github.yehortpk.router.services.FilterService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.beanutils.PropertyUtils;
-import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-import org.apache.commons.beanutils.BeanComparator;
 
-import java.util.Comparator;
 import java.util.List;
 
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-
 /**
- * Controller responsible for handling filter related requests
+ * Controller responsible for the caller's own filters.
+ *
+ * <p>The owner is taken from the authenticated principal, never from the request. A filter
+ * or connection id that belongs to someone else answers 404, like one that does not exist.
  */
 @RestController
-@RequestMapping("/filter")
-
-@CrossOrigin("http://localhost:4200")
+@RequestMapping("/me/filters")
 @RequiredArgsConstructor
 public class FilterController {
-    private final ModelMapper modelMapper;
     private final FilterService filterService;
-    private final ClientService clientService;
-
-    @GetMapping("/chat/{chat_id}")
-    public List<FilterDTO> getFilters(
-            @PathVariable("chat_id") int chatId
-    ) {
-        return clientService.findById(chatId).getFilters()
-                .stream().map((filter) -> modelMapper.map(filter, FilterDTO.class)).toList();
-    }
 
     @GetMapping
-    public List<FilterDTO> getAllFilters() {
-        return filterService.getAllFilters()
-                .stream().map((filter) -> modelMapper.map(filter, FilterDTO.class)).toList();
+    public List<FilterDTO> getFilters(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return filterService.findFilters(principal.getUserId());
+    }
+
+    /** {@code connectionIds} empty or omitted creates a draft, which notifies nobody. */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public FilterDTO createFilter(@AuthenticationPrincipal AuthenticatedUser principal,
+                                  @Valid @RequestBody FilterRequestDTO request) {
+        return filterService.createFilter(principal.getUserId(), request);
     }
 
     @GetMapping("/{filter_id}")
-    public FilterDTO getFilter(@PathVariable("filter_id") long filterId) {
-        Filter filter = filterService.findById(filterId).orElseThrow(() ->
-                new ResponseStatusException(NOT_FOUND, "Filter not found"));
-        return modelMapper.map(filter, FilterDTO.class);
+    public FilterDTO getFilter(@AuthenticationPrincipal AuthenticatedUser principal,
+                               @PathVariable("filter_id") long filterId) {
+        return filterService.findFilter(filterId, principal.getUserId());
     }
 
-    @PostMapping
-    public void addFilter(@RequestBody FilterDTO filter) {
-        filterService.addFilter(filter);
+    /** Replaces the title, the expression and the bindings. */
+    @PutMapping("/{filter_id}")
+    public FilterDTO updateFilter(@AuthenticationPrincipal AuthenticatedUser principal,
+                                  @PathVariable("filter_id") long filterId,
+                                  @Valid @RequestBody FilterRequestDTO request) {
+        return filterService.updateFilter(filterId, principal.getUserId(), request);
     }
 
     @DeleteMapping("/{filter_id}")
-    public void deleteFilter(@PathVariable("filter_id") long filterId) {
-        filterService.deleteFilter(filterId);
+    public void deleteFilter(@AuthenticationPrincipal AuthenticatedUser principal,
+                             @PathVariable("filter_id") long filterId) {
+        filterService.deleteFilter(filterId, principal.getUserId());
     }
 
     @GetMapping("/{filter_id}/vacancies")
-    public VacanciesPageDTO getVacanciesByFilter(@PathVariable("filter_id") long filterId,
+    public VacanciesPageDTO getVacanciesByFilter(@AuthenticationPrincipal AuthenticatedUser principal,
+                                                 @PathVariable("filter_id") long filterId,
                                                  @RequestParam(value = "page") int pageId,
                                                  @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
                                                  @RequestParam(value = "sortBy", defaultValue = "parsedAt") String sortBy,
                                                  @RequestParam(value = "sortDir", defaultValue = "DESC") String sortDir) {
-        // Check if field exists in Vacancy entity
-        if (!PropertyUtils.isReadable(new Vacancy(), sortBy)) {
-            throw new IllegalArgumentException(String.format("Property %s doesn't exist in the sorted entity", sortBy));
-        }
-
-        Sort.Direction direction;
-        try {
-            direction = Sort.Direction.valueOf(sortDir);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Use only ASC/DESC for sortDir property");
-        }
-
-        if (pageId < 0) {
-            throw new IllegalArgumentException("page parameter could not be less then 0");
-        }
-
-        Comparator<Vacancy> comparator = new BeanComparator<>(sortBy);
-        if (direction.isDescending()) {
-            comparator = comparator.reversed();
-        }
-
-        List<VacancyCompanyDTO> filteredVacancies = filterService.getVacanciesByFilter(filterId).stream()
-                .sorted(comparator)
-                .map(vac -> modelMapper.map(vac, VacancyCompanyDTO.class)).toList();
-
-        int totalSize = filteredVacancies.size();
-        int totalPages = Math.max((int) Math.ceil((double)totalSize / pageSize), 1);
-
-        if (pageId > totalPages) {
-            throw new IllegalArgumentException("page parameter could not be greater then total pages count");
-        }
-
-        int start = pageId * pageSize;
-        int end = start + Math.min(totalSize - start, pageSize);
-
-        return VacanciesPageDTO.builder()
-                .vacancies(filteredVacancies.subList(start, end))
-                .currentPage(pageId)
-                .totalVacancies(totalSize)
-                .pageSize(pageSize)
-                .totalPages(totalPages)
-                .build();
+        return filterService.findVacanciesPage(filterId, principal.getUserId(), pageId, pageSize, sortBy, sortDir);
     }
 }

@@ -95,23 +95,22 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         // Preflight must never require credentials
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // The compose healthcheck gates the bot's startup on this
+                        // The compose healthcheck gates the dependent services' startup on this
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         // The parser calls these with no credentials and the dashboard reads
                         // vacancies anonymously. Locking the ingest pipeline down needs a
                         // service token on the parser side too, and is deliberately deferred.
                         .requestMatchers("/vacancy/**", "/company/**").permitAll()
-                        .requestMatchers("/filter/**").permitAll()
                         // The parser reports its progress here, unauthenticated like the rest
                         // of the ingest pipeline. Must precede the admin rule below, which
                         // would otherwise match it first.
                         .requestMatchers(HttpMethod.POST, "/parser/progress").permitAll()
                         // Starting a parse and watching it is the admin's room
                         .requestMatchers("/parser/**").hasRole(UserRole.ADMIN.name())
-                        // Called by the bot with a shared secret, never by a browser
+                        // Called by provider services with a shared secret, never by a browser
                         .requestMatchers("/connector/**").hasRole("SERVICE")
-                        // Each account's own room; an admin has one too
+                        // Each account's own room, its filters included; an admin has one too
                         .requestMatchers("/me/**").hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
                         .anyRequest().permitAll())
                 .exceptionHandling(handling ->

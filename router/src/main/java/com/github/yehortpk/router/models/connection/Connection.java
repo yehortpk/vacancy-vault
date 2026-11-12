@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 /**
  * One linked destination of one account, whatever the messenger.
  *
- * <p>The core works only with this entity: listing, renaming, unlinking, ownership and, later,
- * filter bindings. What the destination actually is lives in the provider's own details
+ * <p>The core works only with this entity: listing, renaming, unlinking, ownership and filter
+ * bindings. What the destination actually is lives in the provider's own details
  * entity (e.g. {@code TelegramConnection}), which points here and which only that provider's
  * code reads. There is deliberately no mapping in this direction, so the core cannot reach
  * into a provider's table by accident.

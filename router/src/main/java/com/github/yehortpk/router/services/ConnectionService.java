@@ -5,6 +5,7 @@ import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.connection.ConnectionDTO;
 import com.github.yehortpk.router.providers.ConnectionProviderRegistry;
 import com.github.yehortpk.router.repositories.ConnectionRepository;
+import com.github.yehortpk.router.utils.ServerClock;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,7 +43,7 @@ public class ConnectionService {
                 connection.getProvider().getId(),
                 connection.getTitle(),
                 address,
-                connection.getLinkedAt());
+                ServerClock.toOffsetDateTime(connection.getLinkedAt()));
     }
 
     private Connection findOwnedConnection(long connectionId, long userId) {
@@ -81,8 +82,8 @@ public class ConnectionService {
      * Unlinks a connection.
      *
      * <p>Always deletes the {@code connection} row, never a provider's details row: the
-     * database cascades from here to the details row and, once filters are bound to
-     * connections, to those bindings too.
+     * database cascades from here to the details row and to the filter bindings, so a filter
+     * bound only to this connection stays as a draft.
      */
     @Transactional
     public void deleteConnection(Connection connection) {

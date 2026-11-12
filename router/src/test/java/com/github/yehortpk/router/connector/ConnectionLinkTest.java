@@ -8,6 +8,8 @@ import com.github.yehortpk.router.models.connection.LinkSession;
 import com.github.yehortpk.router.models.provider.Provider;
 import com.github.yehortpk.router.providers.stub.StubConnectionProvider;
 import com.github.yehortpk.router.providers.stub.StubConnectionRepository;
+import com.github.yehortpk.router.providers.telegram.TelegramConnectionProvider;
+import com.github.yehortpk.router.providers.telegram.TelegramConnectionRepository;
 import com.github.yehortpk.router.repositories.ConnectionRepository;
 import com.github.yehortpk.router.repositories.LinkSessionRepository;
 import com.github.yehortpk.router.repositories.ProviderRepository;
@@ -46,6 +48,10 @@ class ConnectionLinkTest extends PostgresContainerTest {
     private static final String ADDRESS = "stub-473123822";
     private static final long STUB_ID = StubConnectionProvider.PROVIDER_ID;
     private static final String CONNECTOR = "/connector/" + STUB_ID;
+    private static final long TELEGRAM_ID = TelegramConnectionProvider.PROVIDER_ID;
+    private static final String TELEGRAM_CONNECTOR = "/connector/" + TELEGRAM_ID;
+    /** A group chat: Telegram gives groups negative ids. */
+    private static final String GROUP_CHAT_ID = "-1001234567890";
 
     @Autowired
     private MockMvc mockMvc;
@@ -58,6 +64,9 @@ class ConnectionLinkTest extends PostgresContainerTest {
 
     @Autowired
     private StubConnectionRepository stubConnectionRepository;
+
+    @Autowired
+    private TelegramConnectionRepository telegramConnectionRepository;
 
     @Autowired
     private LinkSessionRepository linkSessionRepository;
@@ -135,6 +144,21 @@ class ConnectionLinkTest extends PostgresContainerTest {
         return responseBody(linked).get("id").asLong();
     }
 
+    private String issueTelegramLinkToken(String accessToken) throws Exception {
+        MvcResult started = mockMvc.perform(post("/me/connections/" + TELEGRAM_ID + "/link")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        return linkTokenOf(responseBody(started));
+    }
+
+    private MockHttpServletRequestBuilder signalTelegramLinked(String token, String chatId) {
+        return jsonPost(TELEGRAM_CONNECTOR + "/linked",
+                "{\"token\":\"%s\",\"title\":\"Job hunt\",\"destination\":{\"chatId\":\"%s\"}}"
+                        .formatted(token, chatId))
+                .header("X-Service-Token", serviceToken);
+    }
+
     private Connection connectionOfAddress(String address) {
         long connectionId = stubConnectionRepository.findConnectionIdByAddress(address).orElseThrow();
         return connectionRepository.findById(connectionId).orElseThrow();
@@ -156,8 +180,8 @@ class ConnectionLinkTest extends PostgresContainerTest {
         assertThat(session.get("status").asText()).isEqualTo("PENDING");
         assertThat(session.get("providerId").asLong()).isEqualTo(STUB_ID);
         assertThat(session.get("expiresAt").asText()).isNotEmpty();
-        // 32 random bytes, Base64url without padding
-        assertThat(token).hasSize(43);
+        // 15 random bytes, Base64url without padding
+        assertThat(token).hasSize(20);
         // The provider row's link_instructions, with the token in place of {token}
         assertThat(session.get("instructions").asText()).isEqualTo(
                 "Send /link " + token + " to the stub messenger.");
@@ -214,22 +238,6 @@ class ConnectionLinkTest extends PostgresContainerTest {
     }
 
     @Test
-    void CompleteLink_ValidToken_ShouldMarkTheSessionLinked() throws Exception {
-        // This is the signal the account panel polls for after starting a link
-        String accessToken = accessTokenOf("polled@example.com");
-        JsonNode session = startStubLink(accessToken);
-        mockMvc.perform(signalLinked(linkTokenOf(session), ADDRESS)).andExpect(status().isOk());
-
-        mockMvc.perform(get("/me/link-sessions/" + session.get("id").asLong())
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("LINKED"))
-                .andExpect(jsonPath("$.token").doesNotExist())
-                .andExpect(jsonPath("$.instructions").doesNotExist())
-                .andExpect(jsonPath("$.connection.address").value(ADDRESS));
-    }
-
-    @Test
     void CompleteLink_TokenUsedTwice_ShouldReturnUnauthorized() throws Exception {
         // Whoever presents a token links a destination to its owner, so it must not work a second time
         String token = issueLinkToken(accessTokenOf("once@example.com"));
@@ -252,8 +260,7 @@ class ConnectionLinkTest extends PostgresContainerTest {
         mockMvc.perform(signalLinked(linkTokenOf(session), ADDRESS))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/me/link-sessions/" + stored.getId()).header("Authorization", "Bearer " + accessToken))
-                .andExpect(jsonPath("$.status").value("EXPIRED"));
+        assertThat(stubConnectionRepository.findConnectionIdByAddress(ADDRESS)).isEmpty();
     }
 
     @Test
@@ -352,15 +359,6 @@ class ConnectionLinkTest extends PostgresContainerTest {
         mockMvc.perform(get("/connector/999/status")
                         .param("address", ADDRESS)
                         .header("X-Service-Token", serviceToken))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void GetLinkSession_SessionOfAnotherUser_ShouldReturnNotFound() throws Exception {
-        long strangersSessionId = startStubLink(accessTokenOf("session-owner@example.com")).get("id").asLong();
-
-        mockMvc.perform(get("/me/link-sessions/" + strangersSessionId)
-                        .header("Authorization", "Bearer " + accessTokenOf("session-thief@example.com")))
                 .andExpect(status().isNotFound());
     }
 
@@ -504,5 +502,92 @@ class ConnectionLinkTest extends PostgresContainerTest {
 
         assertThat(connectionRepository.findAll()).isEmpty();
         assertThat(stubConnectionRepository.findConnectionIdByAddress(ADDRESS)).isEmpty();
+    }
+
+    @Test
+    void GetProviders_Authenticated_ShouldListTelegram() throws Exception {
+        mockMvc.perform(get("/me/providers").header("Authorization", "Bearer " + accessTokenOf("tg-providers@example.com")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == %d)].title".formatted(TELEGRAM_ID)).value("Telegram"));
+    }
+
+    @Test
+    void StartLink_Telegram_ShouldRenderTheBotCommandWithTheToken() throws Exception {
+        MvcResult started = mockMvc.perform(post("/me/connections/" + TELEGRAM_ID + "/link")
+                        .header("Authorization", "Bearer " + accessTokenOf("tg-start@example.com")))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode session = responseBody(started);
+
+        assertThat(session.get("instructions").asText()).isEqualTo("Send /link " + linkTokenOf(session)
+                + " to the Telegram bot from the chat that should receive notifications.");
+    }
+
+    @Test
+    void CompleteLink_TelegramGroupChat_ShouldLinkTheChat() throws Exception {
+        String token = issueTelegramLinkToken(accessTokenOf("tg-link@example.com"));
+
+        mockMvc.perform(signalTelegramLinked(token, GROUP_CHAT_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.providerId").value(TELEGRAM_ID))
+                .andExpect(jsonPath("$.title").value("Job hunt"))
+                .andExpect(jsonPath("$.address").value(GROUP_CHAT_ID));
+
+        assertThat(telegramConnectionRepository.findConnectionIdByChatId(Long.parseLong(GROUP_CHAT_ID))).isPresent();
+    }
+
+    @Test
+    void CompleteLink_TelegramChatIdZero_ShouldReturnBadRequest() throws Exception {
+        String token = issueTelegramLinkToken(accessTokenOf("tg-zero@example.com"));
+
+        mockMvc.perform(signalTelegramLinked(token, "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void CompleteLink_TelegramChatIdNotANumber_ShouldReturnBadRequestAndKeepTheTokenUsable() throws Exception {
+        String token = issueTelegramLinkToken(accessTokenOf("tg-nan@example.com"));
+
+        mockMvc.perform(signalTelegramLinked(token, "my-chat"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(signalTelegramLinked(token, "473123822"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void CompleteLink_TelegramChatLinkedToAnotherUser_ShouldReturnConflict() throws Exception {
+        mockMvc.perform(signalTelegramLinked(issueTelegramLinkToken(accessTokenOf("tg-first@example.com")), "473123822"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(signalTelegramLinked(issueTelegramLinkToken(accessTokenOf("tg-second@example.com")), "473123822"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void GetStatus_LinkedTelegramChat_ShouldReportTheOwningAccount() throws Exception {
+        mockMvc.perform(signalTelegramLinked(issueTelegramLinkToken(accessTokenOf("tg-status@example.com")), GROUP_CHAT_ID))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(TELEGRAM_CONNECTOR + "/status")
+                        .param("chatId", GROUP_CHAT_ID)
+                        .header("X-Service-Token", serviceToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.linked").value(true))
+                .andExpect(jsonPath("$.email").value("tg-status@example.com"))
+                .andExpect(jsonPath("$.filterCount").value(0));
+    }
+
+    @Test
+    void UnlinkDestination_LinkedTelegramChat_ShouldRemoveTheConnection() throws Exception {
+        mockMvc.perform(signalTelegramLinked(issueTelegramLinkToken(accessTokenOf("tg-unlink@example.com")), GROUP_CHAT_ID))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(jsonPost(TELEGRAM_CONNECTOR + "/unlinked",
+                        "{\"destination\":{\"chatId\":\"%s\"}}".formatted(GROUP_CHAT_ID))
+                        .header("X-Service-Token", serviceToken))
+                .andExpect(status().isOk());
+
+        assertThat(telegramConnectionRepository.findConnectionIdByChatId(Long.parseLong(GROUP_CHAT_ID))).isEmpty();
+        assertThat(connectionRepository.findAll()).isEmpty();
     }
 }
