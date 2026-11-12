@@ -1,0 +1,96 @@
+<div class="py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">My filters</h1>
+      <p class="text-slate-600 dark:text-slate-400">New vacancies that match a filter are sent to the chats it is bound to.</p>
+    </div>
+    <button *ngIf="!draft" (click)="startCreate()"
+      class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+      New filter
+    </button>
+  </div>
+
+  <p *ngIf="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+
+  <!-- Create / edit -->
+  <section *ngIf="draft as editing" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">{{ editing.filterId === null ? 'New filter' : 'Edit filter' }}</h2>
+
+    <form (ngSubmit)="saveDraft()" class="space-y-4">
+      <div>
+        <label for="filter-title" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title</label>
+        <input id="filter-title" name="title" required maxlength="255" [(ngModel)]="editing.title" placeholder="Java backend"
+          class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      <div>
+        <label for="filter-expression" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Expression</label>
+        <textarea id="filter-expression" name="filter" required rows="2" [(ngModel)]="editing.filter"
+          placeholder="Google, (developer|engineer) java -senior -lead"
+          class="w-full px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <code>Company,</code> only that company · <code>(a|b)</code> one of the words · <code>word</code> must be in the title ·
+          <code>-word</code> must not be. Words ignore case; the company name does not.
+        </p>
+      </div>
+
+      <div>
+        <mat-form-field class="w-full">
+          <mat-label>Notify</mat-label>
+          <mat-select multiple name="connections" [ngModel]="editing.connectionOptions" (ngModelChange)="onConnectionOptionsChange($event)">
+            <mat-option [value]="DRAFT_OPTION">No chat (draft)</mat-option>
+            @for (connection of connections; track connection.id) {
+            <mat-option [value]="connection.id">{{ describeConnection(connection) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <p *ngIf="connections.length === 0" class="text-xs text-slate-500 dark:text-slate-400">
+          No chats linked yet. <a routerLink="/account" class="underline hover:no-underline">Link a messenger</a> to get notified;
+          until then the filter is a draft.
+        </p>
+      </div>
+
+      <p *ngIf="formError" class="text-sm text-red-600 dark:text-red-400">{{ formError }}</p>
+
+      <div class="flex gap-2">
+        <button type="submit" [disabled]="isSaving"
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+          Save
+        </button>
+        <button type="button" (click)="cancelEdit()"
+          class="px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- List -->
+  <section class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+    <p *ngIf="filters.length === 0" class="text-sm text-slate-600 dark:text-slate-400">No filters yet.</p>
+
+    <ul class="divide-y divide-slate-200 dark:divide-slate-700">
+      <li *ngFor="let filter of filters" class="py-4 flex flex-wrap items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-slate-900 dark:text-white truncate">{{ filter.title }}</p>
+          <code class="block text-sm text-slate-600 dark:text-slate-300 break-all">{{ filter.filter }}</code>
+          <div class="mt-2 flex flex-wrap gap-1">
+            <span *ngIf="filter.connectionIds.length === 0"
+              class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+              Draft · notifies nobody
+            </span>
+            <span *ngFor="let connectionId of filter.connectionIds"
+              class="px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+              {{ describeConnectionId(connectionId) }}
+            </span>
+          </div>
+        </div>
+
+        <a routerLink="/dashboard" [queryParams]="{ filter: filter.filterId }"
+          class="px-3 py-1 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Vacancies</a>
+        <button (click)="startEdit(filter)" class="px-3 py-1 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Edit</button>
+        <button (click)="deleteFilter(filter)" class="px-3 py-1 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
+      </li>
+    </ul>
+  </section>
+</div>

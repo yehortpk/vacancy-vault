@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { RouterOutlet, Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../service/auth.service';
 
 @Component({
   selector: 'app-layout',
@@ -10,9 +11,8 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [RouterOutlet, CommonModule, RouterModule, FormsModule]
 })
-export class AppLayoutComponent {
+export class AppLayoutComponent implements OnInit {
   dark: boolean = false;
-  isSideMenuOpen: boolean = false;
   isNotificationsMenuOpen: boolean = false;
   isProfileMenuOpen: boolean = false;
   isPagesMenuOpen: boolean = false;
@@ -21,8 +21,18 @@ export class AppLayoutComponent {
 
   @ViewChild('profileMenu') profileMenu?: ElementRef<HTMLElement>;
 
-  constructor(public router: Router, private route: ActivatedRoute) {
+  constructor(public router: Router, private route: ActivatedRoute, protected authService: AuthService) {
     this.dark = this.getThemeFromLocalStorage();
+  }
+
+  ngOnInit(): void {
+    // Restores the session after a page reload, so the menu shows the right rooms
+    this.authService.findAccount().subscribe();
+  }
+
+  logout() {
+    this.closeProfileMenu()
+    this.authService.logout()
   }
 
   getThemeFromLocalStorage(): boolean {
@@ -42,12 +52,6 @@ export class AppLayoutComponent {
     this.setThemeToLocalStorage(this.dark)
   }
 
-  toggleSideMenu() {
-    this.isSideMenuOpen = !this.isSideMenuOpen
-  }
-  closeSideMenu() {
-    this.isSideMenuOpen = false
-  }
   toggleNotificationsMenu() {
     this.isNotificationsMenuOpen = !this.isNotificationsMenuOpen
   }

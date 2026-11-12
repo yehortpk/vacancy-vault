@@ -118,7 +118,8 @@ docker compose up --build
 - <b>Guests</b> (not logged in) browse the vacancy dashboard.
 - <b>Users</b> register at <code>/register</code> and get their own account room at <code>/account</code>: linking a
   messenger with a one-time code (for Telegram, send <code>/link &lt;code&gt;</code> to the bot) and the list of
-  linked chats.
+  linked chats. At <code>/filters</code> they write their [filters](#filters) and choose which linked chats each one
+  notifies, and the dashboard lets them browse the vacancies one of their filters matches.
 - <b>Admins</b> also get the parser room at <code>/parser</code>, to start a parse and watch its progress. It is
   opened from the profile menu in the top right corner.
 
@@ -215,7 +216,12 @@ table, you need to implement <code>parseSiteMetadata</code> method in your parse
 
 
 ### Filters
-You can create specific filters that will be used for new vacancy notifications if they match the filter. The filter structure should be as follows:
+Filters are created in the web app at <code>/filters</code>, after logging in. A filter has a title, an expression
+(below) and the linked chats it notifies. A filter bound to no chat is a draft: it is kept, but matches nothing until
+you bind it. Unlinking a chat leaves its filters in place, as drafts if that was their only chat. A chat gets a new
+vacancy once, however many of your filters match it.
+
+The filter structure should be as follows:
 
 - <i>Company name,</i>: No formatting, just a simple keyword with <b>comma at the end</b> (comma is necessary for separate company keywords from mandatory keywords). This keyword <b>must match</b> company title; if not - the vacancy is not applicable. (Examples: Microsoft, Simple Company,)
 - <i>(keyword|keyword)</i>: Binary choice. One of these keywords <b>must be</b> in the vacancy title; if not - the vacancy is not applicable. (Example: (developer|engineer))
@@ -228,7 +234,7 @@ Keywords can be combined. Examples:
 - java -senior -lead -qa; will find vacancies from all companies which contains java keyword and doesn't contain senior, lead and qa
 - Amazon,; will find all vacancies from company Amazon
 
-Also, you can view all stored vacancies filtered with chosen filter.
+Also, you can view all stored vacancies filtered with one of your filters, from the dashboard's filter dropdown.
 
 ### Telegram bot
 The bot only links chats and delivers notifications; filters are managed in the web app. It answers:

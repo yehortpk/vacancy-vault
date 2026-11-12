@@ -2,7 +2,7 @@ import { VacancyService } from '../service/vacancy.service';
 import { VacanciesListDTO, Vacancy } from "../type/vacancy.type"
 
 import { Component, OnInit } from '@angular/core';
-import { Router, ActivatedRoute, ParamMap } from '@angular/router';
+import { Router, ActivatedRoute, ParamMap, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
 import { MatSortModule, Sort } from '@angular/material/sort';
@@ -16,6 +16,7 @@ import { TruncatePipe } from '../pipe/truncate.pipe';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { Filter } from '../type/filter.type';
 import { FilterService } from '../service/filter.service';
+import { AuthService } from '../service/auth.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -32,7 +33,8 @@ import { FilterService } from '../service/filter.service';
     MatMenuModule,
     MatButtonModule,
     TruncatePipe,
-    MatSelectModule
+    MatSelectModule,
+    RouterModule
   ]
 })
 export class DashboardComponent implements OnInit {
@@ -41,7 +43,9 @@ export class DashboardComponent implements OnInit {
   pageSize!: number
   totalVacancies: number = 0
   totalPages: number = 0
+  /** The signed-in user's own filters; guests browse every vacancy and get no dropdown. */
   filters: Filter[] = []
+  selectedFilterId: number | null = null
 
   displayedColumns: string[] = ['title', 'minSalary', 'maxSalary', 'company', 'parsedAt'];
   dataSource: MatTableDataSource<Vacancy> = new MatTableDataSource();
@@ -50,6 +54,7 @@ export class DashboardComponent implements OnInit {
     
     private vacancyService: VacancyService,
     private filterService: FilterService,
+    protected authService: AuthService,
     private router: Router,
     private route: ActivatedRoute
   ) {}
@@ -63,14 +68,19 @@ export class DashboardComponent implements OnInit {
   }
 
   requestFilters() {
-    this.filterService.getAllFilters().subscribe({
-      next: (response) => {
-        response.unshift({filterId: null, filter: "Not selected"});
-        this.filters = response;
-      },
-      error: (error) => {
-        console.error('An error occurred:', error);
+    this.authService.findAccount().subscribe((account) => {
+      if (!account) {
+        this.filters = [];
+        return;
       }
+      this.filterService.getFilters().subscribe({
+        next: (response) => {
+          this.filters = response;
+        },
+        error: (error) => {
+          console.error('An error occurred:', error);
+        }
+      });
     });
   }
 
@@ -81,6 +91,7 @@ export class DashboardComponent implements OnInit {
     let sortDir = params.get('sortDir') || '';
     let filterParam = params.get('filter');
     let queryParam = params.get('query') || '';
+    this.selectedFilterId = filterParam ? Number.parseInt(filterParam) : null;
 
     if (filterParam) {
       this.requestVacanciesByFilter(Number.parseInt(filterParam), this.currentPage, this.pageSize, sortBy, sortDir);
@@ -90,7 +101,7 @@ export class DashboardComponent implements OnInit {
   }
 
   requestVacanciesByFilter(filterId: number, pageId: number, pageSize: number, sortBy: string, sortDir: string) {
-    this.vacancyService.getVacanciesByFilter(filterId, pageId, pageSize, sortBy, sortDir).subscribe({
+    this.filterService.getVacanciesByFilter(filterId, pageId, pageSize, sortBy, sortDir).subscribe({
       next: (response) => {
         this.updatePage(response)
       },

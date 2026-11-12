@@ -5,13 +5,14 @@
     <p class="text-slate-600 dark:text-slate-400">{{totalVacancies}} vacancies available</p>
   </div>
 
-  <!-- Filters Bar -->
-  <div class="mb-6">
+  <!-- Filters Bar: only a signed-in user has filters of their own -->
+  <div class="mb-6" *ngIf="authService.isAuthenticated() && filters.length > 0">
     <mat-form-field class="w-full sm:w-64">
-      <mat-label>Filter by source</mat-label>
-      <mat-select (selectionChange)="onFilterChange($event)">
-        @for (filter of filters; track filter) {
-        <mat-option [value]="filter.filterId" [title]="filter.filter">{{filter.filter | truncate:20}}</mat-option>
+      <mat-label>Filter by my filter</mat-label>
+      <mat-select [value]="selectedFilterId" (selectionChange)="onFilterChange($event)">
+        <mat-option [value]="null">Not selected</mat-option>
+        @for (filter of filters; track filter.filterId) {
+        <mat-option [value]="filter.filterId" [title]="filter.filter">{{filter.title | truncate:20}}</mat-option>
         }
       </mat-select>
     </mat-form-field>
@@ -92,12 +93,13 @@
 
 <ng-template #noVacancies>
   <div class="py-16 px-4 sm:px-6 lg:px-8 text-center">
+    <a *ngIf="selectedFilterId !== null" routerLink="/dashboard" class="block mb-6 text-sm text-blue-600 dark:text-blue-400 hover:underline">Show all vacancies</a>
     <svg class="mx-auto w-16 h-16 text-slate-300 dark:text-slate-600 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
     </svg>
     <h2 class="text-2xl font-semibold text-slate-900 dark:text-white mb-2">No vacancies found</h2>
-    <p class="text-slate-600 dark:text-slate-400 mb-8">Start parsing to load job listings</p>
-    <a href="/parser" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+    <p class="text-slate-600 dark:text-slate-400 mb-8">{{ selectedFilterId !== null ? 'None of the stored vacancies match this filter' : 'Start parsing to load job listings' }}</p>
+    <a *ngIf="authService.isAdmin() && selectedFilterId === null" routerLink="/parser" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
       Start Parser
     </a>
   </div>

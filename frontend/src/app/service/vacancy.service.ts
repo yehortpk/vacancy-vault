@@ -14,9 +14,4 @@ export class VacancyService {
     const ROUTER_URL = environment.router_service_url + "/vacancy";
     return this.http.get<VacanciesListDTO>(ROUTER_URL, {params: {"page": pageId, "pageSize": pageSize, "sortBy": sortBy, "sortDir": sortDir, "query": queryParam}});
   }
-
-  getVacanciesByFilter(filterId: number, pageId: number, pageSize: number, sortBy: string, sortDir: string): Observable<VacanciesListDTO> {
-    const FILTER_URL = `${environment.router_service_url}/filter/${filterId}/vacancies`;
-    return this.http.get<VacanciesListDTO>(FILTER_URL, {params: {"page": pageId, "pageSize": pageSize, "sortBy": sortBy, "sortDir": sortDir}});
-  }
 }
