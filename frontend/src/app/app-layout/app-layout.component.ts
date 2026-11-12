@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { RouterOutlet, Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
@@ -18,6 +18,8 @@ export class AppLayoutComponent {
   isPagesMenuOpen: boolean = false;
   isModalOpen: boolean = false;
   trapCleanup: (() => void) | null = null;
+
+  @ViewChild('profileMenu') profileMenu?: ElementRef<HTMLElement>;
 
   constructor(public router: Router, private route: ActivatedRoute) {
     this.dark = this.getThemeFromLocalStorage();
@@ -57,6 +59,13 @@ export class AppLayoutComponent {
   }
   closeProfileMenu() {
     this.isProfileMenuOpen = false
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeProfileMenuOnOutsideClick(event: MouseEvent) {
+    if (this.isProfileMenuOpen && !this.profileMenu?.nativeElement.contains(event.target as Node)) {
+      this.closeProfileMenu()
+    }
   }
   togglePagesMenu() {
     this.isPagesMenuOpen = !this.isPagesMenuOpen
