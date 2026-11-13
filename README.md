@@ -58,7 +58,7 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    JWT_SECRET=bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=
    # Shared secret the bot presents to the router's /connector endpoints, the same for both
    # services - generate one with `openssl rand -hex 32`
-   SERVICE_CONNECTOR_TOKEN=d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5
+   SERVICE_CONNECTOR_TOKEN=SERVICE_CONNECTOR_TOKEN
    ```
    These defaults are public, so on a server reachable from the internet generate your own.
 
@@ -80,7 +80,7 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    # The admin account the router creates on startup, so you can log in to the parser room. The
    # password needs at least 8 characters. See Access levels below
    ADMIN_EMAIL=admin@vacancy.vault
-   ADMIN_PASSWORD=f7b3175b5f
+   ADMIN_PASSWORD=ADMIN_PASSWORD
    ```
    These defaults are public, so set your own password on a server reachable from the internet. Set
    both to empty values to create no admin account.

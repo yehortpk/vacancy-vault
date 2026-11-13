@@ -3,7 +3,6 @@ services:
     container_name: notifier-parser
     build:
       dockerfile: ./parser/Dockerfile
-    # Defaults to the image's "ubuntu" user (1000:1000); set HOST_UID/HOST_GID in .env if your Linux uid differs
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:
       - ./:/opt/app
@@ -26,7 +25,6 @@ services:
     container_name: notifier-router
     build:
       dockerfile: ./router/Dockerfile
-    # Defaults to the image's "ubuntu" user (1000:1000); set HOST_UID/HOST_GID in .env if your Linux uid differs
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:
       - ./:/opt/app
@@ -46,13 +44,14 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
       MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
-      # Defaults documented in the README; generate your own on a server reachable from the internet
+      # Random rather than a readable placeholder: the router refuses to start unless the secret is
+      # at least 32 bytes (raw, or after Base64 decoding)
       JWT_SECRET: ${JWT_SECRET:-bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=}
       # Keep the default in sync with the telegram-bot service below
-      SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5}
+      SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-SERVICE_CONNECTOR_TOKEN}
       # Defaults documented in the README; set both empty in .env to create no admin
       ADMIN_EMAIL: ${ADMIN_EMAIL-admin@vacancy.vault}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD-f7b3175b5f}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD-ADMIN_PASSWORD}
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1" ]
       interval: 10s
@@ -69,7 +68,6 @@ services:
     container_name: notifier-telegram-bot
     build:
       dockerfile: ./providers/telegram-bot/Dockerfile
-    # Defaults to the image's "ubuntu" user (1000:1000); set HOST_UID/HOST_GID in .env if your Linux uid differs
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     volumes:
       - ./:/opt/app
@@ -84,7 +82,7 @@ services:
       TG_BOT_API_KEY: ${TG_BOT_API_KEY}
       TG_BOT_USERNAME: ${TG_BOT_USERNAME}
       # Keep the default in sync with the router service above
-      SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-d32d9ad1ae0b779194c2a7cb6cd3d288475874381a673ebcbd34ddd0409695d5}
+      SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-SERVICE_CONNECTOR_TOKEN}
     depends_on:
       router:
         condition: service_healthy
@@ -113,8 +111,6 @@ services:
     volumes:
       - notifier-kafka-data:/var/lib/kafka/data
     environment:
-      # KRaft: a single node that is both the broker and its own controller. The image formats its
-      # storage with a built-in CLUSTER_ID, enough for a node that forms a cluster with no other
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@notifier-kafka:9093
@@ -128,10 +124,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
-      # The image sets these loggers to INFO explicitly, so the root level misses them
       KAFKA_LOG4J_LOGGERS: kafka=WARN,org.apache.kafka=WARN,org.apache.kafka.controller=WARN,state.change.logger=WARN
     healthcheck:
-      # Query the broker itself, so the check fails until it has joined its controller
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 10s
@@ -149,8 +143,6 @@ services:
       - notifier-network
     environment:
       POSTGRES_DB: notifier
-      # Applied only when the data volume is first created. The router connects as this user, the
-      # database superuser; Flyway builds the schema on the router's first start
       POSTGRES_USER: ${POSTGRES_USERNAME:-notifier}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
     healthcheck:
@@ -165,7 +157,6 @@ services:
     ports:
       - "27017:27017"
     environment:
-      # Applied only when the data volume is first created
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS:-progress}
       MONGO_INITDB_DATABASE: parser-progress
