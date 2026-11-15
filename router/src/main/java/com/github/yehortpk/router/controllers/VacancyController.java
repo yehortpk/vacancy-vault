@@ -6,7 +6,6 @@ import com.github.yehortpk.router.models.vacancy.VacancyDTO;
 import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.services.VacancyService;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.beanutils.PropertyUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -44,27 +43,14 @@ public class VacancyController {
     @CrossOrigin("http://localhost:4200")
     public VacanciesPageDTO getVacanciesByPage(@RequestParam(value = "page") int pageId,
                                                @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
-                                               @RequestParam(value = "sortBy", defaultValue = "parsedAt") String sortBy,
-                                               @RequestParam(value = "sortDir", defaultValue = "DESC") String sortDir,
                                                @RequestParam(value = "query", required = false) String query,
                                                @RequestParam(value = "remote", defaultValue = "false") boolean remoteRequired,
                                                @RequestParam(value = "withSalary", defaultValue = "false") boolean salaryRequired
     ){
 
-        // Check if field exists in Vacancy entity
-        if (!PropertyUtils.isReadable(new Vacancy(), sortBy)) {
-            throw new IllegalArgumentException(String.format("Property %s doesn't exist in the sorted entity", sortBy));
-        }
-
-        Sort.Direction direction;
-        try {
-            direction = Sort.Direction.valueOf(sortDir);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Use only ASC/DESC for sortDir property");
-        }
-
+        // Newest first, as FilterService orders a filter's matches; the id keeps pages stable
         PageRequest pageable = PageRequest.of(pageId, pageSize,
-                Sort.by(direction, sortBy));
+                Sort.by(Sort.Order.desc("parsedAt").nullsLast(), Sort.Order.desc("vacancyID")));
 
         Page<Vacancy> vacanciesOnPage = vacancyService.getVacancies(
                 new VacancySearchCriteria(query, remoteRequired, salaryRequired), pageable);

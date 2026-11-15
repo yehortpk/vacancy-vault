@@ -64,11 +64,9 @@ public class FilterController {
                                                  @PathVariable("filter_id") long filterId,
                                                  @RequestParam(value = "page") int pageId,
                                                  @RequestParam(value = "pageSize", defaultValue = "10") int pageSize,
-                                                 @RequestParam(value = "sortBy", defaultValue = "parsedAt") String sortBy,
-                                                 @RequestParam(value = "sortDir", defaultValue = "DESC") String sortDir,
                                                  @RequestParam(value = "remote", defaultValue = "false") boolean remoteRequired,
                                                  @RequestParam(value = "withSalary", defaultValue = "false") boolean salaryRequired) {
-        return filterService.findVacanciesPage(filterId, principal.getUserId(), pageId, pageSize, sortBy, sortDir,
+        return filterService.findVacanciesPage(filterId, principal.getUserId(), pageId, pageSize,
                 new VacancySearchCriteria(null, remoteRequired, salaryRequired));
     }
 }

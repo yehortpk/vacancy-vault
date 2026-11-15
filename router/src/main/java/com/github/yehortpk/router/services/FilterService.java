@@ -17,12 +17,10 @@ import com.github.yehortpk.router.repositories.UserRepository;
 import com.github.yehortpk.router.utils.FilterParser;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.beanutils.BeanComparator;
-import org.apache.commons.beanutils.PropertyUtils;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -37,6 +35,11 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class FilterService {
+    /** As VacancyController orders the unfiltered listing; the id keeps pages stable. */
+    private static final Comparator<Vacancy> NEWEST_FIRST = Comparator
+            .comparing(Vacancy::getParsedAt, Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder()))
+            .thenComparing(Comparator.comparingInt(Vacancy::getVacancyID).reversed());
+
     private final FilterRepository filterRepository;
     private final ConnectionRepository connectionRepository;
     private final UserRepository userRepository;
@@ -90,22 +93,6 @@ public class FilterService {
         filter.setConnections(findOwnedConnections(request.connectionIds(), userId));
     }
 
-    private static Comparator<Vacancy> createVacancyComparator(String sortBy, String sortDir) {
-        // Check if field exists in Vacancy entity
-        if (!PropertyUtils.isReadable(new Vacancy(), sortBy)) {
-            throw new IllegalArgumentException(String.format("Property %s doesn't exist in the sorted entity", sortBy));
-        }
-
-        Sort.Direction direction;
-        try {
-            direction = Sort.Direction.valueOf(sortDir);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Use only ASC/DESC for sortDir property");
-        }
-
-        Comparator<Vacancy> comparator = new BeanComparator<>(sortBy);
-        return direction.isDescending() ? comparator.reversed() : comparator;
-    }
 
     public List<FilterDTO> findFilters(long userId) {
         return filterRepository.findByUserId(userId).stream()
@@ -140,25 +127,24 @@ public class FilterService {
     }
 
     /**
-     * One page of the stored vacancies the caller's filter matches, sorted in memory since
-     * matching is not expressible in SQL.
+     * One page of the stored vacancies the caller's filter matches, newest first. Ordered in
+     * memory since matching is not expressible in SQL.
      */
     public VacanciesPageDTO findVacanciesPage(long filterId, long userId, int pageId, int pageSize,
-                                              String sortBy, String sortDir, VacancySearchCriteria criteria) {
+                                              VacancySearchCriteria criteria) {
         if (pageId < 0) {
             throw new IllegalArgumentException("page parameter could not be less then 0");
         }
         if (pageSize < 1) {
             throw new IllegalArgumentException("pageSize parameter could not be less then 1");
         }
-        Comparator<Vacancy> comparator = createVacancyComparator(sortBy, sortDir);
         FilterParser filterParser = parseExpression(findOwnedFilter(filterId, userId).getFilter());
 
         List<VacancyCompanyDTO> filteredVacancies = vacancyService.getAllVacancies().stream()
                 .filter(criteria::isSatisfiedBy)
                 .filter(vacancy -> filterParser.isVacancyApplicable(
                         vacancy.getCompany() == null ? null : vacancy.getCompany().getTitle(), vacancy.getTitle()))
-                .sorted(comparator)
+                .sorted(NEWEST_FIRST)
                 .map(vacancy -> modelMapper.map(vacancy, VacancyCompanyDTO.class))
                 .toList();
 

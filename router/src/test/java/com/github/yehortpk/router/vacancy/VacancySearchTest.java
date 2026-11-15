@@ -75,14 +75,18 @@ class VacancySearchTest extends PostgresContainerTest {
     }
 
     private List<String> titlesOf(MockHttpServletRequestBuilder request) throws Exception {
-        MvcResult result = mockMvc.perform(request.param("page", "0").param("pageSize", "100")
-                        .param("sortBy", "title").param("sortDir", "ASC"))
+        MvcResult result = mockMvc.perform(request.param("page", "0").param("pageSize", "100"))
                 .andExpect(status().isOk())
                 .andReturn();
         List<String> titles = new ArrayList<>();
         objectMapper.readTree(result.getResponse().getContentAsString())
                 .get("vacancies").forEach(vacancy -> titles.add(vacancy.get("title").asText()));
         return titles;
+    }
+
+    private void markParsedHoursAgo(String title, int hours) {
+        jdbcTemplate.update("UPDATE vacancy SET parsed_at = now() - make_interval(hours => ?) WHERE title = ?",
+                hours, title);
     }
 
     private String registerAccessToken() throws Exception {
@@ -104,6 +108,30 @@ class VacancySearchTest extends PostgresContainerTest {
     }
 
     @Test
+    void GetVacancies_DifferentParseTimes_ShouldListNewestFirst() throws Exception {
+        markParsedHoursAgo("Java Office No Salary", 1);
+        markParsedHoursAgo("Java Remote No Salary", 3);
+        markParsedHoursAgo("Java Office Min Salary", 2);
+
+        // "Java Remote Max Salary" keeps the parse time of now()
+        assertThat(titlesOf(get("/vacancy").param("query", "Java"))).containsExactly(
+                "Java Remote Max Salary", "Java Office No Salary", "Java Office Min Salary", "Java Remote No Salary");
+    }
+
+    @Test
+    void GetVacanciesByFilter_DifferentParseTimes_ShouldListNewestFirst() throws Exception {
+        markParsedHoursAgo("Java Office No Salary", 5);
+        markParsedHoursAgo("Java Remote No Salary", 4);
+        markParsedHoursAgo("Java Office Min Salary", 3);
+        markParsedHoursAgo("Java Remote Max Salary", 2);
+        String accessToken = registerAccessToken();
+        String filterVacanciesPath = "/me/filters/" + createFilterId(accessToken, "java") + "/vacancies";
+
+        assertThat(titlesOf(get(filterVacanciesPath).header("Authorization", accessToken))).containsExactly(
+                "Java Remote Max Salary", "Java Office Min Salary", "Java Remote No Salary", "Java Office No Salary");
+    }
+
+    @Test
     void GetVacancies_NoConditions_ShouldReturnEveryVacancy() throws Exception {
         assertThat(titlesOf(get("/vacancy"))).hasSize(5);
     }
@@ -111,20 +139,20 @@ class VacancySearchTest extends PostgresContainerTest {
     @Test
     void GetVacancies_RemoteRequired_ShouldReturnOnlyRemoteVacancies() throws Exception {
         assertThat(titlesOf(get("/vacancy").param("remote", "true")))
-                .containsExactly("Java Remote Max Salary", "Java Remote No Salary", "Python Remote Range");
+                .containsExactlyInAnyOrder("Java Remote Max Salary", "Java Remote No Salary", "Python Remote Range");
     }
 
     @Test
     void GetVacancies_SalaryRequired_ShouldReturnVacanciesWithAnySalaryBound() throws Exception {
         assertThat(titlesOf(get("/vacancy").param("withSalary", "true")))
-                .containsExactly("Java Office Min Salary", "Java Remote Max Salary", "Python Remote Range");
+                .containsExactlyInAnyOrder("Java Office Min Salary", "Java Remote Max Salary", "Python Remote Range");
     }
 
     @Test
     void GetVacancies_AllConditions_ShouldReturnVacanciesMatchingEveryCondition() throws Exception {
         assertThat(titlesOf(get("/vacancy").param("query", "Java")
                 .param("remote", "true").param("withSalary", "true")))
-                .containsExactly("Java Remote Max Salary");
+                .containsExactlyInAnyOrder("Java Remote Max Salary");
     }
 
     @Test
@@ -135,6 +163,6 @@ class VacancySearchTest extends PostgresContainerTest {
         assertThat(titlesOf(get(filterVacanciesPath).header("Authorization", accessToken))).hasSize(4);
         assertThat(titlesOf(get(filterVacanciesPath).header("Authorization", accessToken)
                 .param("remote", "true").param("withSalary", "true")))
-                .containsExactly("Java Remote Max Salary");
+                .containsExactlyInAnyOrder("Java Remote Max Salary");
     }
 }
