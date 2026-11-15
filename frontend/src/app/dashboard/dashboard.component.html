@@ -55,31 +55,6 @@
           }
         </select>
       </label>
-
-      <label class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-        <span class="hidden sm:inline">Sort by</span>
-        <select
-          [value]="sortBy"
-          (change)="onSortChange($any($event.target).value, sortDir)"
-          class="rounded-lg border-0 bg-white dark:bg-slate-800 py-2 pl-3 pr-9 text-sm font-medium text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-blue-500">
-          <option value="">Default</option>
-          @for (option of sortOptions; track option.field) {
-          <option [value]="option.field">{{ option.label }}</option>
-          }
-        </select>
-      </label>
-
-      <button
-        type="button"
-        [disabled]="!sortBy"
-        (click)="onSortChange(sortBy, sortDir === 'ASC' ? 'DESC' : 'ASC')"
-        [attr.aria-label]="sortDir === 'ASC' ? 'Sorted ascending' : 'Sorted descending'"
-        [title]="sortDir === 'ASC' ? 'Ascending' : 'Descending'"
-        class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
-        <svg class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="sortDir !== 'ASC'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6" />
-        </svg>
-      </button>
     </div>
   </div>
 

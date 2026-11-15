@@ -35,9 +35,9 @@ export class FilterService {
     return this.http.delete<void>(`${this.baseUrl}/${filterId}`);
   }
 
-  getVacanciesByFilter(filterId: number, pageId: number, pageSize: number, sortBy: string, sortDir: string,
+  getVacanciesByFilter(filterId: number, pageId: number, pageSize: number,
                        conditions: VacancyConditions): Observable<VacanciesListDTO> {
     return this.http.get<VacanciesListDTO>(`${this.baseUrl}/${filterId}/vacancies`,
-      {params: {"page": pageId, "pageSize": pageSize, "sortBy": sortBy, "sortDir": sortDir, ...createConditionParams(conditions)}});
+      {params: {"page": pageId, "pageSize": pageSize, ...createConditionParams(conditions)}});
   }
 }

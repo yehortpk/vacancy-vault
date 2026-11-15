@@ -54,19 +54,10 @@ export class DashboardComponent implements OnInit {
   filters: Filter[] = []
   selectedFilterId: number | null = null
   searchQuery: string = ''
-  sortBy: string = ''
-  sortDir: string = 'ASC'
   isLoading: boolean = true
   /** Set from the `remote` and `withSalary` query params, so the toggles survive a reload or a shared link. */
   conditions: VacancyConditions = { remoteRequired: false, salaryRequired: false }
 
-  readonly sortOptions = [
-    { field: 'parsedAt', label: 'Posted date' },
-    { field: 'title', label: 'Job title' },
-    { field: 'company', label: 'Company' },
-    { field: 'minSalary', label: 'Min salary' },
-    { field: 'maxSalary', label: 'Max salary' },
-  ];
 
   constructor(
     
@@ -105,14 +96,10 @@ export class DashboardComponent implements OnInit {
   requestVacancies(params: ParamMap) {
     this.currentPage = parseInt(params.get('page') || '1');
     this.pageSize = parseInt(params.get('pageSize') || '10');
-    let sortBy = params.get('sortBy') || '';
-    let sortDir = params.get('sortDir') || '';
     let filterParam = params.get('filter');
     let queryParam = params.get('query') || '';
     this.selectedFilterId = filterParam ? Number.parseInt(filterParam) : null;
     this.searchQuery = queryParam;
-    this.sortBy = sortBy;
-    this.sortDir = sortDir || 'ASC';
     this.conditions = {
       remoteRequired: params.get('remote') === 'true',
       salaryRequired: params.get('withSalary') === 'true',
@@ -120,14 +107,14 @@ export class DashboardComponent implements OnInit {
     this.isLoading = true;
 
     if (filterParam) {
-      this.requestVacanciesByFilter(Number.parseInt(filterParam), this.currentPage, this.pageSize, sortBy, sortDir);
+      this.requestVacanciesByFilter(Number.parseInt(filterParam), this.currentPage, this.pageSize);
     } else {
-      this.requestVacanciesOnPage(this.currentPage, this.pageSize, sortBy, sortDir, queryParam);
+      this.requestVacanciesOnPage(this.currentPage, this.pageSize, queryParam);
     }
   }
 
-  requestVacanciesByFilter(filterId: number, pageId: number, pageSize: number, sortBy: string, sortDir: string) {
-    this.filterService.getVacanciesByFilter(filterId, pageId, pageSize, sortBy, sortDir, this.conditions).subscribe({
+  requestVacanciesByFilter(filterId: number, pageId: number, pageSize: number) {
+    this.filterService.getVacanciesByFilter(filterId, pageId, pageSize, this.conditions).subscribe({
       next: (response) => {
         this.updatePage(response)
       },
@@ -138,8 +125,8 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  requestVacanciesOnPage(pageId: number, pageSize: number, sortBy: string, sortDir: string, queryParam: string) {
-    this.vacancyService.getVacancies(pageId, pageSize, sortBy, sortDir, queryParam, this.conditions).subscribe({
+  requestVacanciesOnPage(pageId: number, pageSize: number, queryParam: string) {
+    this.vacancyService.getVacancies(pageId, pageSize, queryParam, this.conditions).subscribe({
       next: (response) => {
         this.updatePage(response)
       },
@@ -203,18 +190,6 @@ export class DashboardComponent implements OnInit {
       queryParams: { 
         page: event.pageIndex, 
         pageSize: event.pageSize
-      },
-      queryParamsHandling: 'merge'
-    });
-  }
-
-  onSortChange(sortBy: string, sortDir: string) {
-    this.router.navigate(["/dashboard"], {
-      relativeTo: this.route,
-      queryParams: {
-        page: 0,
-        sortBy: sortBy || null,
-        sortDir: sortBy ? sortDir : null
       },
       queryParamsHandling: 'merge'
     });
