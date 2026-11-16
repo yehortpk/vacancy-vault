@@ -31,5 +31,6 @@ public class VacancyDTO implements Serializable {
      * Whether remote type of work available for the vacancy
      */
     private boolean isRemote;
+    private String description;
 }
 

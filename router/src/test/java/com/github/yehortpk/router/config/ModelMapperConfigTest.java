@@ -4,6 +4,7 @@ import com.github.yehortpk.router.models.company.Company;
 import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyCompanyDTO;
+import com.github.yehortpk.router.models.vacancy.VacancyDTO;
 import org.junit.jupiter.api.Test;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
@@ -57,5 +58,19 @@ class ModelMapperConfigTest {
         assertThat(page.getVacancies()).hasSize(1);
         assertThat(page.getVacancies().getFirst().getParsedAt())
                 .isEqualTo(PARSED_AT.atZone(ZoneId.systemDefault()).toOffsetDateTime());
+    }
+
+    @Test
+    void MapVacancyDTO_WithDescription_ShouldPersistDescription() {
+        VacancyDTO dto = VacancyDTO.builder()
+                .companyID(1)
+                .link("https://acme.example/1")
+                .title("Java Developer")
+                .description("Build things.")
+                .build();
+
+        Vacancy vacancy = modelMapper.map(dto, Vacancy.class);
+
+        assertThat(vacancy.getDescription()).isEqualTo("Build things.");
     }
 }

@@ -40,4 +40,6 @@ public class Vacancy {
      * Whether remote type of work available for the vacancy
      */
     private boolean isRemote;
+    @Column(columnDefinition = "TEXT")
+    private String description;
 }
