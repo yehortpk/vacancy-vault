@@ -17,6 +17,7 @@ public class TelegramNotificationDTO {
     private Integer minSalary;
     private Integer maxSalary;
     private String salaryCurrency;
+    private String salaryPeriod;
     @EqualsAndHashCode.Include
     private String link;
     private boolean isRemote;

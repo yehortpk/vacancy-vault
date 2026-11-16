@@ -17,6 +17,8 @@ public class VacancyNotificationDTO {
     private Integer maxSalary;
     /** Currency code such as USD; null when the source does not say. */
     private String salaryCurrency;
+    /** Payout period such as MONTH; null when the source does not say. */
+    private String salaryPeriod;
     @EqualsAndHashCode.Include
     private String link;
     private boolean isRemote;

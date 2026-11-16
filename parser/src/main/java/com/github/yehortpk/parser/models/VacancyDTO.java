@@ -30,6 +30,10 @@ public class VacancyDTO implements Serializable {
      */
     private String salaryCurrency;
     /**
+     * Payout period, preferably one of {@link SalaryPeriod}; null when the source does not say
+     */
+    private String salaryPeriod;
+    /**
      * Full link to the vacancy
      */
     @EqualsAndHashCode.Include

@@ -31,6 +31,7 @@ public class Vacancy {
     private Integer minSalary;
     private Integer maxSalary;
     private String salaryCurrency;
+    private String salaryPeriod;
     private LocalDateTime parsedAt;
 
     /**

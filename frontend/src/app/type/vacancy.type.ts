@@ -6,6 +6,8 @@ export type Vacancy = {
     maxSalary: number|null
     /** Currency code such as USD; null when the source did not say */
     salaryCurrency: string|null
+    /** Payout period such as MONTH; null when the source did not say */
+    salaryPeriod: string|null
     url: string
     company: {
         company_id: number

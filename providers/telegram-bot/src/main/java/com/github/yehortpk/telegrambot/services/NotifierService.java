@@ -25,6 +25,9 @@ public class NotifierService {
             if (vacancy.getSalaryCurrency() != null) {
                 stringBuilder.append(" ").append(vacancy.getSalaryCurrency());
             }
+            if (vacancy.getSalaryPeriod() != null) {
+                stringBuilder.append(" / ").append(vacancy.getSalaryPeriod().toLowerCase());
+            }
             stringBuilder.append("\n");
         }
 

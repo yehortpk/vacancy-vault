@@ -41,6 +41,7 @@ public class TelegramConnectionProvider implements ConnectionProvider<TelegramDe
                 .minSalary(vacancy.getMinSalary())
                 .maxSalary(vacancy.getMaxSalary())
                 .salaryCurrency(vacancy.getSalaryCurrency())
+                .salaryPeriod(vacancy.getSalaryPeriod())
                 .companyTitle(vacancy.getCompanyTitle())
                 .chatId(chatId)
                 .link(vacancy.getLink())
