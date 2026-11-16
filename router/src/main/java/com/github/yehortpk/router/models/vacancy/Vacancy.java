@@ -30,6 +30,7 @@ public class Vacancy {
     private String title;
     private Integer minSalary;
     private Integer maxSalary;
+    private String salaryCurrency;
     private LocalDateTime parsedAt;
 
     /**

@@ -26,6 +26,10 @@ public class VacancyDTO implements Serializable {
     private Integer minSalary;
     private Integer maxSalary;
     /**
+     * Currency code, preferably one of {@link Currency}; null when the source does not say
+     */
+    private String salaryCurrency;
+    /**
      * Full link to the vacancy
      */
     @EqualsAndHashCode.Include

@@ -21,7 +21,11 @@ public class NotifierService {
         
         String salaryRange = formatSalaryRange(vacancy.getMinSalary(), vacancy.getMaxSalary());
         if (salaryRange != null) {
-            stringBuilder.append("Salary: ").append(salaryRange).append("\n");
+            stringBuilder.append("Salary: ").append(salaryRange);
+            if (vacancy.getSalaryCurrency() != null) {
+                stringBuilder.append(" ").append(vacancy.getSalaryCurrency());
+            }
+            stringBuilder.append("\n");
         }
 
         if (vacancy.isRemote()) {

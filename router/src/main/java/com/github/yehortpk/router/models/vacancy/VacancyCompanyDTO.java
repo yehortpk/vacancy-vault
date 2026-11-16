@@ -10,6 +10,7 @@ public class VacancyCompanyDTO {
     private String title;
     private Integer minSalary;
     private Integer maxSalary;
+    private String salaryCurrency;
     private String URL;
     private CompanyShortInfoDTO company;
     /** With the router's offset, so the dashboard shows the time in the viewer's zone. */

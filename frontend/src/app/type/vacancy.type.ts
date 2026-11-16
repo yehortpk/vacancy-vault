@@ -4,6 +4,8 @@ export type Vacancy = {
     minSalary: number|null
     /** null when the source did not publish an upper bound */
     maxSalary: number|null
+    /** Currency code such as USD; null when the source did not say */
+    salaryCurrency: string|null
     url: string
     company: {
         company_id: number
