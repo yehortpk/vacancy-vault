@@ -25,7 +25,7 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
             SELECT v FROM Vacancy v
             WHERE (:query = '' OR v.title LIKE CONCAT('%', :query, '%'))
               AND (:remoteRequired = FALSE OR v.isRemote = TRUE)
-              AND (:salaryRequired = FALSE OR v.minSalary > 0 OR v.maxSalary > 0)
+              AND (:salaryRequired = FALSE OR v.minSalary IS NOT NULL OR v.maxSalary IS NOT NULL)
             """)
     Page<Vacancy> search(@Param("query") String query,
                          @Param("remoteRequired") boolean remoteRequired,

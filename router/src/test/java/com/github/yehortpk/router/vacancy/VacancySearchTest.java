@@ -56,10 +56,10 @@ class VacancySearchTest extends PostgresContainerTest {
         clearData();
         jdbcTemplate.update("INSERT INTO company (company_id, title, parsing_enabled) VALUES (?, 'Acme', false)",
                 COMPANY_ID);
-        insertVacancy("Java Office No Salary", false, 0, 0);
-        insertVacancy("Java Remote No Salary", true, 0, 0);
-        insertVacancy("Java Office Min Salary", false, 1000, 0);
-        insertVacancy("Java Remote Max Salary", true, 0, 3000);
+        insertVacancy("Java Office No Salary", false, null, null);
+        insertVacancy("Java Remote No Salary", true, null, null);
+        insertVacancy("Java Office Min Salary", false, 1000, null);
+        insertVacancy("Java Remote Max Salary", true, null, 3000);
         insertVacancy("Python Remote Range", true, 2000, 4000);
     }
 
@@ -68,7 +68,7 @@ class VacancySearchTest extends PostgresContainerTest {
         clearData();
     }
 
-    private void insertVacancy(String title, boolean isRemote, int minSalary, int maxSalary) {
+    private void insertVacancy(String title, boolean isRemote, Integer minSalary, Integer maxSalary) {
         jdbcTemplate.update("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, parsed_at, title, company_id)"
                         + " VALUES (?, ?, ?, ?, now(), ?, ?)",
                 isRemote, "https://acme.example/" + title.replace(' ', '-'), maxSalary, minSalary, title, COMPANY_ID);

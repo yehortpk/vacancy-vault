@@ -28,8 +28,8 @@ public class Vacancy {
     private String link;
     @ToString.Include
     private String title;
-    private int minSalary;
-    private int maxSalary;
+    private Integer minSalary;
+    private Integer maxSalary;
     private LocalDateTime parsedAt;
 
     /**

@@ -93,7 +93,7 @@ class FilterOwnershipTest extends PostgresContainerTest {
         jdbcTemplate.update("INSERT INTO company (company_id, title, parsing_enabled) VALUES (?, ?, false)"
                 + " ON CONFLICT DO NOTHING", companyId, companyTitle);
         jdbcTemplate.update("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, parsed_at, title, company_id)"
-                + " VALUES (false, ?, 0, 0, now(), ?, ?)", link, title, companyId);
+                + " VALUES (false, ?, NULL, NULL, now(), ?, ?)", link, title, companyId);
     }
 
     @Test

@@ -23,8 +23,8 @@ public class VacancyDTO implements Serializable {
      * Vacancy title
      */
     private String title;
-    private int minSalary;
-    private int maxSalary;
+    private Integer minSalary;
+    private Integer maxSalary;
     /**
      * Full link to the vacancy
      */

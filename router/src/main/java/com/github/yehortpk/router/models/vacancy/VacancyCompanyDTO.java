@@ -8,8 +8,8 @@ import java.time.OffsetDateTime;
 @Data
 public class VacancyCompanyDTO {
     private String title;
-    private int minSalary;
-    private int maxSalary;
+    private Integer minSalary;
+    private Integer maxSalary;
     private String URL;
     private CompanyShortInfoDTO company;
     /** With the router's offset, so the dashboard shows the time in the viewer's zone. */

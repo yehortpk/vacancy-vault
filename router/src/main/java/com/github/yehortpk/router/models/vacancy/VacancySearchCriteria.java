@@ -15,7 +15,7 @@ public class VacancySearchCriteria {
     String query;
     /** Only vacancies the source marked as remote. */
     boolean remoteRequired;
-    /** Only vacancies that publish at least one salary bound (a missing bound is stored as 0). */
+    /** Only vacancies that publish at least one salary bound (a missing bound is null). */
     boolean salaryRequired;
 
     public VacancySearchCriteria(String query, boolean remoteRequired, boolean salaryRequired) {
@@ -31,6 +31,6 @@ public class VacancySearchCriteria {
         if (remoteRequired && !vacancy.isRemote()) {
             return false;
         }
-        return !salaryRequired || vacancy.getMinSalary() > 0 || vacancy.getMaxSalary() > 0;
+        return !salaryRequired || vacancy.getMinSalary() != null || vacancy.getMaxSalary() != null;
     }
 }

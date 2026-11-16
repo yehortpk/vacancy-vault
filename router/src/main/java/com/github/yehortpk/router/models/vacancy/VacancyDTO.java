@@ -17,8 +17,8 @@ public class VacancyDTO implements Serializable {
     private String companyTitle;
     private int vacancyID;
     private String title;
-    private int minSalary;
-    private int maxSalary;
+    private Integer minSalary;
+    private Integer maxSalary;
     @EqualsAndHashCode.Include
     private String link;
     private LocalDateTime parsedAt;

@@ -19,12 +19,9 @@ public class NotifierService {
         String titlePart = String.format("<b>%s</b> in <i>%s</i>\n", vacancy.getVacancyTitle(), vacancy.getCompanyTitle());
         stringBuilder.append(titlePart);
         
-        if (vacancy.getMinSalary() != 0 || vacancy.getMaxSalary() != 0) {
-            String salaryPart = "Salary: " + (vacancy.getMaxSalary() == 0 ? "not specified" :
-                    vacancy.getMinSalary() == 0 ?
-                            String.format("%s", vacancy.getMaxSalary()) :
-                            String.format("%s - %s", vacancy.getMinSalary(), vacancy.getMaxSalary())) + "\n";
-            stringBuilder.append(salaryPart);
+        String salaryRange = formatSalaryRange(vacancy.getMinSalary(), vacancy.getMaxSalary());
+        if (salaryRange != null) {
+            stringBuilder.append("Salary: ").append(salaryRange).append("\n");
         }
 
         if (vacancy.isRemote()) {
@@ -39,5 +36,19 @@ public class NotifierService {
 
 
         return stringBuilder.toString();
+    }
+
+    /** A range such as "1000 - 3000", or null when the source published neither bound. */
+    private static String formatSalaryRange(Integer minSalary, Integer maxSalary) {
+        if (minSalary != null && maxSalary != null) {
+            return minSalary.equals(maxSalary) ? String.valueOf(minSalary) : minSalary + " - " + maxSalary;
+        }
+        if (minSalary != null) {
+            return "from " + minSalary;
+        }
+        if (maxSalary != null) {
+            return "up to " + maxSalary;
+        }
+        return null;
     }
 }

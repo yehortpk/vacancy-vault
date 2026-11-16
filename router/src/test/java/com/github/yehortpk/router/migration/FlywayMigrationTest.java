@@ -236,6 +236,15 @@ class FlywayMigrationTest extends PostgresContainerTest {
     }
 
     @Test
+    void Migrate_VacancyWithoutSalary_ShouldBeAccepted() throws SQLException {
+        assertThat(isAnyStatementRejected(
+                "INSERT INTO company (company_id, title, parsing_enabled) VALUES (900, 'Probe', false)",
+                "INSERT INTO vacancy (is_remote, link, title, company_id)"
+                        + " VALUES (false, 'https://probe.example/1', 'Probe', 900)"))
+                .isFalse();
+    }
+
+    @Test
     void Migrate_AppUserTable_ShouldEnforceUniqueEmail() throws SQLException {
         // Two accounts on one address would make login ambiguous, and the duplicate is what
         // the registration race relies on the database to reject

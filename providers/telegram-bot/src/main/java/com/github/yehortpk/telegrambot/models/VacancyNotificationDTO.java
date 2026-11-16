@@ -13,8 +13,8 @@ public class VacancyNotificationDTO {
     private String filter;
     private String companyTitle;
     private String vacancyTitle;
-    private int minSalary;
-    private int maxSalary;
+    private Integer minSalary;
+    private Integer maxSalary;
     @EqualsAndHashCode.Include
     private String link;
     private boolean isRemote;

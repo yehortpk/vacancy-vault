@@ -1,9 +1,9 @@
 export type Vacancy = {
     title: string
-    /** 0 when the source did not publish a lower bound */
-    minSalary: number
-    /** 0 when the source did not publish an upper bound */
-    maxSalary: number
+    /** null when the source did not publish a lower bound */
+    minSalary: number|null
+    /** null when the source did not publish an upper bound */
+    maxSalary: number|null
     url: string
     company: {
         company_id: number
