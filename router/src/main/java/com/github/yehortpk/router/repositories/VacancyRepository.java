@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
     @Query("SELECT v.vacancyID FROM Vacancy v")
@@ -31,6 +32,9 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Long> {
                          @Param("remoteRequired") boolean remoteRequired,
                          @Param("salaryRequired") boolean salaryRequired,
                          Pageable pageable);
+
+    @Query("SELECT v FROM Vacancy v LEFT JOIN FETCH v.company WHERE v.vacancyID = :id")
+    Optional<Vacancy> findVacancyById(@Param("id") int id);
 
     boolean existsByLink(String link);
 }

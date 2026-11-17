@@ -7,6 +7,7 @@ import org.modelmapper.PropertyMap;
 public class VacancyToVacancyCompanyDTOMapper extends PropertyMap<Vacancy, VacancyCompanyDTO> {
     @Override
     protected void configure() {
+        map().setId(source.getVacancyID());
         map().setURL(source.getLink());
     }
 }

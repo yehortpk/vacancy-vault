@@ -7,6 +7,8 @@ import java.time.OffsetDateTime;
 
 @Data
 public class VacancyCompanyDTO {
+    /** Addresses the vacancy's own page; the description is left out of listings and served there. */
+    private int id;
     private String title;
     private Integer minSalary;
     private Integer maxSalary;

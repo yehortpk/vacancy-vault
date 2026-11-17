@@ -5,6 +5,7 @@ import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyCompanyDTO;
 import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.VacancyDetailsDTO;
 import org.junit.jupiter.api.Test;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
@@ -58,6 +59,20 @@ class ModelMapperConfigTest {
         assertThat(page.getVacancies()).hasSize(1);
         assertThat(page.getVacancies().getFirst().getParsedAt())
                 .isEqualTo(PARSED_AT.atZone(ZoneId.systemDefault()).toOffsetDateTime());
+    }
+
+    @Test
+    void MapVacancy_ToDetails_ShouldCarryIdLinkAndDescription() {
+        Vacancy vacancy = createVacancy();
+        vacancy.setVacancyID(42);
+        vacancy.setDescription("Build things.");
+
+        VacancyDetailsDTO dto = modelMapper.map(vacancy, VacancyDetailsDTO.class);
+
+        assertThat(dto.getId()).isEqualTo(42);
+        assertThat(dto.getURL()).isEqualTo("https://acme.example/1");
+        assertThat(dto.getDescription()).isEqualTo("Build things.");
+        assertThat(dto.getCompany().getCompanyTitle()).isEqualTo("Acme");
     }
 
     @Test

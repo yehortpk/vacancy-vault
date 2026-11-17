@@ -1,5 +1,6 @@
 package com.github.yehortpk.router.services;
 
+import com.github.yehortpk.router.exception.VacancyNotFoundException;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyDTO;
 import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
@@ -74,6 +75,10 @@ public class VacancyService {
 
     public List<Vacancy> getAllVacancies() {
         return vacancyRepository.findAll();
+    }
+
+    public Vacancy getVacancy(int id) {
+        return vacancyRepository.findVacancyById(id).orElseThrow(VacancyNotFoundException::new);
     }
 
     public Page<Vacancy> getVacancies(VacancySearchCriteria criteria, Pageable pageable) {

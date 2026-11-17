@@ -91,6 +91,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
     }
 
+    @ExceptionHandler(VacancyNotFoundException.class)
+    public ResponseEntity<Object> handleVacancyNotFoundException(VacancyNotFoundException ex) {
+        return ResponseEntity.status(NOT_FOUND).body(new APIResponse(404, ex.getMessage()));
+    }
+
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<Object> handleInvalidTokenException(InvalidTokenException ex) {
         return ResponseEntity.status(UNAUTHORIZED).body(new APIResponse(401, ex.getMessage()));

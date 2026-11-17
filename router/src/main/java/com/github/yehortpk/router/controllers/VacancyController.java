@@ -3,6 +3,7 @@ package com.github.yehortpk.router.controllers;
 import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
 import com.github.yehortpk.router.models.vacancy.Vacancy;
 import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.VacancyDetailsDTO;
 import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.services.VacancyService;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,11 @@ public class VacancyController {
                 new VacancySearchCriteria(query, remoteRequired, salaryRequired), pageable);
 
         return modelMapper.getTypeMap(Page.class, VacanciesPageDTO.class).map(vacanciesOnPage);
+    }
+
+    @GetMapping("/{id}")
+    public VacancyDetailsDTO getVacancy(@PathVariable int id) {
+        return modelMapper.map(vacancyService.getVacancy(id), VacancyDetailsDTO.class);
     }
 
     @GetMapping(params = "byCompany=true")
