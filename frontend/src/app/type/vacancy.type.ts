@@ -1,4 +1,5 @@
 export type Vacancy = {
+    id: number
     title: string
     /** null when the source did not publish a lower bound */
     minSalary: number|null
@@ -17,6 +18,11 @@ export type Vacancy = {
     }
     parsedAt: string|null
     remote: boolean
+}
+
+/** A vacancy as its own page shows it; listings leave the description out. */
+export type VacancyDetails = Vacancy & {
+    description: string|null
 }
 
 export type VacanciesListDTO = {

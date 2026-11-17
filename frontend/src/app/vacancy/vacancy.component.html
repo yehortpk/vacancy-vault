@@ -1,0 +1,111 @@
+<section class="px-4 sm:px-6 lg:px-8 py-10 max-w-4xl">
+  <button type="button" (click)="navigateBack()"
+    class="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+    Back to vacancies
+  </button>
+
+  <!-- Loading skeleton -->
+  <div *ngIf="isLoading" class="rounded-2xl bg-white dark:bg-slate-800/60 p-6 sm:p-8 ring-1 ring-slate-200/70 dark:ring-slate-700/60 animate-pulse" aria-busy="true">
+    <div class="flex items-center gap-4">
+      <div class="h-14 w-14 rounded-xl bg-slate-200 dark:bg-slate-700"></div>
+      <div class="flex-1 space-y-2">
+        <div class="h-5 w-2/3 rounded bg-slate-200 dark:bg-slate-700"></div>
+        <div class="h-4 w-1/3 rounded bg-slate-200 dark:bg-slate-700"></div>
+      </div>
+    </div>
+    <div class="mt-8 space-y-2">
+      <div class="h-3 w-full rounded bg-slate-200 dark:bg-slate-700"></div>
+      <div class="h-3 w-5/6 rounded bg-slate-200 dark:bg-slate-700"></div>
+      <div class="h-3 w-4/6 rounded bg-slate-200 dark:bg-slate-700"></div>
+    </div>
+  </div>
+
+  <!-- Not found, or the router could not be reached -->
+  <div *ngIf="isNotFound || hasFailed" class="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 py-16 px-6 text-center">
+    <h1 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+      {{ isNotFound ? 'Vacancy not found' : 'Could not load the vacancy' }}
+    </h1>
+    <p class="text-slate-500 dark:text-slate-400 mb-6">
+      {{ isNotFound ? 'It may have been removed after the company took it down.' : 'Something went wrong. Try again in a moment.' }}
+    </p>
+    <a routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
+  </div>
+
+  <article *ngIf="!isLoading && vacancy as vacancy"
+    class="rounded-2xl bg-white dark:bg-slate-800/60 p-6 sm:p-8 ring-1 ring-slate-200/70 dark:ring-slate-700/60 shadow-sm">
+    <header class="flex flex-col sm:flex-row sm:items-start gap-4">
+      <div class="min-w-0 flex-1">
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white break-words">{{ vacancy.title }}</h1>
+
+        <!-- Each detail renders only when the source provided it -->
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+          <span *ngIf="vacancy.company.title" class="inline-flex items-center gap-1.5">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+            </svg>
+            <a *ngIf="vacancy.company.company_url; else plainCompany"
+              [href]="vacancy.company.company_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+              {{ vacancy.company.title }}
+            </a>
+            <ng-template #plainCompany>
+              <span class="font-medium text-slate-700 dark:text-slate-300">{{ vacancy.company.title }}</span>
+            </ng-template>
+          </span>
+
+          <span *ngIf="vacancy.parsedAt" class="inline-flex items-center gap-1.5">
+            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <time [attr.datetime]="vacancy.parsedAt">
+              Parsed {{ vacancy.parsedAt | date: 'd MMM y, HH:mm' }}
+              <span class="text-slate-400 dark:text-slate-500">· {{ describePostedAt(vacancy.parsedAt) }}</span>
+            </time>
+          </span>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <span *ngIf="vacancy.remote"
+            class="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-sm font-medium text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0c2.5-2.5 3.75-5.5 3.75-9S14.5 5.5 12 3m0 18c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3M3.6 9h16.8M3.6 15h16.8" />
+            </svg>
+            Remote
+          </span>
+          <span *ngIf="!vacancy.remote" class="rounded-full bg-slate-100 dark:bg-slate-700/50 px-3 py-1 text-sm font-medium text-slate-500 dark:text-slate-400 ring-1 ring-inset ring-slate-500/20">Remote: not specified</span>
+          <span *ngIf="formatSalary(vacancy) as salary"
+            class="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20">
+            {{ salary }}
+          </span>
+          <span *ngIf="!formatSalary(vacancy)" class="rounded-full bg-slate-100 dark:bg-slate-700/50 px-3 py-1 text-sm font-medium text-slate-500 dark:text-slate-400 ring-1 ring-inset ring-slate-500/20">Salary: not specified</span>
+        </div>
+      </div>
+
+      <a [href]="vacancy.url" target="_blank" rel="noopener noreferrer"
+        class="inline-flex flex-shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700">
+        Open original posting
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M17 7H8M17 7v9" />
+        </svg>
+      </a>
+    </header>
+
+    <div class="mt-8 border-t border-slate-200 dark:border-slate-700 pt-6">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">Description</h2>
+      <!-- Stored as plain text, so line breaks are kept and nothing is rendered as HTML -->
+      <p *ngIf="vacancy.description; else noDescription"
+        class="whitespace-pre-line break-words leading-relaxed text-slate-700 dark:text-slate-300">{{ vacancy.description }}</p>
+      <ng-template #noDescription>
+        <p class="text-slate-500 dark:text-slate-400">
+          The source did not publish a description. The full posting is available on the
+          <a [href]="vacancy.url" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">original page</a>.
+        </p>
+      </ng-template>
+    </div>
+  </article>
+</section>
