@@ -22,15 +22,6 @@ const RELATIVE_TIME_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 ];
 const relativeTimeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const salaryFormat = new Intl.NumberFormat('en');
-/** Full class strings, so Tailwind's scanner keeps them in the build. */
-const MONOGRAM_PALETTE = [
-  'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
-  'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
-  'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300',
-];
 
 @Component({
   selector: 'app-dashboard',
@@ -143,16 +134,6 @@ export class DashboardComponent implements OnInit {
 
     this.totalPages = response.totalPages;
     this.totalVacancies = response.totalVacancies;
-  }
-
-  /** First letter of the company title, shown in place of a logo the company does not have. */
-  getCompanyInitial(vacancy: Vacancy): string {
-    return vacancy.company.title?.trim().charAt(0).toUpperCase() || '?';
-  }
-
-  /** A stable colour per company, so its monogram looks the same on every page. */
-  getMonogramClasses(vacancy: Vacancy): string {
-    return MONOGRAM_PALETTE[vacancy.company.company_id % MONOGRAM_PALETTE.length];
   }
 
   /** Returns a display range such as "1,500 – 3,000", or null when neither bound is known (stored as 0). */
