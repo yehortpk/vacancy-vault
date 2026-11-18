@@ -75,13 +75,11 @@
   <!-- Vacancy list -->
   <ng-container *ngIf="!isLoading">
     <ul *ngIf="vacancies.length > 0; else noVacancies" class="space-y-3">
-      @for (vacancy of vacancies; track vacancy.url) {
+      @for (vacancy of vacancies; track vacancy.id) {
       <li class="group relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-2xl bg-white dark:bg-slate-800/60 p-4 sm:p-5 ring-1 ring-slate-200/70 dark:ring-slate-700/60 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/60 dark:hover:shadow-black/20 hover:ring-blue-300 dark:hover:ring-blue-500/50">
         <div class="min-w-0 flex-1">
           <a
-            [href]="vacancy.url"
-            target="_blank"
-            rel="noopener noreferrer"
+            [routerLink]="['/vacancy', vacancy.id]"
             class="block truncate text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 after:absolute after:inset-0 after:rounded-2xl"
             [title]="vacancy.title">
             {{ vacancy.title }}
@@ -118,7 +116,7 @@
         </div>
 
         <!-- Badges: only the facts the source provided -->
-        <div *ngIf="vacancy.remote || formatSalaryRange(vacancy)" class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+        <div *ngIf="vacancy.remote || formatSalary(vacancy)" class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
           <span *ngIf="vacancy.remote"
             class="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-sm font-medium text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -126,14 +124,14 @@
             </svg>
             Remote
           </span>
-          <span *ngIf="formatSalaryRange(vacancy) as salaryRange"
+          <span *ngIf="formatSalary(vacancy) as salary"
             class="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20">
-            {{ salaryRange }}
+            {{ salary }}
           </span>
         </div>
 
         <svg class="hidden sm:block h-5 w-5 flex-shrink-0 text-slate-300 dark:text-slate-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M17 7H8M17 7v9" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </li>
       }

@@ -10,18 +10,7 @@ import { TruncatePipe } from '../pipe/truncate.pipe';
 import { Filter } from '../type/filter.type';
 import { FilterService } from '../service/filter.service';
 import { AuthService } from '../service/auth.service';
-
-/** Largest unit first, so a date is described in the coarsest unit it spans. */
-const RELATIVE_TIME_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 365 * 24 * 3600],
-  ['month', 30 * 24 * 3600],
-  ['week', 7 * 24 * 3600],
-  ['day', 24 * 3600],
-  ['hour', 3600],
-  ['minute', 60],
-];
-const relativeTimeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-const salaryFormat = new Intl.NumberFormat('en');
+import { describePostedAt, formatSalary } from '../vacancy-display';
 
 @Component({
   selector: 'app-dashboard',
@@ -136,34 +125,8 @@ export class DashboardComponent implements OnInit {
     this.totalVacancies = response.totalVacancies;
   }
 
-  /** Returns a display range such as "1,500 – 3,000", or null when neither bound is known (stored as 0). */
-  formatSalaryRange(vacancy: Vacancy): string | null {
-    const minSalary = vacancy.minSalary || 0;
-    const maxSalary = vacancy.maxSalary || 0;
-    if (minSalary && maxSalary) {
-      return minSalary === maxSalary
-        ? salaryFormat.format(minSalary)
-        : `${salaryFormat.format(minSalary)} – ${salaryFormat.format(maxSalary)}`;
-    }
-    if (minSalary) {
-      return `from ${salaryFormat.format(minSalary)}`;
-    }
-    if (maxSalary) {
-      return `up to ${salaryFormat.format(maxSalary)}`;
-    }
-    return null;
-  }
-
-  /** Describes a timestamp relative to now, e.g. "3 hours ago" or "yesterday". */
-  describePostedAt(parsedAt: string): string {
-    const elapsedSeconds = (Date.parse(parsedAt) - Date.now()) / 1000;
-    for (const [unit, unitSeconds] of RELATIVE_TIME_UNITS) {
-      if (Math.abs(elapsedSeconds) >= unitSeconds) {
-        return relativeTimeFormat.format(Math.round(elapsedSeconds / unitSeconds), unit);
-      }
-    }
-    return 'just now';
-  }
+  readonly formatSalary = formatSalary;
+  readonly describePostedAt = describePostedAt;
 
   onPageChange(event: PageEvent) {
     this.router.navigate(["/dashboard"], {
