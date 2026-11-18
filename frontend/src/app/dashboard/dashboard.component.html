@@ -107,10 +107,7 @@
               <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <time [attr.datetime]="vacancy.parsedAt">
-                Parsed {{ vacancy.parsedAt | date: 'd MMM y, HH:mm' }}
-                <span class="text-slate-400 dark:text-slate-500">· {{ describePostedAt(vacancy.parsedAt) }}</span>
-              </time>
+              <time [attr.datetime]="vacancy.parsedAt">{{ describePostedAt(vacancy.parsedAt) }}</time>
             </span>
           </div>
         </div>
