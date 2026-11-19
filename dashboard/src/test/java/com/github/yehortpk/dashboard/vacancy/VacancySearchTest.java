@@ -96,6 +96,22 @@ class VacancySearchTest extends PostgresContainerTest {
     }
 
     @Test
+    void GetVacancies_QueryInDifferentCase_ShouldMatchTitlesIgnoringCase() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("query", "jAVA rEMOTE")))
+                .containsExactlyInAnyOrder("Java Remote No Salary", "Java Remote Max Salary");
+    }
+
+    @Test
+    void GetVacancies_QueryWithSurroundingSpaces_ShouldIgnoreTheSpaces() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("query", "  python "))).containsExactly("Python Remote Range");
+    }
+
+    @Test
+    void GetVacancies_BlankQuery_ShouldReturnEveryVacancy() throws Exception {
+        assertThat(titlesOf(get("/vacancy").param("query", "   "))).hasSize(5);
+    }
+
+    @Test
     void GetVacancies_RemoteRequired_ShouldReturnOnlyRemoteVacancies() throws Exception {
         assertThat(titlesOf(get("/vacancy").param("remote", "true")))
                 .containsExactlyInAnyOrder("Java Remote Max Salary", "Java Remote No Salary", "Python Remote Range");

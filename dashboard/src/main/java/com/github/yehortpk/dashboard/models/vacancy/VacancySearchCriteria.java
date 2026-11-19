@@ -10,7 +10,7 @@ import lombok.Value;
  */
 @Value
 public class VacancySearchCriteria {
-    /** Case-sensitive substring of the vacancy title; empty for no title condition. */
+    /** Case-insensitive substring of the vacancy title; empty for no title condition. */
     String query;
     /** Only vacancies the source marked as remote. */
     boolean remoteRequired;
@@ -18,7 +18,8 @@ public class VacancySearchCriteria {
     boolean salaryRequired;
 
     public VacancySearchCriteria(String query, boolean remoteRequired, boolean salaryRequired) {
-        this.query = query == null ? "" : query;
+        // Typed into a search box, so a stray space around the words is not part of the search
+        this.query = query == null ? "" : query.strip();
         this.remoteRequired = remoteRequired;
         this.salaryRequired = salaryRequired;
     }

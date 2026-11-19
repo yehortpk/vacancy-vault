@@ -14,7 +14,7 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     /** An empty query or a false flag drops that condition. */
     @Query("""
             SELECT v FROM Vacancy v
-            WHERE (:query = '' OR v.title LIKE CONCAT('%', :query, '%'))
+            WHERE (:query = '' OR LOWER(v.title) LIKE LOWER(CONCAT('%', :query, '%')))
               AND (:remoteRequired = FALSE OR v.isRemote = TRUE)
               AND (:salaryRequired = FALSE OR v.minSalary IS NOT NULL OR v.maxSalary IS NOT NULL)
             """)
