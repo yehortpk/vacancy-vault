@@ -17,6 +17,7 @@
 	<modules>
 		<module>parser</module>
 		<module>router</module>
+		<module>dashboard</module>
 		<module>providers/telegram-bot</module>
 	</modules>
 	<properties>
