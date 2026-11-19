@@ -33,9 +33,9 @@ build/
 .vscode/
 .env*
 *.sql
-# Flyway owns the schema, so its migrations must be tracked despite the blanket *.sql rule
-!router/src/main/resources/db/migration/*.sql
-!router/src/test/resources/db/test-migration/*.sql
+# Flyway owns each service's schema, so the migrations must be tracked despite the blanket *.sql rule
+!**/src/main/resources/db/migration/*.sql
+!**/src/test/resources/db/test-migration/*.sql
 frontend/.editorconfig
 frontend/package-lock.json
 /logs/
