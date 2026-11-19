@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -93,32 +92,30 @@ class VacancyListenerTest extends PostgresContainerTest {
     }
 
     @Test
-    void ListenNewVacanciesTopic_CompanyTitleChanged_ShouldUpdateItsStoredVacancies() {
+    void ListenNewVacanciesTopic_StoredLinkWithDifferentCompany_ShouldKeepTheStoredRow() {
         newVacancyListener.listenNewVacanciesTopic(
                 createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
+
         newVacancyListener.listenNewVacanciesTopic(
-                createVacancy("https://globex.example/1", GLOBEX_ID, "Globex", "https://globex.example"));
+                createVacancy("https://acme.example/1", GLOBEX_ID, "Globex", "https://globex.example"));
+
+        Vacancy stored = findVacancy("https://acme.example/1");
+        assertThat(vacancyRepository.count()).isEqualTo(1);
+        assertThat(stored.getCompanyId()).isEqualTo(ACME_ID);
+        assertThat(stored.getCompanyTitle()).isEqualTo("Acme");
+        assertThat(stored.getCompanyUrl()).isEqualTo("https://acme.example");
+    }
+
+    @Test
+    void ListenNewVacanciesTopic_NewLinkWithRenamedCompany_ShouldLeaveOtherVacanciesOfTheCompany() {
+        newVacancyListener.listenNewVacanciesTopic(
+                createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
 
         newVacancyListener.listenNewVacanciesTopic(
                 createVacancy("https://acme.example/2", ACME_ID, "Acme Corp", "https://acme.example"));
 
-        assertThat(List.of(findVacancy("https://acme.example/1"), findVacancy("https://acme.example/2")))
-                .extracting(Vacancy::getCompanyTitle).containsOnly("Acme Corp");
-        // Another company's rows are not touched
-        assertThat(findVacancy("https://globex.example/1").getCompanyTitle()).isEqualTo("Globex");
-    }
-
-    @Test
-    void ListenNewVacanciesTopic_CompanyUrlChangedOnRedelivery_ShouldUpdateItsStoredVacancies() {
-        // The company columns follow the latest message even when the vacancy itself is skipped
-        newVacancyListener.listenNewVacanciesTopic(
-                createVacancy("https://acme.example/1", ACME_ID, "Acme", null));
-
-        newVacancyListener.listenNewVacanciesTopic(
-                createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
-
-        assertThat(vacancyRepository.count()).isEqualTo(1);
-        assertThat(findVacancy("https://acme.example/1").getCompanyUrl()).isEqualTo("https://acme.example");
+        assertThat(findVacancy("https://acme.example/1").getCompanyTitle()).isEqualTo("Acme");
+        assertThat(findVacancy("https://acme.example/2").getCompanyTitle()).isEqualTo("Acme Corp");
     }
 
     @Test

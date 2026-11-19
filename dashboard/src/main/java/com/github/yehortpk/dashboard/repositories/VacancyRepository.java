@@ -29,18 +29,6 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Integer> {
     @Query("SELECT count(v) > 0 FROM Vacancy v WHERE v.link = :link")
     boolean existsByLink(@Param("link") String link);
 
-    /**
-     * Brings the stored vacancies of a company in line with its current title and URL. Rows
-     * that already match are left untouched.
-     */
-    @Modifying
-    @Query("""
-            UPDATE Vacancy v SET v.companyTitle = :title, v.companyUrl = :url
-            WHERE v.companyId = :companyId
-              AND (v.companyTitle IS DISTINCT FROM :title OR v.companyUrl IS DISTINCT FROM :url)
-            """)
-    int updateCompany(@Param("companyId") int companyId, @Param("title") String title, @Param("url") String url);
-
     @Modifying
     @Query("DELETE FROM Vacancy v WHERE v.link = :link")
     int deleteByLink(@Param("link") String link);

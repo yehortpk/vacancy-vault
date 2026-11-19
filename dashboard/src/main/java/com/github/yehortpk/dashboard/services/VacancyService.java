@@ -40,25 +40,16 @@ public class VacancyService {
     }
 
     /**
-     * Stores a published vacancy, skipping it if its link is already known. Duplicates are
-     * expected under Kafka's at-least-once delivery, so they are not treated as errors.
-     *
-     * <p>Whether stored or skipped, the company it carries is the current one: if its title or
-     * URL differs from that company's stored vacancies, those are updated.
+     * Stores a published vacancy. A vacancy whose link is already stored is discarded:
+     * duplicates are expected under Kafka's at-least-once delivery, so they are not errors, and
+     * the stored row, its company included, is left as it is.
      *
      * @return whether the vacancy was actually stored
      */
     @Transactional
     public boolean addVacancy(NewVacancyDTO vacancy) {
-        NewVacancyDTO.Company company = vacancy.getCompany();
-        int updatedVacancies = vacancyRepository.updateCompany(company.getId(), company.getTitle(), company.getUrl());
-        if (updatedVacancies > 0) {
-            log.info("Company {} is now \"{}\" ({}), updated {} stored vacancies",
-                    company.getId(), company.getTitle(), company.getUrl(), updatedVacancies);
-        }
-
         if (vacancyRepository.existsByLink(vacancy.getLink())) {
-            log.debug("Vacancy {} already stored, skipping", vacancy.getLink());
+            log.info("Vacancy {} is already stored, discarded", vacancy.getLink());
             return false;
         }
 
