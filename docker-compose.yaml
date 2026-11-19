@@ -64,6 +64,38 @@ services:
       postgres:
         condition: service_healthy
 
+  dashboard:
+    container_name: notifier-dashboard
+    build:
+      dockerfile: ./dashboard/Dockerfile
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    volumes:
+      - ./:/opt/app
+      - maven-home:/home/ubuntu
+    networks:
+      - notifier-network
+    ports:
+      - "8083:8080"
+      - "5008:5008"
+    environment:
+      KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
+      KAFKA_REMOVED_VACANCIES_TOPIC: removed_vacancies
+      # Optional database credentials, see README. Keep the defaults in sync with the postgres
+      # service below
+      POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 180s
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
   telegram-bot:
     container_name: notifier-telegram-bot
     build:
