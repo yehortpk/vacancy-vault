@@ -38,7 +38,8 @@ build/
 !**/src/test/resources/db/test-migration/*.sql
 frontend/.editorconfig
 frontend/package-lock.json
-/logs/
+# Every service and its tests write ./logs relative to where they run
+logs/
 
 ### Claude Code ###
 .claude/
