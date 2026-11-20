@@ -104,8 +104,8 @@ class FlywayMigrationTest extends PostgresContainerTest {
     void Migrate_FreshDatabase_ShouldKeepEverythingInTheParserSchema() throws SQLException {
         // The database is shared with the other services, each in a schema of its own
         assertThat(countWhere("information_schema.tables", "table_schema = 'parser' AND table_name IN"
-                + " ('company', 'company_data', 'company_headers', 'company_cookies', 'parsed_vacancy',"
-                + " 'flyway_schema_history')")).isEqualTo(6);
+                + " ('company', 'company_data', 'company_headers', 'company_cookies', 'parsed_vacancy', 'admin',"
+                + " 'flyway_schema_history')")).isEqualTo(7);
         assertThat(countWhere("information_schema.tables", "table_schema = 'public'")).isZero();
     }
 
@@ -137,5 +137,13 @@ class FlywayMigrationTest extends PostgresContainerTest {
     @Test
     void Migrate_ParsedVacancyTable_ShouldRejectAnUnknownCompany() throws SQLException {
         assertThat(isAnyStatementRejected(INSERT_PARSED_VACANCY)).isTrue();
+    }
+
+    @Test
+    void Migrate_AdminTable_ShouldEnforceUniqueUsername() throws SQLException {
+        String insertAdmin = "INSERT INTO admin (username, password_hash, created_at) VALUES ('probe', 'hash', now())";
+
+        assertThat(isAnyStatementRejected(insertAdmin)).isFalse();
+        assertThat(isAnyStatementRejected(insertAdmin, insertAdmin)).isTrue();
     }
 }
