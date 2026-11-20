@@ -11,7 +11,6 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,12 +21,6 @@ import java.util.Map;
  */
 @Configuration
 public class InfrastructureConfig {
-    // Rest config
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapAddress;
 

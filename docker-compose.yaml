@@ -18,17 +18,19 @@ services:
       # How many Chromium instances may run at once: a number, or "max" for as many as the
       # host's CPUs and memory allow. See README
       PARSER_BROWSER_POOL_SIZE: ${PARSER_BROWSER_POOL_SIZE:-2}
-      # Optional database credentials, see README. Keep the defaults in sync with the postgres
-      # service below
+      # Optional database credentials, see README. Keep the defaults in sync with the postgres and
+      # mongo services below
       POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
+      MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
     depends_on:
-      router:
-        condition: service_healthy
       kafka:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      mongo:
+        condition: service_started
 
   router:
     container_name: notifier-router
