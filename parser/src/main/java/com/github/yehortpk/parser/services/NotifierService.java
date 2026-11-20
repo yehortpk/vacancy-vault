@@ -1,20 +1,38 @@
 package com.github.yehortpk.parser.services;
 
+import com.github.yehortpk.parser.models.CompanyDTO;
+import com.github.yehortpk.parser.models.NewVacancyDTO;
 import com.github.yehortpk.parser.models.VacancyDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
- * This class sends vacancies notification for the router service
+ * Publishes what a parsing run found: new vacancies to {@code new_vacancies}, and the links of
+ * vacancies dropped for good to {@code removed_vacancies}. Both are keyed by the link.
+ *
+ * <p>A vacancy is remembered as published only after the broker acknowledged it. If the parser
+ * dies in between, the next run publishes it again, and the consumers skip a link they already
+ * know.
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotifierService {
-    private final KafkaTemplate<String, VacancyDTO> routerService;
+    private static final long ACK_TIMEOUT_SEC = 30;
+
+    private final KafkaTemplate<String, NewVacancyDTO> newVacancyKafkaTemplate;
+    private final KafkaTemplate<String, String> removedVacancyKafkaTemplate;
+    private final VacancyService vacancyService;
 
     /**
      * Links already published during the current parsing run. Pages of one company are parsed
@@ -23,16 +41,92 @@ public class NotifierService {
      */
     private final Set<String> publishedLinks = ConcurrentHashMap.newKeySet();
 
+    private static NewVacancyDTO createNewVacancy(VacancyDTO vacancy, CompanyDTO company) {
+        return NewVacancyDTO.builder()
+                .link(vacancy.getLink())
+                .title(vacancy.getTitle())
+                .description(vacancy.getDescription())
+                .minSalary(vacancy.getMinSalary())
+                .maxSalary(vacancy.getMaxSalary())
+                .salaryCurrency(vacancy.getSalaryCurrency())
+                .salaryPeriod(vacancy.getSalaryPeriod())
+                .isRemote(vacancy.isRemote())
+                .parsedAt(vacancy.getParsedAt())
+                .company(new NewVacancyDTO.Company(company.getCompanyId(), company.getTitle(), company.getMainPageURL()))
+                .build();
+    }
+
     /**
-     * Notify router service about new vacancies, skipping those already published in this run
-     * @param newVacancies set of new vacancies
+     * Waits for the broker to acknowledge a sent record.
+     *
+     * @throws IllegalStateException if it was not acknowledged in time
      */
-    public void notifyNewVacancies(Set<VacancyDTO> newVacancies) {
-        for (VacancyDTO newVacancy : newVacancies) {
-            if (publishedLinks.add(newVacancy.getLink())) {
-                routerService.send(routerService.getDefaultTopic(), newVacancy.getLink(), newVacancy);
+    private static void awaitAck(CompletableFuture<? extends SendResult<String, ?>> send, String link) {
+        try {
+            send.get(ACK_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while publishing " + link, ex);
+        } catch (ExecutionException | TimeoutException ex) {
+            throw new IllegalStateException("The broker did not acknowledge " + link, ex);
+        }
+    }
+
+    /**
+     * Publishes the new vacancies of a company and remembers each as published once the broker
+     * has acknowledged it. Skipped are the vacancies already published in this run, and those
+     * published earlier under another company, e.g. one listed on an aggregator as well.
+     *
+     * <p>A vacancy that could not be published is logged and left unrecorded, so the next run
+     * finds it new again.
+     *
+     * @param newVacancies set of new vacancies
+     * @param company the company they were parsed from
+     */
+    public void notifyNewVacancies(Set<VacancyDTO> newVacancies, CompanyDTO company) {
+        List<VacancyDTO> unpublishedVacancies = newVacancies.stream()
+                .filter(vacancy -> publishedLinks.add(vacancy.getLink()))
+                .toList();
+        if (unpublishedVacancies.isEmpty()) {
+            return;
+        }
+
+        Set<String> earlierPublishedLinks = vacancyService.findPublishedLinks(
+                unpublishedVacancies.stream().map(VacancyDTO::getLink).toList());
+
+        // Everything is sent before the first ack is awaited, so the producer can batch
+        Map<VacancyDTO, CompletableFuture<SendResult<String, NewVacancyDTO>>> sends = new LinkedHashMap<>();
+        for (VacancyDTO vacancy : unpublishedVacancies) {
+            if (!earlierPublishedLinks.contains(vacancy.getLink())) {
+                sends.put(vacancy, newVacancyKafkaTemplate.sendDefault(
+                        vacancy.getLink(), createNewVacancy(vacancy, company)));
             }
         }
+
+        sends.forEach((vacancy, send) -> {
+            try {
+                awaitAck(send, vacancy.getLink());
+                vacancyService.addPublishedVacancy(vacancy.getLink(), company.getCompanyId(), vacancy.getParsedAt());
+            } catch (RuntimeException ex) {
+                publishedLinks.remove(vacancy.getLink());
+                log.error("Vacancy {} was not published, the next run retries it: {}",
+                        vacancy.getLink(), ex.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Publishes the links of vacancies that are being dropped for good.
+     *
+     * @throws IllegalStateException if the broker did not acknowledge every link; the caller
+     *                               must then keep the vacancies, so the next run reports them again
+     */
+    public void notifyRemovedVacancies(Collection<String> links) {
+        Map<String, CompletableFuture<SendResult<String, String>>> sends = new LinkedHashMap<>();
+        for (String link : links) {
+            sends.put(link, removedVacancyKafkaTemplate.sendDefault(link, link));
+        }
+        sends.forEach((link, send) -> awaitAck(send, link));
     }
 
     /**

@@ -2,7 +2,7 @@ package com.github.yehortpk.parser.services;
 
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.PageDTO;
-import com.github.yehortpk.parser.models.VacancyDTO;
+import com.github.yehortpk.parser.models.ParsedVacancy;
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
@@ -23,7 +23,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ParserRunnerServiceTest {
@@ -55,7 +54,7 @@ class ParserRunnerServiceTest {
 
     @Test
     void RunParsing_CompaniesListFails_ShouldSaveFailedRun() {
-        when(companyService.getCompaniesList()).thenThrow(new IllegalStateException("Router is down"));
+        when(companyService.getCompaniesList()).thenThrow(new IllegalStateException("Database is down"));
 
         parserRunnerService.runParsing();
 
@@ -80,7 +79,7 @@ class ParserRunnerServiceTest {
         when(siteScrapper.scrapCompanyVacancies(any())).thenReturn(List.of(failedPage));
         when(applicationContext.getBean("siteScrapper")).thenReturn(siteScrapper);
         when(companyService.getCompaniesList()).thenReturn(List.of(createCompany(1, "siteScrapper")));
-        when(companyService.getPersistedVacancies(1)).thenReturn(List.of(mock(VacancyDTO.class)));
+        when(vacancyService.getPersistedVacancies(1)).thenReturn(List.of(mock(ParsedVacancy.class)));
 
         parserRunnerService.runParsing();
 
@@ -88,7 +87,9 @@ class ParserRunnerServiceTest {
         ParserProgress company = parsingProgressService.getParsers().get(1);
         assertEquals(ParserProgressStatusEnum.FINISHED, company.getStatus());
         assertEquals(List.of(1), company.getUnparsedPageIds());
-        verifyNoInteractions(vacancyService);
+        verify(vacancyService, never()).markOutdated(any(), any());
+        verify(vacancyService, never()).restoreOutdated(any());
+        verify(vacancyService, never()).deleteVacancies(any());
     }
 
     @Test
@@ -105,7 +106,7 @@ class ParserRunnerServiceTest {
                 createCompany(1, "slowScrapper"),
                 createCompany(2, "failingScrapper")
         ));
-        when(companyService.getPersistedVacancies(2)).thenThrow(new IllegalStateException("Router is down"));
+        when(vacancyService.getPersistedVacancies(2)).thenThrow(new IllegalStateException("Database is down"));
 
         parserRunnerService.runParsing();
 

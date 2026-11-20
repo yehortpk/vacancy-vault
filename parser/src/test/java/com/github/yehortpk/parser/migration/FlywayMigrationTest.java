@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FlywayMigrationTest extends PostgresContainerTest {
     private static final String INSERT_COMPANY =
             "INSERT INTO company (company_id, title, parsing_enabled) VALUES (900, 'Probe', false)";
+    private static final String INSERT_PARSED_VACANCY =
+            "INSERT INTO parsed_vacancy (link, company_id, parsed_at) VALUES ('https://probe.example/1', 900, now())";
 
     @Autowired
     private DataSource dataSource;
@@ -102,8 +104,8 @@ class FlywayMigrationTest extends PostgresContainerTest {
     void Migrate_FreshDatabase_ShouldKeepEverythingInTheParserSchema() throws SQLException {
         // The database is shared with the other services, each in a schema of its own
         assertThat(countWhere("information_schema.tables", "table_schema = 'parser' AND table_name IN"
-                + " ('company', 'company_data', 'company_headers', 'company_cookies', 'flyway_schema_history')"))
-                .isEqualTo(5);
+                + " ('company', 'company_data', 'company_headers', 'company_cookies', 'parsed_vacancy',"
+                + " 'flyway_schema_history')")).isEqualTo(6);
         assertThat(countWhere("information_schema.tables", "table_schema = 'public'")).isZero();
     }
 
@@ -122,5 +124,18 @@ class FlywayMigrationTest extends PostgresContainerTest {
                 + " VALUES ('probe', 'probe', 900) RETURNING id", INSERT_COMPANY)).isPositive();
         assertThat(findGeneratedId("INSERT INTO company_cookies (cookie_key, cookie_value, company_id)"
                 + " VALUES ('probe', 'probe', 900) RETURNING id", INSERT_COMPANY)).isPositive();
+        assertThat(findGeneratedId(INSERT_PARSED_VACANCY + " RETURNING id", INSERT_COMPANY)).isPositive();
+    }
+
+    @Test
+    void Migrate_ParsedVacancyTable_ShouldEnforceUniqueLink() throws SQLException {
+        // One row per published link is what keeps a vacancy from being published twice
+        assertThat(isAnyStatementRejected(INSERT_COMPANY, INSERT_PARSED_VACANCY)).isFalse();
+        assertThat(isAnyStatementRejected(INSERT_COMPANY, INSERT_PARSED_VACANCY, INSERT_PARSED_VACANCY)).isTrue();
+    }
+
+    @Test
+    void Migrate_ParsedVacancyTable_ShouldRejectAnUnknownCompany() throws SQLException {
+        assertThat(isAnyStatementRejected(INSERT_PARSED_VACANCY)).isTrue();
     }
 }

@@ -1,21 +1,16 @@
 package com.github.yehortpk.parser.services;
 
 import com.github.yehortpk.parser.models.CompanyDTO;
-import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.models.company.Company;
 import com.github.yehortpk.parser.models.company.CompanyCookie;
 import com.github.yehortpk.parser.models.company.CompanyData;
 import com.github.yehortpk.parser.models.company.CompanyHeader;
 import com.github.yehortpk.parser.repositories.CompanyRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -25,13 +20,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompanyService {
     private final CompanyRepository companyRepository;
-    private final RestTemplate restTemplate;
-
-    @Value("${router-companies-url}")
-    private String routerCompaniesURL;
-
-    @Value("${router-vacancies-url}")
-    private String routerVacanciesURL;
 
     private static CompanyDTO createCompanyDTO(Company company) {
         return CompanyDTO.builder()
@@ -60,35 +48,5 @@ public class CompanyService {
         return companyRepository.findParsingEnabled().stream()
                 .map(CompanyService::createCompanyDTO)
                 .toList();
-    }
-
-    /**
-     * Returns persisted vacancies from specific company
-     * @param companyId id of company
-     * @return list of persisted vacancies
-     */
-    public List<VacancyDTO> getPersistedVacancies(int companyId) {
-        ParameterizedTypeReference<List<VacancyDTO>> parameterizedTypeReference
-                = new ParameterizedTypeReference<>() {
-        };
-
-        String finalURL = routerCompaniesURL + "/%s/vacancies".formatted(companyId);
-
-        return restTemplate.exchange(finalURL, HttpMethod.GET, null, parameterizedTypeReference).getBody();
-    }
-
-    public Map<Long, Set<String>> getPersistedVacanciesUrlsByCompanyId() {
-        ParameterizedTypeReference<Map<Long, Set<String>>> parameterizedTypeReference
-                = new ParameterizedTypeReference<>() {
-        };
-
-        String finalURL = routerVacanciesURL + "?byCompany=true";
-
-        Map<Long, Set<String>> body = restTemplate.exchange(finalURL, HttpMethod.GET, null, parameterizedTypeReference).getBody();
-        if (body == null) {
-            return new HashMap<>();
-        }
-
-        return body;
     }
 }

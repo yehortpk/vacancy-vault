@@ -18,7 +18,6 @@ import java.time.LocalDateTime;
 public class VacancyDTO implements Serializable {
     private int companyID;
     private String companyTitle;
-    private int vacancyID;
     /**
      * Vacancy title
      */
@@ -40,11 +39,6 @@ public class VacancyDTO implements Serializable {
     private String link;
 
     private LocalDateTime parsedAt;
-
-    /**
-     * Outdated data deletion timeout
-     */
-    private LocalDateTime deleteAt;
 
     /**
      * Whether remote type of work available for the vacancy
