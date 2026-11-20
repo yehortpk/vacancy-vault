@@ -17,8 +17,14 @@ services:
       # How many Chromium instances may run at once: a number, or "max" for as many as the
       # host's CPUs and memory allow. See README
       PARSER_BROWSER_POOL_SIZE: ${PARSER_BROWSER_POOL_SIZE:-2}
+      # Optional database credentials, see README. Keep the defaults in sync with the postgres
+      # service below
+      POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
     depends_on:
       router:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
   router:
