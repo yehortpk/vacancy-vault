@@ -24,6 +24,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
       MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
+      # The first admin of the parser's own panel. Defaults documented in the README; set both
+      # empty in .env to create no admin
+      PARSER_ADMIN_USERNAME: ${PARSER_ADMIN_USERNAME-admin}
+      PARSER_ADMIN_PASSWORD: ${PARSER_ADMIN_PASSWORD-PARSER_ADMIN_PASSWORD}
     depends_on:
       kafka:
         condition: service_healthy
