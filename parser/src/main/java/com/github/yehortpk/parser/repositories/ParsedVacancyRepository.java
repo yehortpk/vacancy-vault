@@ -20,6 +20,10 @@ public interface ParsedVacancyRepository extends JpaRepository<ParsedVacancy, Lo
     Set<String> findPublishedLinks(@Param("links") Collection<String> links);
 
     /** Sets or, with {@code null}, clears the deletion marker of these vacancies. */
+    /** Links whose grace period ended before the given moment; a listed vacancy has none. */
+    @Query("select v.link from ParsedVacancy v where v.deleteAt < :moment")
+    List<String> findExpiredLinks(@Param("moment") LocalDateTime moment);
+
     @Modifying
     @Query("update ParsedVacancy v set v.deleteAt = :deleteAt where v.link in :links")
     int updateDeleteAt(@Param("links") Collection<String> links, @Param("deleteAt") LocalDateTime deleteAt);

@@ -27,7 +27,8 @@ import static com.github.yehortpk.parser.utils.LogUtils.createErrorMessage;
 
 /**
  * This class is responsible for parsing vacancies, identifying new and outdated ones against the
- * vacancies published by earlier runs, and notifying about the new and the removed ones.
+ * vacancies published by earlier runs, and publishing the new ones. Outdated vacancies are only
+ * marked here; {@code OutdatedVacancySweeper} drops them once their grace period has expired.
  */
 @Service
 @Slf4j
@@ -268,15 +269,15 @@ public class ParserRunnerService {
     }
 
     /**
-     * Marks the persisted vacancies of a company that are gone from the site, and lifts or acts on
-     * the deletion markers set by earlier runs.
+     * Marks the persisted vacancies of a company that are gone from the site, and lifts the
+     * deletion markers of those listed again.
      * <p>
      * Reconciliation is skipped entirely unless every page of the company was parsed successfully.
      * A failed page contributes no vacancies, so its still-live vacancies would otherwise be
      * indistinguishable from removed ones and be marked for deletion.
      * <p>
-     * The one-week grace period lives here alone: nothing outside the parser hears about an
-     * outdated vacancy until its period has expired and the vacancy is actually dropped.
+     * The one-week grace period lives in the parser alone: nothing outside it hears about an
+     * outdated vacancy until {@code OutdatedVacancySweeper} drops it after the period.
      */
     private void reconcileOutdatedVacancies(
             List<VacancyDTO> parsedVacancies, List<ParsedVacancy> persistedVacancies, CompanyDTO company) {
@@ -301,7 +302,6 @@ public class ParserRunnerService {
 
         List<String> outdatedLinks = new ArrayList<>();
         List<String> restoredLinks = new ArrayList<>();
-        List<String> expiredLinks = new ArrayList<>();
 
         for (ParsedVacancy persistedVacancy : persistedVacancies) {
             String link = persistedVacancy.getLink();
@@ -315,9 +315,6 @@ public class ParserRunnerService {
                 // (e.g. page wasn't parsed) we remove deletion marker
             } else if (isStillListed) {
                 restoredLinks.add(link);
-                // In case of an outdated vacancy period is expired - remove it
-            } else if (persistedVacancy.getDeleteAt().isBefore(now)) {
-                expiredLinks.add(link);
             }
         }
 
@@ -326,13 +323,6 @@ public class ParserRunnerService {
         // In case of newly outdated vacancy set expiration timeout of one week, after which,
         // if vacancy still wasn't parsed - remove it
         vacancyService.markOutdated(outdatedLinks, now.plusWeeks(1));
-
-        // Reported before they are dropped: if the parser dies in between, the next run reports
-        // them again, and removing an already removed link changes nothing for the consumers
-        if (!expiredLinks.isEmpty()) {
-            notifierService.notifyRemovedVacancies(expiredLinks);
-            vacancyService.deleteVacancies(expiredLinks);
-        }
 
         int outdatedVacanciesCnt = outdatedLinks.size();
         parserProgress.setOutdatedVacanciesCnt(outdatedVacanciesCnt);

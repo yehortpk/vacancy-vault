@@ -50,6 +50,11 @@ public class VacancyService {
         }
     }
 
+    /** Links of the vacancies whose grace period has ended by now, see {@link #markOutdated}. */
+    public List<String> findExpiredLinks(LocalDateTime now) {
+        return parsedVacancyRepository.findExpiredLinks(now);
+    }
+
     /** Lifts the deletion marker of vacancies that showed up on their site again. */
     @Transactional
     public void restoreOutdated(Collection<String> links) {

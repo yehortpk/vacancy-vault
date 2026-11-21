@@ -119,7 +119,7 @@ public class NotifierService {
      * Publishes the links of vacancies that are being dropped for good.
      *
      * @throws IllegalStateException if the broker did not acknowledge every link; the caller
-     *                               must then keep the vacancies, so the next run reports them again
+     *                               must then keep the vacancies, so the next sweep reports them again
      */
     public void notifyRemovedVacancies(Collection<String> links) {
         Map<String, CompletableFuture<SendResult<String, String>>> sends = new LinkedHashMap<>();

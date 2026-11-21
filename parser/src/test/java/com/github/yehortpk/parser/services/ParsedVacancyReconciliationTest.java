@@ -40,7 +40,8 @@ import static org.mockito.Mockito.withSettings;
 
 /**
  * A parsing run against the migrated {@code parsed_vacancy} table: which vacancies it finds new
- * and publishes, which it marks outdated, and when a link is reported as removed.
+ * and publishes, and which it marks outdated. Dropping expired ones is the sweeper's, see
+ * {@code OutdatedVacancySweeperTest}.
  *
  * <p>The site is replaced by a crawler that returns one page of fixed vacancies, and Kafka by
  * templates that acknowledge at once, so what would be published is what is asserted. Each
@@ -230,26 +231,14 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
     }
 
     @Test
-    void RunParsing_GracePeriodExpired_ShouldPublishTheRemovedLinkAndDropTheVacancy() throws Exception {
+    void RunParsing_GracePeriodExpired_ShouldLeaveTheVacancyToTheSweeper() throws Exception {
         insertParsedVacancy("listed", null);
         insertParsedVacancy("expired", LocalDateTime.now().minusMinutes(1));
-
-        runParsing("listed");
-
-        verify(removedVacancyKafkaTemplate).sendDefault(createLink("expired"), createLink("expired"));
-        assertThat(findParsedLinks()).containsExactly(createLink("listed"));
-    }
-
-    @Test
-    void RunParsing_RemovedLinkNotAcknowledged_ShouldKeepTheVacancyForTheNextRun() throws Exception {
-        insertParsedVacancy("listed", null);
-        insertParsedVacancy("expired", LocalDateTime.now().minusMinutes(1));
-        when(removedVacancyKafkaTemplate.sendDefault(anyString(), anyString()))
-                .thenAnswer(invocation -> CompletableFuture.failedFuture(new IllegalStateException("Broker is down")));
 
         runParsing("listed");
 
         assertThat(findParsedLinks()).containsExactlyInAnyOrder(createLink("listed"), createLink("expired"));
+        verify(removedVacancyKafkaTemplate, never()).sendDefault(anyString(), anyString());
     }
 
     @Test
