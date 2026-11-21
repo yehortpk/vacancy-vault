@@ -1,8 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { MatStepperModule } from '@angular/material/stepper';
-import { MatIconModule } from '@angular/material/icon';
 import { ParsingService } from '../service/parsing.service';
 import { ParserStatus, ParsingProgress, ParsingStatus } from '../type/parsing-progress.type';
 
@@ -24,12 +22,8 @@ const PARSING_STATUS_LABELS: Record<ParsingStatus, string> = {
 @Component({
   selector: 'app-parser-progress',
   standalone: true,
-  imports: [CommonModule, MatStepperModule, MatIconModule],
-  templateUrl: './parser-progress.component.html',
-  styleUrl: './parser-progress.component.css',
-  host: {
-    '[class.custom-stepper]': 'true'
-  }
+  imports: [CommonModule],
+  templateUrl: './parser-progress.component.html'
 })
 export class ParserProgressComponent implements OnInit, OnDestroy {
   protected readonly parserStatusLabels = PARSER_STATUS_LABELS;

@@ -151,11 +151,8 @@
     <p class="text-slate-500 dark:text-slate-400 mb-6">
       {{ hasActiveConditions() ? 'Nothing matches the selected conditions. Try switching some off.'
         : selectedFilterId !== null ? 'None of the stored vacancies match this filter.'
-        : searchQuery ? 'Nothing matches your search.' : 'Start parsing to load job listings.' }}
+        : searchQuery ? 'Nothing matches your search.' : 'No job listings have been parsed yet.' }}
     </p>
     <a *ngIf="selectedFilterId !== null || searchQuery || hasActiveConditions()" routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
-    <a *ngIf="authService.isAdmin() && selectedFilterId === null && !searchQuery && !hasActiveConditions()" routerLink="/parser" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm">
-      Start parser
-    </a>
   </div>
 </ng-template>

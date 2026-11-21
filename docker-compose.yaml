@@ -28,6 +28,8 @@ services:
       # empty in .env to create no admin
       PARSER_ADMIN_USERNAME: ${PARSER_ADMIN_USERNAME-admin}
       PARSER_ADMIN_PASSWORD: ${PARSER_ADMIN_PASSWORD-PARSER_ADMIN_PASSWORD}
+    # Parses only when a run is started from its admin panel. It needs no other service of the
+    # stack: the router and the dashboard only read what it publishes
     depends_on:
       kafka:
         condition: service_healthy
@@ -147,6 +149,21 @@ services:
       - notifier-network
     command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
 
+  # The parser's own admin panel. Its dev server proxies /parser, /login and /logout to the
+  # parser, so the browser sees one origin and the session cookie just works
+  parser-admin-ui:
+    container_name: notifier-parser-admin-ui
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./parser/admin-ui:/app
+      - parser-admin-ui-node-modules:/app/node_modules
+    ports:
+      - "4201:4201"
+    networks:
+      - notifier-network
+    command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
+
   kafka:
     image: apache/kafka:4.3.2
     container_name: notifier-kafka
@@ -222,4 +239,5 @@ volumes:
   notifier-postgres-data:
   notifier-mongo-data:
   frontend-node-modules:
+  parser-admin-ui-node-modules:
   maven-home:

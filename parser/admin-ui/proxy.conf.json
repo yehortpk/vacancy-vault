@@ -1,0 +1,14 @@
+{
+  "/parser": {
+    "target": "http://notifier-parser:8080",
+    "secure": false
+  },
+  "/login": {
+    "target": "http://notifier-parser:8080",
+    "secure": false
+  },
+  "/logout": {
+    "target": "http://notifier-parser:8080",
+    "secure": false
+  }
+}
