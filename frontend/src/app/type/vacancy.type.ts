@@ -39,7 +39,7 @@ export type VacancyConditions = {
     salaryRequired: boolean
 }
 
-/** Query params the router expects for the conditions; only the switched-on ones are sent. */
+/** Query params the dashboard service expects for the conditions; only the switched-on ones are sent. */
 export function createConditionParams(conditions: VacancyConditions): Record<string, boolean> {
     return {
         ...(conditions.remoteRequired ? { remote: true } : {}),

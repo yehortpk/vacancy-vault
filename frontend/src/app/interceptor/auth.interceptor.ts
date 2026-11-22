@@ -8,6 +8,8 @@ import { environment } from '../../environment';
  * Attaches the access token to router calls, and on a 401 refreshes once and retries.
  * If the refresh fails too, the session is over and the user is sent to log in again.
  *
+ * Only the router knows accounts: calls to the dashboard service are public and get no token.
+ *
  * The /auth endpoints are left alone: they take no bearer token, and a 401 from login is
  * a wrong password, not an expired session.
  */
