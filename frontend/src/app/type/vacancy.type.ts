@@ -33,7 +33,7 @@ export type VacanciesListDTO = {
     totalPages: number
 }
 
-/** Narrowing a vacancy listing on top of its query or saved filter; false leaves that condition off. */
+/** Narrowing a vacancy listing on top of its query; false leaves that condition off. */
 export type VacancyConditions = {
     remoteRequired: boolean
     salaryRequired: boolean

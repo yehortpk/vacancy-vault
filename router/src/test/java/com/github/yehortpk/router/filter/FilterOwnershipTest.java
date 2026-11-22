@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -42,17 +41,11 @@ class FilterOwnershipTest extends PostgresContainerTest {
     private FilterRepository filterRepository;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
     private void clearData() {
-        // Filters cascade from their account. The vacancies are this class's own, and other
-        // classes count rows in the shared container
+        // Filters cascade from their account, and other classes count rows in the shared container
         userRepository.deleteAll();
-        jdbcTemplate.update("DELETE FROM vacancy");
-        jdbcTemplate.update("DELETE FROM company");
     }
 
     @BeforeEach
@@ -87,13 +80,6 @@ class FilterOwnershipTest extends PostgresContainerTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         return responseBody(created).get("filterId").asLong();
-    }
-
-    private void insertVacancy(int companyId, String companyTitle, String title, String link) {
-        jdbcTemplate.update("INSERT INTO company (company_id, title, parsing_enabled) VALUES (?, ?, false)"
-                + " ON CONFLICT DO NOTHING", companyId, companyTitle);
-        jdbcTemplate.update("INSERT INTO vacancy (is_remote, link, max_salary, min_salary, parsed_at, title, company_id)"
-                + " VALUES (false, ?, NULL, NULL, now(), ?, ?)", link, title, companyId);
     }
 
     @Test
@@ -233,43 +219,13 @@ class FilterOwnershipTest extends PostgresContainerTest {
     }
 
     @Test
-    void GetVacanciesByFilter_OwnFilter_ShouldReturnOnlyMatchingVacancies() throws Exception {
-        insertVacancy(1, "Acme", "Java Developer", "https://acme.example/1");
-        insertVacancy(1, "Acme", "Senior Java Developer", "https://acme.example/2");
-        insertVacancy(2, "Globex", "Python Developer", "https://globex.example/1");
+    void GetVacanciesByFilter_OwnFilter_ShouldReturnNotFound() throws Exception {
+        // Browsing the vacancies a filter matches is gone: the router stores no vacancies
         String accessToken = accessTokenOf("vacancies@example.com");
         long filterId = createdFilterId(accessToken, FILTER_BODY);
 
         mockMvc.perform(get("/me/filters/" + filterId + "/vacancies").param("page", "0")
                         .header("Authorization", accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalVacancies").value(1))
-                .andExpect(jsonPath("$.vacancies[0].title").value("Java Developer"))
-                // Zoned, so the browser shows it in the viewer's own time zone
-                .andExpect(jsonPath("$.vacancies[0].parsedAt").value(org.hamcrest.Matchers.matchesRegex(
-                        ".*([+-]\\d{2}:\\d{2}|Z)$")));
-    }
-
-    @Test
-    void GetVacanciesByFilter_CompanyKeyword_ShouldMatchTheCompanyTitle() throws Exception {
-        insertVacancy(1, "Acme", "Java Developer", "https://acme.example/1");
-        insertVacancy(2, "Globex", "Java Developer", "https://globex.example/1");
-        String accessToken = accessTokenOf("company@example.com");
-        long filterId = createdFilterId(accessToken, "{\"title\":\"Acme only\",\"filter\":\"Acme, java\"}");
-
-        mockMvc.perform(get("/me/filters/" + filterId + "/vacancies").param("page", "0")
-                        .header("Authorization", accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalVacancies").value(1))
-                .andExpect(jsonPath("$.vacancies[0].company.title").value("Acme"));
-    }
-
-    @Test
-    void GetVacanciesByFilter_FilterOwnedByAnotherUser_ShouldReturnNotFound() throws Exception {
-        long strangersFilterId = createdFilterId(accessTokenOf("private@example.com"), FILTER_BODY);
-
-        mockMvc.perform(get("/me/filters/" + strangersFilterId + "/vacancies").param("page", "0")
-                        .header("Authorization", accessTokenOf("snoop@example.com")))
                 .andExpect(status().isNotFound());
     }
 }

@@ -119,19 +119,6 @@ class VacancySearchTest extends PostgresContainerTest {
     }
 
     @Test
-    void GetVacanciesByFilter_DifferentParseTimes_ShouldListNewestFirst() throws Exception {
-        markParsedHoursAgo("Java Office No Salary", 5);
-        markParsedHoursAgo("Java Remote No Salary", 4);
-        markParsedHoursAgo("Java Office Min Salary", 3);
-        markParsedHoursAgo("Java Remote Max Salary", 2);
-        String accessToken = registerAccessToken();
-        String filterVacanciesPath = "/me/filters/" + createFilterId(accessToken, "java") + "/vacancies";
-
-        assertThat(titlesOf(get(filterVacanciesPath).header("Authorization", accessToken))).containsExactly(
-                "Java Remote Max Salary", "Java Office Min Salary", "Java Remote No Salary", "Java Office No Salary");
-    }
-
-    @Test
     void GetVacancies_NoConditions_ShouldReturnEveryVacancy() throws Exception {
         assertThat(titlesOf(get("/vacancy"))).hasSize(5);
     }
@@ -151,17 +138,6 @@ class VacancySearchTest extends PostgresContainerTest {
     @Test
     void GetVacancies_AllConditions_ShouldReturnVacanciesMatchingEveryCondition() throws Exception {
         assertThat(titlesOf(get("/vacancy").param("query", "Java")
-                .param("remote", "true").param("withSalary", "true")))
-                .containsExactlyInAnyOrder("Java Remote Max Salary");
-    }
-
-    @Test
-    void GetVacanciesByFilter_RemoteAndSalaryRequired_ShouldNarrowTheFilterMatches() throws Exception {
-        String accessToken = registerAccessToken();
-        String filterVacanciesPath = "/me/filters/" + createFilterId(accessToken, "java") + "/vacancies";
-
-        assertThat(titlesOf(get(filterVacanciesPath).header("Authorization", accessToken))).hasSize(4);
-        assertThat(titlesOf(get(filterVacanciesPath).header("Authorization", accessToken)
                 .param("remote", "true").param("withSalary", "true")))
                 .containsExactlyInAnyOrder("Java Remote Max Salary");
     }

@@ -40,22 +40,6 @@
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
       </a>
     </div>
-
-    <div class="flex flex-wrap items-center gap-3 sm:ml-auto">
-      <!-- Only a signed-in user has filters of their own -->
-      <label *ngIf="authService.isAuthenticated() && filters.length > 0" class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-        <span class="hidden sm:inline">Filter</span>
-        <select
-          [value]="selectedFilterId ?? ''"
-          (change)="onFilterChange($any($event.target).value)"
-          class="rounded-lg border-0 bg-white dark:bg-slate-800 py-2 pl-3 pr-9 text-sm font-medium text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-blue-500">
-          <option value="">All vacancies</option>
-          @for (filter of filters; track filter.filterId) {
-          <option [value]="filter.filterId" [title]="filter.filter">{{ filter.title | truncate:30 }}</option>
-          }
-        </select>
-      </label>
-    </div>
   </div>
 
   <!-- Loading skeleton -->
@@ -150,9 +134,8 @@
     <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">No vacancies found</h2>
     <p class="text-slate-500 dark:text-slate-400 mb-6">
       {{ hasActiveConditions() ? 'Nothing matches the selected conditions. Try switching some off.'
-        : selectedFilterId !== null ? 'None of the stored vacancies match this filter.'
         : searchQuery ? 'Nothing matches your search.' : 'No job listings have been parsed yet.' }}
     </p>
-    <a *ngIf="selectedFilterId !== null || searchQuery || hasActiveConditions()" routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
+    <a *ngIf="searchQuery || hasActiveConditions()" routerLink="/dashboard" class="btn-secondary">Show all vacancies</a>
   </div>
 </ng-template>

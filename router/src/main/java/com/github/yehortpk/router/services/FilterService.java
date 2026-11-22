@@ -7,24 +7,18 @@ import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
 import com.github.yehortpk.router.models.filter.FilterDTO;
 import com.github.yehortpk.router.models.filter.FilterRequestDTO;
-import com.github.yehortpk.router.models.vacancy.VacanciesPageDTO;
-import com.github.yehortpk.router.models.vacancy.Vacancy;
-import com.github.yehortpk.router.models.vacancy.VacancyCompanyDTO;
-import com.github.yehortpk.router.models.vacancy.VacancySearchCriteria;
 import com.github.yehortpk.router.repositories.ConnectionRepository;
 import com.github.yehortpk.router.repositories.FilterRepository;
 import com.github.yehortpk.router.repositories.UserRepository;
 import com.github.yehortpk.router.utils.FilterParser;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * An account's own filters: listing, writing, and the vacancies a filter matches.
+ * An account's own filters: listing and writing.
  *
  * <p>Every filter id and every connection id a caller names is looked up scoped to the
  * caller, and one that belongs to someone else answers 404. For bindings this check is the
@@ -35,23 +29,16 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class FilterService {
-    /** As VacancyController orders the unfiltered listing; the id keeps pages stable. */
-    private static final Comparator<Vacancy> NEWEST_FIRST = Comparator
-            .comparing(Vacancy::getParsedAt, Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder()))
-            .thenComparing(Comparator.comparingInt(Vacancy::getVacancyID).reversed());
-
     private final FilterRepository filterRepository;
     private final ConnectionRepository connectionRepository;
     private final UserRepository userRepository;
-    private final VacancyService vacancyService;
-    private final ModelMapper modelMapper;
 
     /**
      * @throws InvalidFilterExpressionException if the expression cannot be parsed
      */
-    private static FilterParser parseExpression(String expression) {
+    private static void validateExpression(String expression) {
         try {
-            return new FilterParser(expression);
+            new FilterParser(expression);
         } catch (RuntimeException ex) {
             throw new InvalidFilterExpressionException(expression);
         }
@@ -86,13 +73,12 @@ public class FilterService {
     }
 
     private void applyRequest(Filter filter, FilterRequestDTO request, long userId) {
-        parseExpression(request.filter().strip());
+        validateExpression(request.filter().strip());
 
         filter.setTitle(request.title().strip());
         filter.setFilter(request.filter().strip());
         filter.setConnections(findOwnedConnections(request.connectionIds(), userId));
     }
-
 
     public List<FilterDTO> findFilters(long userId) {
         return filterRepository.findByUserId(userId).stream()
@@ -124,46 +110,5 @@ public class FilterService {
     @Transactional
     public void deleteFilter(long filterId, long userId) {
         filterRepository.delete(findOwnedFilter(filterId, userId));
-    }
-
-    /**
-     * One page of the stored vacancies the caller's filter matches, newest first. Ordered in
-     * memory since matching is not expressible in SQL.
-     */
-    public VacanciesPageDTO findVacanciesPage(long filterId, long userId, int pageId, int pageSize,
-                                              VacancySearchCriteria criteria) {
-        if (pageId < 0) {
-            throw new IllegalArgumentException("page parameter could not be less then 0");
-        }
-        if (pageSize < 1) {
-            throw new IllegalArgumentException("pageSize parameter could not be less then 1");
-        }
-        FilterParser filterParser = parseExpression(findOwnedFilter(filterId, userId).getFilter());
-
-        List<VacancyCompanyDTO> filteredVacancies = vacancyService.getAllVacancies().stream()
-                .filter(criteria::isSatisfiedBy)
-                .filter(vacancy -> filterParser.isVacancyApplicable(
-                        vacancy.getCompany() == null ? null : vacancy.getCompany().getTitle(), vacancy.getTitle()))
-                .sorted(NEWEST_FIRST)
-                .map(vacancy -> modelMapper.map(vacancy, VacancyCompanyDTO.class))
-                .toList();
-
-        int totalSize = filteredVacancies.size();
-        int totalPages = Math.max((int) Math.ceil((double) totalSize / pageSize), 1);
-
-        if (pageId > totalPages) {
-            throw new IllegalArgumentException("page parameter could not be greater then total pages count");
-        }
-
-        int start = Math.min(pageId * pageSize, totalSize);
-        int end = Math.min(start + pageSize, totalSize);
-
-        return VacanciesPageDTO.builder()
-                .vacancies(filteredVacancies.subList(start, end))
-                .currentPage(pageId)
-                .totalVacancies(totalSize)
-                .pageSize(pageSize)
-                .totalPages(totalPages)
-                .build();
     }
 }

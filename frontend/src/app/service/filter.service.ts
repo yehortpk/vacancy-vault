@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Filter, FilterRequest } from '../type/filter.type';
-import { VacanciesListDTO, VacancyConditions, createConditionParams } from '../type/vacancy.type';
 import { environment } from '../../environment';
 
 /** The signed-in user's own filters; the router answers 404 for anyone else's. */
@@ -33,11 +32,5 @@ export class FilterService {
 
   deleteFilter(filterId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${filterId}`);
-  }
-
-  getVacanciesByFilter(filterId: number, pageId: number, pageSize: number,
-                       conditions: VacancyConditions): Observable<VacanciesListDTO> {
-    return this.http.get<VacanciesListDTO>(`${this.baseUrl}/${filterId}/vacancies`,
-      {params: {"page": pageId, "pageSize": pageSize, ...createConditionParams(conditions)}});
   }
 }
