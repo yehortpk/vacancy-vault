@@ -23,4 +23,9 @@ public interface NotifiedVacancyRepository extends JpaRepository<NotifiedVacancy
             ON CONFLICT (link) DO NOTHING
             """, nativeQuery = true)
     int insertIfAbsent(@Param("link") String link, @Param("notifiedAt") LocalDateTime notifiedAt);
+
+    @Transactional
+    @Modifying
+    @Query("delete from NotifiedVacancy n where n.notifiedAt < :threshold")
+    int deleteNotifiedBefore(@Param("threshold") LocalDateTime threshold);
 }
