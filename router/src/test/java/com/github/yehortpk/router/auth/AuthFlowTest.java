@@ -15,7 +15,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.not;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -209,26 +208,8 @@ class AuthFlowTest extends PostgresContainerTest {
     @Test
     void GetHealth_NoAuthentication_ShouldNotReturnUnauthorized() throws Exception {
         // The compose healthcheck gates the bot's startup on this staying reachable without
-        // credentials. The status itself is 503 here, because the Kafka listener indicator
-        // reports down with no broker running — what matters is that it is not a 401.
+        // credentials
         mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isServiceUnavailable());
-    }
-
-    @Test
-    void GetVacancies_NoAuthentication_ShouldNotReturnUnauthorized() throws Exception {
-        // The parser and the anonymous dashboard both call the ingest endpoints without
-        // credentials; adding security must not have closed them
-        mockMvc.perform(get("/vacancy").param("page", "0"))
                 .andExpect(status().isOk());
-    }
-
-    @Test
-    void PostVacancy_NoAuthentication_ShouldNotReturnUnauthorized() throws Exception {
-        // The parser writes with no credentials at all; a 401 here would break ingest
-        mockMvc.perform(jsonPost("/vacancy", """
-                        {"companyTitle":"Probe","title":"Probe engineer","link":"https://example.com/p/1",\
-                        "minSalary":0,"maxSalary":0,"remote":false}"""))
-                .andExpect(status().is(not(UNAUTHORIZED.value())));
     }
 }

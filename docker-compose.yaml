@@ -55,12 +55,10 @@ services:
       KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
       KAFKA_SUBSCRIBE_TOPIC: subscriptions
       KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
-      # Optional database credentials, see README. Keep the defaults in sync with the postgres and
-      # mongo services below
+      # Optional database credentials, see README. Keep the defaults in sync with the postgres
+      # service below
       POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
-      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-progress}
-      MONGO_ROOT_PASS: ${MONGO_ROOT_PASS:-progress}
       # Random rather than a readable placeholder: the router refuses to start unless the secret is
       # at least 32 bytes (raw, or after Base64 decoding)
       JWT_SECRET: ${JWT_SECRET:-bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=}

@@ -27,10 +27,10 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 /**
  * Stateless security for the router.
  *
- * <p>Adding spring-boot-starter-security switches on HTTP Basic over every endpoint by
- * default, which would 401 the parser's ingest calls and the dashboard's anonymous reads.
- * Those stay public; the per-user endpoints require a bearer token, and the parser
- * controls require an admin's.
+ * <p>The router serves two callers: a signed-in user, whose bearer token opens that
+ * account's own room under {@code /me}, and a provider's service, whose shared secret opens
+ * {@code /connector}. The token is signed and verified here alone, with a secret no other
+ * service holds.
  */
 @Configuration
 @EnableWebSecurity
@@ -88,7 +88,7 @@ public class WebSecurityConfig {
                 // A WebMvcConfigurer's CORS mappings do not apply to Spring Security's
                 // filter chain, so CORS is wired in explicitly from CorsConfig's bean.
                 .cors(Customizer.withDefaults())
-                // No browser session or form to protect, and the parser posts without a token
+                // No browser session or form to protect: the credential is a header, not a cookie
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -98,16 +98,6 @@ public class WebSecurityConfig {
                         // The compose healthcheck gates the dependent services' startup on this
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
-                        // The parser calls these with no credentials and the dashboard reads
-                        // vacancies anonymously. Locking the ingest pipeline down needs a
-                        // service token on the parser side too, and is deliberately deferred.
-                        .requestMatchers("/vacancy/**", "/company/**").permitAll()
-                        // The parser reports its progress here, unauthenticated like the rest
-                        // of the ingest pipeline. Must precede the admin rule below, which
-                        // would otherwise match it first.
-                        .requestMatchers(HttpMethod.POST, "/parser/progress").permitAll()
-                        // Starting a parse and watching it is the admin's room
-                        .requestMatchers("/parser/**").hasRole(UserRole.ADMIN.name())
                         // Called by provider services with a shared secret, never by a browser
                         .requestMatchers("/connector/**").hasRole("SERVICE")
                         // Each account's own room, its filters included; an admin has one too

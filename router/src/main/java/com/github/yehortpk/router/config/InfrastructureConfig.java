@@ -17,7 +17,6 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.util.backoff.FixedBackOff;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,12 +24,6 @@ import java.util.Map;
 @Configuration
 @ConditionalOnProperty(name = "spring.kafka.bootstrap-servers")
 public class InfrastructureConfig {
-    // Rest config
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-
     // Kafka config
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapAddress;
