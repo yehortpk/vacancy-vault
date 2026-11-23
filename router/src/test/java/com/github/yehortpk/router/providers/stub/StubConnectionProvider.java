@@ -3,7 +3,7 @@ package com.github.yehortpk.router.providers.stub;
 import com.github.yehortpk.router.exception.InvalidDestinationException;
 import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
-import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.NewVacancyDTO;
 import com.github.yehortpk.router.providers.ConnectionProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -70,6 +70,6 @@ public class StubConnectionProvider implements ConnectionProvider<StubDestinatio
 
     /** Delivers nothing; tests that care spy on this method. */
     @Override
-    public void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, VacancyDTO vacancy) {
+    public void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, NewVacancyDTO vacancy) {
     }
 }

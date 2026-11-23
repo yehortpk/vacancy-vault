@@ -218,6 +218,7 @@ class FlywayMigrationTest extends PostgresContainerTest {
         assertThat(countRows("link_session")).isZero();
         assertThat(countRows("filter_connection")).isZero();
         assertThat(countRows("telegram_connection")).isZero();
+        assertThat(countRows("notified_vacancy")).isZero();
         assertThat(countRows("stub_connection")).isZero();
     }
 
@@ -242,6 +243,14 @@ class FlywayMigrationTest extends PostgresContainerTest {
                 "INSERT INTO vacancy (is_remote, link, title, company_id)"
                         + " VALUES (false, 'https://probe.example/1', 'Probe', 900)"))
                 .isFalse();
+    }
+
+    @Test
+    void Migrate_NotifiedVacancyTable_ShouldEnforceOneRowPerLink() throws SQLException {
+        // The primary key is what makes a second delivery of a vacancy recognizable
+        assertThat(isSecondInsertRejected(
+                "INSERT INTO notified_vacancy (link, notified_at) VALUES ('https://probe.example/1', now())"))
+                .isTrue();
     }
 
     @Test

@@ -3,7 +3,7 @@ package com.github.yehortpk.router.providers.telegram;
 import com.github.yehortpk.router.exception.InvalidDestinationException;
 import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
-import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.NewVacancyDTO;
 import com.github.yehortpk.router.providers.ConnectionProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class TelegramConnectionProvider implements ConnectionProvider<TelegramDe
     private final TelegramConnectionRepository telegramConnectionRepository;
     private final KafkaTemplate<String, TelegramNotificationDTO> kafkaTemplate;
 
-    private static TelegramNotificationDTO createNotification(VacancyDTO vacancy, Filter filter, long chatId) {
+    private static TelegramNotificationDTO createNotification(NewVacancyDTO vacancy, Filter filter, long chatId) {
         return TelegramNotificationDTO.builder()
                 .vacancyTitle(vacancy.getTitle())
                 .filter(filter.getFilter())
@@ -42,7 +42,7 @@ public class TelegramConnectionProvider implements ConnectionProvider<TelegramDe
                 .maxSalary(vacancy.getMaxSalary())
                 .salaryCurrency(vacancy.getSalaryCurrency())
                 .salaryPeriod(vacancy.getSalaryPeriod())
-                .companyTitle(vacancy.getCompanyTitle())
+                .companyTitle(vacancy.getCompany().getTitle())
                 .chatId(chatId)
                 .link(vacancy.getLink())
                 .isRemote(vacancy.isRemote())
@@ -114,7 +114,7 @@ public class TelegramConnectionProvider implements ConnectionProvider<TelegramDe
 
     /** One {@code bot-notifier} message per chat, all chat ids read in one query. */
     @Override
-    public void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, VacancyDTO vacancy) {
+    public void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, NewVacancyDTO vacancy) {
         Map<Long, Long> chatIds = findChatIds(matchedFiltersByConnectionId.keySet());
         matchedFiltersByConnectionId.forEach((connectionId, filter) -> {
             Long chatId = chatIds.get(connectionId);

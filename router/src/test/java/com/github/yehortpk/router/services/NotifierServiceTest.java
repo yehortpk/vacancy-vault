@@ -5,7 +5,7 @@ import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
 import com.github.yehortpk.router.models.user.AppUser;
 import com.github.yehortpk.router.models.user.UserRole;
-import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.NewVacancyDTO;
 import com.github.yehortpk.router.providers.telegram.TelegramNotificationDTO;
 import com.github.yehortpk.router.providers.stub.StubConnectionProvider;
 import com.github.yehortpk.router.providers.telegram.TelegramConnection;
@@ -37,7 +37,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.*;
 
 /**
- * Matching a new vacancy against the stored filters, over the migrated schema: only bound
+ * Matching a newly published vacancy against the stored filters, over the migrated schema: only bound
  * filters take part, every matching account is notified, and one destination gets a vacancy
  * at most once. Kafka is replaced, so what would be published is what is asserted; the test-only
  * stub provider is spied on to check that each provider gets only its own connections.
@@ -129,9 +129,9 @@ class NotifierServiceTest extends PostgresContainerTest {
         return filterRepository.save(filter);
     }
 
-    private static VacancyDTO createVacancy(String companyTitle, String title) {
-        return VacancyDTO.builder()
-                .companyTitle(companyTitle)
+    private static NewVacancyDTO createVacancy(String companyTitle, String title) {
+        return NewVacancyDTO.builder()
+                .company(new NewVacancyDTO.Company(1, companyTitle, "https://example.com"))
                 .title(title)
                 .link("https://example.com/" + title.replace(' ', '-'))
                 .build();
@@ -221,7 +221,7 @@ class NotifierServiceTest extends PostgresContainerTest {
         AppUser user = createUser("mixed@example.com");
         Connection stubConnection = createStubConnection(user);
         Filter filter = createFilter(user, "java", createTelegramConnection(user, 888), stubConnection);
-        VacancyDTO vacancy = createVacancy("Acme", "Java Developer");
+        NewVacancyDTO vacancy = createVacancy("Acme", "Java Developer");
 
         notifierService.notifyUsers(vacancy);
 

@@ -2,7 +2,7 @@ package com.github.yehortpk.router.providers;
 
 import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
-import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.NewVacancyDTO;
 
 import java.util.Collection;
 import java.util.List;
@@ -75,5 +75,5 @@ public interface ConnectionProvider<D> {
      * @param matchedFiltersByConnectionId the matched filter of each connection, keyed by
      *        connection id; only connections of this provider
      */
-    void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, VacancyDTO vacancy);
+    void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, NewVacancyDTO vacancy);
 }

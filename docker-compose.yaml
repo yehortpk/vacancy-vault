@@ -52,7 +52,7 @@ services:
       - "8081:8080"
       - "5006:5006"
     environment:
-      KAFKA_PARSER_TOPIC: vacancies
+      KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
       KAFKA_SUBSCRIBE_TOPIC: subscriptions
       KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
       # Optional database credentials, see README. Keep the defaults in sync with the postgres and

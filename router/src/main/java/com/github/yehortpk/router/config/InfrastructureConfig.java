@@ -1,6 +1,6 @@
 package com.github.yehortpk.router.config;
 
-import com.github.yehortpk.router.models.vacancy.VacancyDTO;
+import com.github.yehortpk.router.models.vacancy.NewVacancyDTO;
 import com.github.yehortpk.router.providers.telegram.TelegramNotificationDTO;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -35,15 +35,16 @@ public class InfrastructureConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapAddress;
 
-    @Value("${parser-topic-consumer-group-id}")
-    private String parserTopicConsumerGroupId;
+    @Value("${vacancy-consumer-group-id}")
+    private String vacancyConsumerGroupId;
 
-    @Value("${KAFKA_PARSER_TOPIC}")
-    private String parserTopic;
+    @Value("${KAFKA_NEW_VACANCIES_TOPIC}")
+    private String newVacanciesTopic;
 
+    /** Declared by every service that uses the topic, so none depends on another starting first. */
     @Bean
-    public NewTopic parserTopic() {
-        return new NewTopic(parserTopic, 1, (short) 1);
+    public NewTopic newVacanciesTopic() {
+        return new NewTopic(newVacanciesTopic, 1, (short) 1);
     }
 
     @Bean
@@ -70,21 +71,22 @@ public class InfrastructureConfig {
     }
 
     @Bean
-    public ConsumerFactory<String, VacancyDTO> parserConsumerFactory() {
+    public ConsumerFactory<String, NewVacancyDTO> newVacancyConsumerFactory() {
         Map<String, Object> props = getConsumerFactoryProps();
 
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, parserTopicConsumerGroupId);
-        props.put(JsonDeserializer.TYPE_MAPPINGS, "vacancy:com.github.yehortpk.router.models.vacancy.VacancyDTO");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, vacancyConsumerGroupId);
+        props.put(JsonDeserializer.TYPE_MAPPINGS,
+                "newVacancy:com.github.yehortpk.router.models.vacancy.NewVacancyDTO");
 
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, VacancyDTO> parserContainerFactory(
+    public ConcurrentKafkaListenerContainerFactory<String, NewVacancyDTO> newVacancyContainerFactory(
             DefaultErrorHandler errorHandler) {
-        ConcurrentKafkaListenerContainerFactory<String, VacancyDTO> factory =
+        ConcurrentKafkaListenerContainerFactory<String, NewVacancyDTO> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(parserConsumerFactory());
+        factory.setConsumerFactory(newVacancyConsumerFactory());
 
         factory.setCommonErrorHandler(errorHandler);
         return factory;
