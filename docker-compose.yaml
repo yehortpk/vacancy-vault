@@ -172,8 +172,8 @@ services:
       - "9092"
     networks:
       - notifier-network
-    volumes:
-      - notifier-kafka-data:/var/lib/kafka/data
+    # No volume on purpose: the broker keeps its data only while its container lives. Nothing is
+    # lost with it, since every consumer skips a link it has already seen
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -235,7 +235,6 @@ networks:
     driver: bridge
 
 volumes:
-  notifier-kafka-data:
   notifier-postgres-data:
   notifier-mongo-data:
   frontend-node-modules:
