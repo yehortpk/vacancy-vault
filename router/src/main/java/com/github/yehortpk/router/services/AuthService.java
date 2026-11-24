@@ -6,7 +6,6 @@ import com.github.yehortpk.router.models.auth.LoginRequestDTO;
 import com.github.yehortpk.router.models.auth.RegisterRequestDTO;
 import com.github.yehortpk.router.models.auth.TokenPairDTO;
 import com.github.yehortpk.router.models.user.AppUser;
-import com.github.yehortpk.router.models.user.UserRole;
 import com.github.yehortpk.router.repositories.UserRepository;
 import com.github.yehortpk.router.security.JwtService;
 import io.jsonwebtoken.Claims;
@@ -38,7 +37,7 @@ public class AuthService {
 
     private TokenPairDTO issueTokens(AppUser user) {
         return new TokenPairDTO(
-                jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole()),
+                jwtService.generateAccessToken(user.getId(), user.getEmail()),
                 jwtService.generateRefreshToken(user.getId(), user.getEmail()));
     }
 
@@ -54,7 +53,7 @@ public class AuthService {
      * @throws EmailAlreadyRegisteredException if the address is taken
      */
     @Transactional
-    public AppUser createAccount(String email, String password, UserRole role) {
+    public AppUser createAccount(String email, String password) {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyRegisteredException(email);
         }
@@ -64,7 +63,6 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setCreatedAt(LocalDateTime.now());
         user.setEnabled(true);
-        user.setRole(role);
 
         try {
             return userRepository.save(user);
@@ -77,9 +75,7 @@ public class AuthService {
 
     @Transactional
     public TokenPairDTO register(RegisterRequestDTO request) {
-        // Never taken from the request: ADMIN only comes from the configured admin account
-        // or the database
-        AppUser user = createAccount(normalizeEmail(request.email()), request.password(), UserRole.USER);
+        AppUser user = createAccount(normalizeEmail(request.email()), request.password());
         return issueTokens(user);
     }
 

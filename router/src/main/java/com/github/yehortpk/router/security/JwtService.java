@@ -1,6 +1,5 @@
 package com.github.yehortpk.router.security;
 
-import com.github.yehortpk.router.models.user.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
@@ -31,7 +30,6 @@ public class JwtService {
     static final String ACCESS_TOKEN_TYPE = "access";
     static final String REFRESH_TOKEN_TYPE = "refresh";
     private static final String EMAIL_CLAIM = "email";
-    private static final String ROLE_CLAIM = "role";
 
     private final SecretKey signingKey;
     private final Duration accessTokenTTL;
@@ -77,18 +75,10 @@ public class JwtService {
                 .signWith(signingKey);
     }
 
-    /**
-     * The role rides in the access token so authorization needs no database read per
-     * request. A role change therefore takes effect at the next refresh, which reloads the
-     * account, so within one access token lifetime at most.
-     */
-    public String generateAccessToken(long userId, String email, UserRole role) {
-        return buildToken(userId, email, ACCESS_TOKEN_TYPE, accessTokenTTL)
-                .claim(ROLE_CLAIM, role.name())
-                .compact();
+    public String generateAccessToken(long userId, String email) {
+        return buildToken(userId, email, ACCESS_TOKEN_TYPE, accessTokenTTL).compact();
     }
 
-    /** Carries no role: refreshing reloads the account and reads the current one. */
     public String generateRefreshToken(long userId, String email) {
         return buildToken(userId, email, REFRESH_TOKEN_TYPE, refreshTokenTTL).compact();
     }
@@ -112,17 +102,6 @@ public class JwtService {
 
     public String extractEmail(Claims claims) {
         return claims.get(EMAIL_CLAIM, String.class);
-    }
-
-    /**
-     * Falls back to the least privileged role when the claim is missing, which is the case
-     * for access tokens issued before roles existed.
-     *
-     * @throws IllegalArgumentException if the claim names no known role
-     */
-    public UserRole extractRole(Claims claims) {
-        String role = claims.get(ROLE_CLAIM, String.class);
-        return role == null ? UserRole.USER : UserRole.valueOf(role);
     }
 
     public boolean isAccessToken(Claims claims) {

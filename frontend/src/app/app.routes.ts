@@ -4,7 +4,6 @@ import { VacancyComponent } from './vacancy/vacancy.component';
 import { AuthFormComponent } from './auth-form/auth-form.component';
 import { AccountComponent } from './account/account.component';
 import { FiltersComponent } from './filters/filters.component';
-import { ForbiddenComponent } from './forbidden/forbidden.component';
 import { NotFoundComponent } from './not-found/not-found.component';
 import { authGuard } from './guard/auth.guard';
 
@@ -18,7 +17,6 @@ export const routes: Routes = [
     // Any signed-in account
     { path: 'account', component: AccountComponent, canActivate: [authGuard] },
     { path: 'filters', component: FiltersComponent, canActivate: [authGuard] },
-    { path: 'forbidden', component: ForbiddenComponent },
     // Must stay last: matches whatever no route above did
     { path: '**', component: NotFoundComponent },
 ];

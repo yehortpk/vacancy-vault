@@ -40,8 +40,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private void authenticate(HttpServletRequest request, Claims claims) {
         AuthenticatedUser principal = new AuthenticatedUser(
-                jwtService.extractUserId(claims), jwtService.extractEmail(claims), null, true,
-                jwtService.extractRole(claims));
+                jwtService.extractUserId(claims), jwtService.extractEmail(claims), null, true);
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities());

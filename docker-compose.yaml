@@ -59,14 +59,12 @@ services:
       # service below
       POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notifier}
-      # Random rather than a readable placeholder: the router refuses to start unless the secret is
-      # at least 32 bytes (raw, or after Base64 decoding)
+      # Signs the users' tokens; no other service holds it. Random rather than a readable
+      # placeholder: the router refuses to start unless the secret is at least 32 bytes (raw, or
+      # after Base64 decoding)
       JWT_SECRET: ${JWT_SECRET:-bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=}
       # Keep the default in sync with the telegram-bot service below
       SERVICE_CONNECTOR_TOKEN: ${SERVICE_CONNECTOR_TOKEN:-SERVICE_CONNECTOR_TOKEN}
-      # Defaults documented in the README; set both empty in .env to create no admin
-      ADMIN_EMAIL: ${ADMIN_EMAIL-admin@vacancy.vault}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD-ADMIN_PASSWORD}
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1" ]
       interval: 10s

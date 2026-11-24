@@ -4,7 +4,6 @@ import com.github.yehortpk.router.PostgresContainerTest;
 import com.github.yehortpk.router.models.connection.Connection;
 import com.github.yehortpk.router.models.filter.Filter;
 import com.github.yehortpk.router.models.user.AppUser;
-import com.github.yehortpk.router.models.user.UserRole;
 import com.github.yehortpk.router.models.vacancy.NewVacancyDTO;
 import com.github.yehortpk.router.providers.telegram.TelegramNotificationDTO;
 import com.github.yehortpk.router.providers.stub.StubConnectionProvider;
@@ -87,7 +86,6 @@ class NotifierServiceTest extends PostgresContainerTest {
         user.setPasswordHash("not-a-real-hash");
         user.setCreatedAt(LocalDateTime.now());
         user.setEnabled(true);
-        user.setRole(UserRole.USER);
         return userRepository.save(user);
     }
 

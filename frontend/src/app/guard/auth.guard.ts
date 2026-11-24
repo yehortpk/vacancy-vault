@@ -13,17 +13,3 @@ export const authGuard: CanActivateFn = (route, state) => {
       : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } }))
   );
 };
-
-/** Lets only admins through; a signed-in user without the role is shown the 403 page. */
-export const adminGuard: CanActivateFn = (route, state) => {
-  const router = inject(Router);
-
-  return inject(AuthService).findAccount().pipe(
-    map((account) => {
-      if (!account) {
-        return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
-      }
-      return account.role === 'ADMIN' ? true : router.createUrlTree(['/forbidden']);
-    })
-  );
-};

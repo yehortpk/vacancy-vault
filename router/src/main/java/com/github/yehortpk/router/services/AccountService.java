@@ -25,7 +25,6 @@ public class AccountService {
         return new AccountDTO(
                 user.getId(),
                 user.getEmail(),
-                user.getRole(),
                 ServerClock.toOffsetDateTime(user.getCreatedAt()));
     }
 }

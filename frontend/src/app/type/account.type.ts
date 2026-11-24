@@ -1,9 +1,6 @@
-export type Role = 'USER' | 'ADMIN'
-
 export type Account = {
     id: number
     email: string
-    role: Role
     createdAt: string
 }
 

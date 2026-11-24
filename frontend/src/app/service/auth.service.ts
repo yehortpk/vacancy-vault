@@ -17,8 +17,8 @@ export const REDIRECT_ON_EXPIRED_SESSION = new HttpContextToken<boolean>(() => t
 /**
  * Holds the signed-in account and its tokens.
  *
- * The role kept here only decides which rooms the UI offers; the router checks it again
- * on every request, so editing it in the browser opens nothing.
+ * What is kept here only decides which rooms the UI offers; the router checks the token again
+ * on every request.
  */
 @Injectable({
   providedIn: 'root'
@@ -29,7 +29,6 @@ export class AuthService {
 
   readonly account = signal<Account | null>(null);
   readonly isAuthenticated = computed(() => this.account() !== null);
-  readonly isAdmin = computed(() => this.account()?.role === 'ADMIN');
 
   constructor(private http: HttpClient, private router: Router) { }
 

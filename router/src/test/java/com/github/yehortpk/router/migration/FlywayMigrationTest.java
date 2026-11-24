@@ -246,6 +246,12 @@ class FlywayMigrationTest extends PostgresContainerTest {
     }
 
     @Test
+    void Migrate_AppUserTable_ShouldHaveNoRoleColumn() throws SQLException {
+        assertThat(countWhere("information_schema.columns",
+                "table_schema = 'public' AND table_name = 'app_user' AND column_name = 'role'")).isZero();
+    }
+
+    @Test
     void Migrate_NotifiedVacancyTable_ShouldEnforceOneRowPerLink() throws SQLException {
         // The primary key is what makes a second delivery of a vacancy recognizable
         assertThat(isSecondInsertRejected(

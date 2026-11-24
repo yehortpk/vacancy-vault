@@ -1,6 +1,5 @@
 package com.github.yehortpk.router.security;
 
-import com.github.yehortpk.router.models.user.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -39,7 +38,7 @@ class JwtServiceTest {
     void GenerateAccessToken_ValidUser_ShouldBeParseable() {
         JwtService jwtService = jwtService();
 
-        Claims claims = jwtService.parseToken(jwtService.generateAccessToken(USER_ID, EMAIL, UserRole.USER));
+        Claims claims = jwtService.parseToken(jwtService.generateAccessToken(USER_ID, EMAIL));
 
         assertThat(jwtService.extractUserId(claims)).isEqualTo(USER_ID);
         assertThat(jwtService.extractEmail(claims)).isEqualTo(EMAIL);
@@ -60,29 +59,20 @@ class JwtServiceTest {
     }
 
     @Test
-    void GenerateAccessToken_AdminUser_ShouldCarryTheAdminRole() {
+    void GenerateAccessToken_ValidUser_ShouldCarryNoRoleClaim() {
+        // Accounts have no roles; nothing in the token may suggest otherwise
         JwtService jwtService = jwtService();
 
-        Claims claims = jwtService.parseToken(jwtService.generateAccessToken(USER_ID, EMAIL, UserRole.ADMIN));
+        Claims claims = jwtService.parseToken(jwtService.generateAccessToken(USER_ID, EMAIL));
 
-        assertThat(jwtService.extractRole(claims)).isEqualTo(UserRole.ADMIN);
-    }
-
-    @Test
-    void ExtractRole_TokenWithoutRoleClaim_ShouldFallBackToUser() {
-        // Tokens issued before roles existed have no claim; they must never read as admin
-        JwtService jwtService = jwtService();
-
-        Claims claims = jwtService.parseToken(jwtService.generateRefreshToken(USER_ID, EMAIL));
-
-        assertThat(jwtService.extractRole(claims)).isEqualTo(UserRole.USER);
+        assertThat(claims).doesNotContainKey("role");
     }
 
     @Test
     void ParseToken_ExpiredToken_ShouldThrow() {
         // A negative TTL puts the expiry in the past, so no waiting is needed
         JwtService jwtService = jwtService(Duration.ofMinutes(-1));
-        String token = jwtService.generateAccessToken(USER_ID, EMAIL, UserRole.USER);
+        String token = jwtService.generateAccessToken(USER_ID, EMAIL);
 
         assertThatThrownBy(() -> jwtService.parseToken(token))
                 .isInstanceOf(ExpiredJwtException.class);
@@ -91,7 +81,7 @@ class JwtServiceTest {
     @Test
     void ParseToken_TamperedSignature_ShouldThrow() {
         JwtService jwtService = jwtService();
-        String tampered = withTamperedSignature(jwtService.generateAccessToken(USER_ID, EMAIL, UserRole.USER));
+        String tampered = withTamperedSignature(jwtService.generateAccessToken(USER_ID, EMAIL));
 
         assertThatThrownBy(() -> jwtService.parseToken(tampered))
                 .isInstanceOf(JwtException.class);
@@ -102,7 +92,7 @@ class JwtServiceTest {
         String foreignToken = new JwtService(
                 "a-totally-different-secret-also-long-enough-for-hs256", Duration.ofMinutes(15),
                 Duration.ofDays(30))
-                .generateAccessToken(USER_ID, EMAIL, UserRole.USER);
+                .generateAccessToken(USER_ID, EMAIL);
         JwtService jwtService = jwtService();
 
         assertThatThrownBy(() -> jwtService.parseToken(foreignToken))

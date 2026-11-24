@@ -1,6 +1,6 @@
 package com.github.yehortpk.router.config;
 
-import com.github.yehortpk.router.models.user.UserRole;
+import com.github.yehortpk.router.security.AuthenticatedUser;
 import com.github.yehortpk.router.security.JwtAuthFilter;
 import com.github.yehortpk.router.security.JwtService;
 import com.github.yehortpk.router.security.ServiceTokenAuthFilter;
@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,8 +30,8 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
  *
  * <p>The router serves two callers: a signed-in user, whose bearer token opens that
  * account's own room under {@code /me}, and a provider's service, whose shared secret opens
- * {@code /connector}. The token is signed and verified here alone, with a secret no other
- * service holds.
+ * {@code /connector}. There are no roles. The token is signed and verified here alone, with a
+ * secret no other service holds.
  */
 @Configuration
 @EnableWebSecurity
@@ -100,8 +101,11 @@ public class WebSecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         // Called by provider services with a shared secret, never by a browser
                         .requestMatchers("/connector/**").hasRole("SERVICE")
-                        // Each account's own room, its filters included; an admin has one too
-                        .requestMatchers("/me/**").hasAnyRole(UserRole.USER.name(), UserRole.ADMIN.name())
+                        // Each account's own room, its filters included. Only a user's bearer
+                        // token makes the principal an account, so a service token is no entry
+                        .requestMatchers("/me", "/me/**").access((authentication, context) ->
+                                new AuthorizationDecision(
+                                        authentication.get().getPrincipal() instanceof AuthenticatedUser))
                         .anyRequest().permitAll())
                 .exceptionHandling(handling ->
                         handling.authenticationEntryPoint(authenticationEntryPoint()))
