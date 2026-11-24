@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FlywayMigrationTest extends PostgresContainerTest {
     /** The test-only stub provider's id, inserted by R__create_stub_provider.sql. */
     private static final long STUB_ID = StubConnectionProvider.PROVIDER_ID;
-    /** Telegram's fixed id, inserted by V10__create_telegram_provider.sql. */
+    /** Telegram's fixed id, inserted by V1__init.sql. */
     private static final long TELEGRAM_ID = TelegramConnectionProvider.PROVIDER_ID;
     /** A second provider, inserted inside the rolled-back probes only. */
     private static final long PROBE_ID = 900;
@@ -54,18 +54,6 @@ class FlywayMigrationTest extends PostgresContainerTest {
                      "SELECT count(*) FROM " + table + " WHERE " + condition)) {
             resultSet.next();
             return resultSet.getLong(1);
-        }
-    }
-
-    private String columnType(String table, String column) throws SQLException {
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(
-                     "SELECT data_type FROM information_schema.columns"
-                             + " WHERE table_name = '" + table + "'"
-                             + " AND column_name = '" + column + "'")) {
-            resultSet.next();
-            return resultSet.getString(1);
         }
     }
 
@@ -172,24 +160,20 @@ class FlywayMigrationTest extends PostgresContainerTest {
     }
 
     /**
-     * Inserts a row without an id and returns the generated one.
+     * Inserts an account without an id and returns the generated one.
      *
      * <p>Rolled back explicitly: these helpers open their own JDBC connection, which the
      * surrounding {@code @DataJpaTest} transaction does not cover, so a committed probe row
      * would leak into the other tests' row counts.
      */
-    private long insertedCompanyDataId() throws SQLException {
+    private long findGeneratedUserId() throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("INSERT INTO company (company_id, title, parsing_enabled)"
-                        + " VALUES (1, 'IdentityProbe', false)");
-                try (ResultSet resultSet = statement.executeQuery(
-                        "INSERT INTO company_data (data_key, data_value, company_id)"
-                                + " VALUES ('probe', 'probe', 1) RETURNING id")) {
-                    resultSet.next();
-                    return resultSet.getLong(1);
-                }
+            try (Statement statement = connection.createStatement();
+                 ResultSet resultSet = statement.executeQuery(
+                         insertUser("identity-probe@example.com") + " RETURNING id")) {
+                resultSet.next();
+                return resultSet.getLong(1);
             } finally {
                 connection.rollback();
             }
@@ -207,11 +191,6 @@ class FlywayMigrationTest extends PostgresContainerTest {
     void Migrate_FreshDatabase_ShouldCreateEverySchemaTable() throws SQLException {
         // Each table is queried rather than looked up in the catalog, so a missing one
         // or a misspelled column fails here
-        assertThat(countRows("company")).isZero();
-        assertThat(countRows("company_data")).isZero();
-        assertThat(countRows("company_headers")).isZero();
-        assertThat(countRows("company_cookies")).isZero();
-        assertThat(countRows("vacancy")).isZero();
         assertThat(countRows("filter")).isZero();
         assertThat(countRows("app_user")).isZero();
         assertThat(countRows("connection")).isZero();
@@ -223,32 +202,24 @@ class FlywayMigrationTest extends PostgresContainerTest {
     }
 
     @Test
-    void Migrate_FreshDatabase_ShouldDropTheClientTable() throws SQLException {
-        // Identity is app_user now; V9 drops the Telegram-chat identity table
-        assertThat(isTablePresent("client")).isFalse();
+    void Migrate_FreshDatabase_ShouldKeepEverythingInTheRouterSchema() throws SQLException {
+        // The database is shared with the other services, each in a schema of its own
+        assertThat(countWhere("information_schema.tables",
+                "table_schema = 'router' AND table_name IN ('app_user', 'flyway_schema_history')")).isEqualTo(2);
+        assertThat(countWhere("information_schema.tables", "table_schema = 'public'")).isZero();
     }
 
     @Test
-    void Migrate_BooleanColumns_ShouldBeTypedBooleansNotBitStrings() throws SQLException {
-        // MySQL stored these as bit(1); on Postgres they must be real booleans, or the
-        // entities' `boolean` fields fail to bind
-        assertThat(columnType("company", "parsing_enabled")).isEqualTo("boolean");
-        assertThat(columnType("vacancy", "is_remote")).isEqualTo("boolean");
-    }
-
-    @Test
-    void Migrate_VacancyWithoutSalary_ShouldBeAccepted() throws SQLException {
-        assertThat(isAnyStatementRejected(
-                "INSERT INTO company (company_id, title, parsing_enabled) VALUES (900, 'Probe', false)",
-                "INSERT INTO vacancy (is_remote, link, title, company_id)"
-                        + " VALUES (false, 'https://probe.example/1', 'Probe', 900)"))
-                .isFalse();
+    void Migrate_FreshDatabase_ShouldNotCreateTheOtherServicesTables() throws SQLException {
+        // Vacancies are the dashboard's, companies the parser's
+        assertThat(isTablePresent("vacancy")).isFalse();
+        assertThat(isTablePresent("company")).isFalse();
     }
 
     @Test
     void Migrate_AppUserTable_ShouldHaveNoRoleColumn() throws SQLException {
         assertThat(countWhere("information_schema.columns",
-                "table_schema = 'public' AND table_name = 'app_user' AND column_name = 'role'")).isZero();
+                "table_schema = 'router' AND table_name = 'app_user' AND column_name = 'role'")).isZero();
     }
 
     @Test
@@ -270,8 +241,8 @@ class FlywayMigrationTest extends PostgresContainerTest {
 
     @Test
     void Migrate_ProviderCatalog_ShouldHoldOnlyTheImplementedProviders() throws SQLException {
-        // V3 creates an empty catalog; each provider's own migration inserts its row: V10
-        // Telegram's, and the test-only repeatable migration the stub's
+        // Each provider's own migration inserts its row: V1 Telegram's, and the test-only
+        // repeatable migration the stub's
         assertThat(countWhere("provider", "id = " + TELEGRAM_ID + " AND title = 'Telegram' AND enabled")).isOne();
         assertThat(countWhere("provider", "id NOT IN (" + TELEGRAM_ID + ", " + STUB_ID + ")")).isZero();
     }
@@ -426,6 +397,6 @@ class FlywayMigrationTest extends PostgresContainerTest {
     void Migrate_IdentityColumns_ShouldGenerateIdsWithoutAnExplicitValue() throws SQLException {
         // The entities use GenerationType.IDENTITY, so every generated key column has to be
         // an identity column; inserting without one would otherwise violate NOT NULL
-        assertThat(insertedCompanyDataId()).isPositive();
+        assertThat(findGeneratedUserId()).isPositive();
     }
 }

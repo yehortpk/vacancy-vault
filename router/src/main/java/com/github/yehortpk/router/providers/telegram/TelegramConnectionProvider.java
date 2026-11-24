@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * chat receives the notifications, which go to the bot over the {@code telegram-notifier} topic.
  *
  * <p>Its catalog row and {@code telegram_connection} come from
- * {@code V10__create_telegram_provider.sql}.
+ * {@code V1__init.sql}.
  */
 @Component
 @RequiredArgsConstructor
