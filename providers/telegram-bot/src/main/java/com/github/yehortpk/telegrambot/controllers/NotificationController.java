@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
 public class NotificationController {
     private final NotifierService notifierService;
 
-    @KafkaListener(topics = {"#{environment['KAFKA_BOT_NOTIFIER_TOPIC']}"},
-            containerFactory = "botNotifierContainerFactory")
-    public void listenBotNotifierTopic(VacancyNotificationDTO vacancy) {
+    @KafkaListener(topics = {"#{environment['KAFKA_TELEGRAM_NOTIFIER_TOPIC']}"},
+            containerFactory = "telegramNotifierContainerFactory")
+    public void listenTelegramNotifierTopic(VacancyNotificationDTO vacancy) {
         notifierService.notifyUser(vacancy);
     }
 }

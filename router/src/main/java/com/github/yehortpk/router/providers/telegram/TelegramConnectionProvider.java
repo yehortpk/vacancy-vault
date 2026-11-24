@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * Telegram as a provider: the bot reports the chat a {@code /link} command came from, and that
- * chat receives the notifications, which go to the bot over the {@code bot-notifier} topic.
+ * chat receives the notifications, which go to the bot over the {@code telegram-notifier} topic.
  *
  * <p>Its catalog row and {@code telegram_connection} come from
  * {@code V10__create_telegram_provider.sql}.
@@ -112,7 +112,7 @@ public class TelegramConnectionProvider implements ConnectionProvider<TelegramDe
         return telegramConnectionRepository.findConnectionIdsWithoutDetails(PROVIDER_ID);
     }
 
-    /** One {@code bot-notifier} message per chat, all chat ids read in one query. */
+    /** One {@code telegram-notifier} message per chat, all chat ids read in one query. */
     @Override
     public void notifyConnections(Map<Long, Filter> matchedFiltersByConnectionId, NewVacancyDTO vacancy) {
         Map<Long, Long> chatIds = findChatIds(matchedFiltersByConnectionId.keySet());

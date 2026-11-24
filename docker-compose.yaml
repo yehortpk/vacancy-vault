@@ -53,8 +53,7 @@ services:
       - "5006:5006"
     environment:
       KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
-      KAFKA_SUBSCRIBE_TOPIC: subscriptions
-      KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
+      KAFKA_TELEGRAM_NOTIFIER_TOPIC: telegram-notifier
       # Optional database credentials, see README. Keep the defaults in sync with the postgres
       # service below
       POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
@@ -122,8 +121,7 @@ services:
     ports:
       - "5007:5007"
     environment:
-      KAFKA_SUBSCRIBE_TOPIC: subscriptions
-      KAFKA_BOT_NOTIFIER_TOPIC: bot-notifier
+      KAFKA_TELEGRAM_NOTIFIER_TOPIC: telegram-notifier
       TG_BOT_API_KEY: ${TG_BOT_API_KEY}
       TG_BOT_USERNAME: ${TG_BOT_USERNAME}
       # Keep the default in sync with the router service above

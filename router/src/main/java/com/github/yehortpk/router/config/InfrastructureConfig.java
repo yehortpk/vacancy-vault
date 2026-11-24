@@ -86,8 +86,8 @@ public class InfrastructureConfig {
     }
 
     // Producer factory
-    @Value("${KAFKA_BOT_NOTIFIER_TOPIC}")
-    private String kafkaBotNotifierTopic;
+    @Value("${KAFKA_TELEGRAM_NOTIFIER_TOPIC}")
+    private String kafkaTelegramNotifierTopic;
 
     @Bean
     public ProducerFactory<String, TelegramNotificationDTO> producerFactory() {
@@ -104,7 +104,7 @@ public class InfrastructureConfig {
     @Bean
     public KafkaTemplate<String, TelegramNotificationDTO> kafkaTemplate() {
         KafkaTemplate<String, TelegramNotificationDTO> kafkaTemplate = new KafkaTemplate<>(producerFactory());
-        kafkaTemplate.setDefaultTopic(kafkaBotNotifierTopic);
+        kafkaTemplate.setDefaultTopic(kafkaTelegramNotifierTopic);
         return kafkaTemplate;
     }
 

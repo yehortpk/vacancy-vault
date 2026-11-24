@@ -26,14 +26,14 @@ public class InfrastructureConfig {
     private String bootstrapAddress;
 
     @Value("${bot-notifier-topic-consumer-group-id}")
-    private String botNotifierTopicConsumerGroupId;
+    private String telegramNotifierTopicConsumerGroupId;
 
-    @Value("${KAFKA_BOT_NOTIFIER_TOPIC}")
-    private String botNotifierTopic;
+    @Value("${KAFKA_TELEGRAM_NOTIFIER_TOPIC}")
+    private String telegramNotifierTopic;
 
     @Bean
-    public NewTopic subscribeTopic() {
-        return new NewTopic(botNotifierTopic, 1, (short) 1);
+    public NewTopic telegramNotifierTopic() {
+        return new NewTopic(telegramNotifierTopic, 1, (short) 1);
     }
 
     @Bean
@@ -57,10 +57,10 @@ public class InfrastructureConfig {
     }
 
     @Bean
-    public ConsumerFactory<String, VacancyNotificationDTO> botNotifierConsumerFactory() {
+    public ConsumerFactory<String, VacancyNotificationDTO> telegramNotifierConsumerFactory() {
         Map<String, Object> props = getConsumerFactoryProps();
 
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, botNotifierTopicConsumerGroupId);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, telegramNotifierTopicConsumerGroupId);
         props.put(JsonDeserializer.TYPE_MAPPINGS,
                 "vacancy:com.github.yehortpk.telegrambot.models.VacancyNotificationDTO");
 
@@ -68,10 +68,10 @@ public class InfrastructureConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, VacancyNotificationDTO> botNotifierContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, VacancyNotificationDTO> telegramNotifierContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, VacancyNotificationDTO> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(botNotifierConsumerFactory());
+        factory.setConsumerFactory(telegramNotifierConsumerFactory());
 
         return factory;
     }
