@@ -15,6 +15,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 
 ## Table of Contents
 - [Installation](#installation)
+- [Architecture](#architecture)
 - [Usage](#usage)
   - [Code Usage](#code-usage)
   - [Parser structure](#parser-structure)
@@ -53,8 +54,9 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
    Security:
    ```env
-   # Key used to sign the login tokens. At least 32 bytes, either Base64 or raw text - generate
-   # one with `openssl rand -base64 32`. Changing it invalidates every existing session
+   # Key the router signs the users' login tokens with; no other service holds it. At least 32
+   # bytes, either Base64 or raw text - generate one with `openssl rand -base64 32`. Changing it
+   # invalidates every existing session
    JWT_SECRET=bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=
    # Shared secret the bot presents to the router's /connector endpoints, the same for both
    # services - generate one with `openssl rand -hex 32`
@@ -64,10 +66,11 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
    Databases:
    ```env
-   # Credentials of the notifier PostgreSQL database, created as its superuser
+   # Credentials of the notifier PostgreSQL database, created as its superuser. The parser, the
+   # dashboard and the router share the database, each in a schema of its own
    POSTGRES_USERNAME=notifier
    POSTGRES_PASSWORD=notifier
-   # Root credentials of the parser-progress MongoDB database
+   # Root credentials of the parser-progress MongoDB database, where the parser keeps its runs
    MONGO_ROOT_USERNAME=progress
    MONGO_ROOT_PASS=progress
    ```
@@ -75,12 +78,12 @@ git clone https://github.com/yehortpk/vacancy-vault.git
    later also means changing them inside the database. The database ports are published on the
    host, so pick your own passwords on a server reachable from the internet.
 
-   Admin account:
+   Parser admin:
    ```env
-   # The admin account the router creates on startup, so you can log in to the parser room. The
-   # password needs at least 8 characters. See Access levels below
-   ADMIN_EMAIL=admin@vacancy.vault
-   ADMIN_PASSWORD=ADMIN_PASSWORD
+   # The first admin of the parser's own panel, created by the parser on startup. The password
+   # needs at least 8 characters. See Access levels below
+   PARSER_ADMIN_USERNAME=admin
+   PARSER_ADMIN_PASSWORD=PARSER_ADMIN_PASSWORD
    ```
    These defaults are public, so set your own password on a server reachable from the internet. Set
    both to empty values to create no admin account.
@@ -113,32 +116,49 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 ```
 docker compose up --build
 ```
+The parser does not parse on its own: every run is started from its admin panel at http://localhost:4201 (see
+[Access levels](#access-levels)).
 
 ### Access levels
-- <b>Guests</b> (not logged in) browse the vacancy dashboard.
+- <b>Guests</b> (not logged in) browse the vacancy dashboard at http://localhost:4200.
 - <b>Users</b> register at <code>/register</code> and get their own account room at <code>/account</code>: linking a
   messenger with a one-time code (for Telegram, send <code>/link &lt;code&gt;</code> to the bot) and the list of
   linked chats. At <code>/filters</code> they write their [filters](#filters) and choose which linked chats each one
-  notifies, and the dashboard lets them browse the vacancies one of their filters matches.
-- <b>Admins</b> also get the parser room at <code>/parser</code>, to start a parse and watch its progress. It is
-  opened from the profile menu in the top right corner.
+  notifies. Every account is the same: there are no roles.
+- <b>The operator</b> logs in to the parser's own admin panel at http://localhost:4201, to start a parse and watch
+  its progress. This is a separate login, unrelated to the user accounts: a user's session opens nothing in the
+  panel, and the operator needs no user account.
 
-Registering through the web app always creates a user; no endpoint grants the admin role. The admin account comes
-from <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> (see their defaults in the optional env variables): on
-startup the router creates it if that address is not registered yet, and you log in with exactly those credentials.
+The operator's account comes from <code>PARSER_ADMIN_USERNAME</code> and <code>PARSER_ADMIN_PASSWORD</code> (see their
+defaults in the optional env variables): on startup the parser creates it if that username does not exist yet, and
+you log in with exactly those credentials. It only ever creates the account, never changes one, so changing
+<code>PARSER_ADMIN_PASSWORD</code> later does not change the stored password. There is no registration: any further
+admin is a row in the <code>parser.admin</code> table, with a BCrypt hash as its password.
 
-It only ever creates the account, never changes one:
-- If the address is already registered as a user, it is <b>not</b> promoted (the router logs a warning). Registration
-  does not prove you own an address, so promoting it would give the parser room to whoever registered it first.
-- Changing <code>ADMIN_PASSWORD</code> later does not change the stored password.
+## Architecture
+Three services, each owning its own data and sharing nothing but Kafka topics:
 
-In either case, or to make an existing account an admin, set the role in the <code>notifier</code> PostgreSQL
-database:
-```
-UPDATE app_user SET role = 'ADMIN' WHERE email = 'you@example.com';
-```
-The role is read into the login token, so it takes effect after the next login, or within 15 minutes when the
-token refreshes.
+- <b>parser</b> crawls the company sites and publishes what it finds. It keeps the companies, its memory of the
+  vacancies it has already published, the history of its runs (MongoDB) and its own admins, and it serves its own
+  admin panel. No other service calls it.
+- <b>dashboard</b> stores the published vacancies and serves the public vacancy listing. It has no users and no
+  authentication.
+- <b>router</b> holds the accounts: registration and login, filters, linked chats, and matching every new vacancy
+  against the filters to notify the chats they are bound to. It stores no vacancies.
+
+| Topic | Producer | Consumers | Message |
+|---|---|---|---|
+| <code>new_vacancies</code> | parser | dashboard, router | the vacancy with its company (id, title, URL), keyed by its link |
+| <code>removed_vacancies</code> | parser | dashboard | the link of a vacancy that is gone for good |
+| <code>telegram-notifier</code> | router | telegram-bot | one notification for one chat |
+
+A vacancy that disappears from its site is kept for a week, in case it comes back; only then does the parser drop it
+and publish its link to <code>removed_vacancies</code>. Every consumer skips a link it has already seen, so a
+redelivered or republished vacancy is stored once and notified about once.
+
+The services share one PostgreSQL database, <code>notifier</code>, each in its own schema (<code>parser</code>,
+<code>dashboard</code>, <code>router</code>) that it creates and migrates itself. No service reads another's schema.
+The only REST call between services is the Telegram bot reporting linked chats to the router.
 
 ## Usage
 The app needs the client to create parsing information for both sides - in the code itself and in the database. Let's look at the features of the code.
@@ -191,9 +211,10 @@ loading with your own IP address. <b>Warning!</b> It would be better not to use 
 unless you have enough memory in the system.
 
 ### Database usage
-To add a new site for analysis, all you have to do is add the entity to the <i>company</i> table inside the 
-<i>notifier</i> database. The database and table <i>company</i> will be created automatically after the first launch of
-the application. You must fill out the following fields:
+To add a new site for analysis, all you have to do is add the entity to the <i>company</i> table in the 
+<i>parser</i> schema of the <i>notifier</i> database (<code>parser.company</code>). The schema and the table will be
+created automatically after the first launch of the parser. Companies live only there: the dashboard and the router
+learn a company's title and URL from the vacancies the parser publishes. You must fill out the following fields:
 - company_id - id of the company
 - bean_class - name of the @Bean in the code that corresponds this db entity;
 - title - company title.
@@ -204,7 +225,7 @@ the application. You must fill out the following fields:
 
 #### Request parameters
 If you have request data that need to be sent with the request (e.g. GET request query data, or POST request body)
-you may add this data in the <code>company_data</code> table. 
+you may add this data in the <code>company_data</code> table of the same schema. 
 Also, if you have special headers you want to send with every request, you may add them by creating new key-value pair in
 <code>company_headers</code> table.
 
@@ -234,8 +255,6 @@ Keywords can be combined. Examples:
 - java -senior -lead -qa; will find vacancies from all companies which contains java keyword and doesn't contain senior, lead and qa
 - Amazon,; will find all vacancies from company Amazon
 
-Also, you can view all stored vacancies filtered with one of your filters, from the dashboard's filter dropdown.
-
 ### Telegram bot
 The bot only links chats and delivers notifications; filters are managed in the web app. It answers:
 - <code>/start</code>: how to link the chat from your account page.
@@ -246,12 +265,17 @@ The bot only links chats and delivers notifications; filters are managed in the 
 - <code>/unlink</code>: stops notifications to the chat.
 
 ### Frontend app
-To start frontend app you have to run
+Docker compose starts both web apps. To start the users' app by hand you have to run, in <code>frontend/</code>:
 
 ```
 npm install
 npx ng serve
 ```
 
-You can access the frontend representation of the bot at the following URL: http://localhost:4200. In this application, you can view, search, sort, and filter existing vacancies.
-Additionally, you can start parsing by accessing the /parser endpoint (or by clicking "Parser" on the main sidebar). There, you can monitor the parsing progress in real time, and view statistics at the end.
+You can access it at the following URL: http://localhost:4200. In this application, you can view and search existing
+vacancies, narrow them to remote ones or to those with a salary, and manage your account and filters.
+
+The parser's admin panel is a separate app in <code>parser/admin-ui/</code>, served at http://localhost:4201. After
+logging in (see [Access levels](#access-levels)) you can start and stop parsing there, monitor the parsing progress
+in real time, and view statistics at the end. Its dev server forwards the API calls to the parser, so it is meant to
+run next to the parser, as docker compose runs it.
