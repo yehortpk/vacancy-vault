@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * The link of a vacancy the router has already matched against the filters, so a redelivered
- * or replayed {@code new_vacancies} message does not notify every chat a second time.
+ * or replayed {@code vacancies} message does not notify every chat a second time.
  *
  * <p>The router stores no vacancies; this is all it keeps of one, and only for as long as the
  * topic could still replay it, see {@code NotifiedVacancySweeper}.

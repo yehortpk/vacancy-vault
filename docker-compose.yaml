@@ -51,7 +51,7 @@ services:
       - "8081:8080"
       - "5006:5006"
     environment:
-      KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
+      KAFKA_VACANCIES_TOPIC: vacancies
       KAFKA_TELEGRAM_NOTIFIER_TOPIC: telegram-notifier
       # Optional database credentials, see README. Keep the defaults in sync with the postgres
       # service below

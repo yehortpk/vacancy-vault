@@ -10,7 +10,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * Forgets the links the {@code new_vacancies} topic can no longer replay.
+ * Forgets the links the {@code vacancies} topic can no longer replay.
  *
  * <p>{@code notified_vacancy} only has to remember a link for as long as its message can come
  * back: once the broker has dropped the message, nothing can deliver it a second time. So the
