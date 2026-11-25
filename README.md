@@ -148,12 +148,13 @@ Three services, each owning its own data and sharing nothing but Kafka topics:
 
 | Topic | Producer | Consumers | Message |
 |---|---|---|---|
-| <code>new_vacancies</code> | parser | dashboard, router | the vacancy with its company (id, title, URL), keyed by its link |
-| <code>removed_vacancies</code> | parser | dashboard | the link of a vacancy that is gone for good |
+| <code>vacancies</code> | parser | dashboard, router | a new vacancy with its company (id, title, URL), or the link of a vacancy that is gone for good; keyed by the link |
 | <code>telegram-notifier</code> | router | telegram-bot | one notification for one chat |
 
 A vacancy that disappears from its site is kept for a week, in case it comes back; only then does the parser drop it
-and publish its link to <code>removed_vacancies</code>. Every consumer skips a link it has already seen, so a
+and publish its removal to <code>vacancies</code>. Both kinds share one topic keyed by the link, so a vacancy that is
+removed and then listed again reaches every consumer in that order; the kind travels in the <code>__TypeId__</code>
+header, and the router skips removals. Every consumer skips a link it has already seen, so a
 redelivered or republished vacancy is stored once and notified about once.
 
 The services share one PostgreSQL database, <code>notifier</code>, each in its own schema (<code>parser</code>,
