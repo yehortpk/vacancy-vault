@@ -2,6 +2,7 @@ package com.github.yehortpk.dashboard.listener;
 
 import com.github.yehortpk.dashboard.PostgresContainerTest;
 import com.github.yehortpk.dashboard.models.vacancy.NewVacancyDTO;
+import com.github.yehortpk.dashboard.models.vacancy.RemovedVacancyDTO;
 import com.github.yehortpk.dashboard.models.vacancy.Vacancy;
 import com.github.yehortpk.dashboard.repositories.VacancyRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -15,8 +16,8 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * What the two listeners do to the stored vacancies, over the migrated schema. No broker runs:
- * the listener methods are called the way their containers would call them.
+ * What the listener does to the stored vacancies, over the migrated schema. No broker runs: the
+ * handler methods are called the way their container would call them.
  */
 @SpringBootTest
 class VacancyListenerTest extends PostgresContainerTest {
@@ -24,10 +25,7 @@ class VacancyListenerTest extends PostgresContainerTest {
     private static final int GLOBEX_ID = 2;
 
     @Autowired
-    private NewVacancyListener newVacancyListener;
-
-    @Autowired
-    private RemovedVacancyListener removedVacancyListener;
+    private VacancyListener vacancyListener;
 
     @Autowired
     private VacancyRepository vacancyRepository;
@@ -63,8 +61,8 @@ class VacancyListenerTest extends PostgresContainerTest {
     }
 
     @Test
-    void ListenNewVacanciesTopic_NewLink_ShouldStoreTheVacancyWithItsCompany() {
-        newVacancyListener.listenNewVacanciesTopic(
+    void StoreVacancy_NewLink_ShouldStoreTheVacancyWithItsCompany() {
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
 
         Vacancy stored = findVacancy("https://acme.example/1");
@@ -81,22 +79,22 @@ class VacancyListenerTest extends PostgresContainerTest {
     }
 
     @Test
-    void ListenNewVacanciesTopic_SameVacancyTwice_ShouldStoreOneRow() {
+    void StoreVacancy_SameVacancyTwice_ShouldStoreOneRow() {
         // Kafka delivers at least once, and the parser republishes after a crash
         NewVacancyDTO vacancy = createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example");
 
-        newVacancyListener.listenNewVacanciesTopic(vacancy);
-        newVacancyListener.listenNewVacanciesTopic(vacancy);
+        vacancyListener.storeVacancy(vacancy);
+        vacancyListener.storeVacancy(vacancy);
 
         assertThat(vacancyRepository.count()).isEqualTo(1);
     }
 
     @Test
-    void ListenNewVacanciesTopic_StoredLinkWithDifferentCompany_ShouldKeepTheStoredRow() {
-        newVacancyListener.listenNewVacanciesTopic(
+    void StoreVacancy_StoredLinkWithDifferentCompany_ShouldKeepTheStoredRow() {
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
 
-        newVacancyListener.listenNewVacanciesTopic(
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/1", GLOBEX_ID, "Globex", "https://globex.example"));
 
         Vacancy stored = findVacancy("https://acme.example/1");
@@ -107,11 +105,11 @@ class VacancyListenerTest extends PostgresContainerTest {
     }
 
     @Test
-    void ListenNewVacanciesTopic_NewLinkWithRenamedCompany_ShouldLeaveOtherVacanciesOfTheCompany() {
-        newVacancyListener.listenNewVacanciesTopic(
+    void StoreVacancy_NewLinkWithRenamedCompany_ShouldLeaveOtherVacanciesOfTheCompany() {
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
 
-        newVacancyListener.listenNewVacanciesTopic(
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/2", ACME_ID, "Acme Corp", "https://acme.example"));
 
         assertThat(findVacancy("https://acme.example/1").getCompanyTitle()).isEqualTo("Acme");
@@ -119,24 +117,24 @@ class VacancyListenerTest extends PostgresContainerTest {
     }
 
     @Test
-    void ListenRemovedVacanciesTopic_StoredLink_ShouldDeleteOnlyThatVacancy() {
-        newVacancyListener.listenNewVacanciesTopic(
+    void DropVacancy_StoredLink_ShouldDeleteOnlyThatVacancy() {
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
-        newVacancyListener.listenNewVacanciesTopic(
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/2", ACME_ID, "Acme", "https://acme.example"));
 
-        removedVacancyListener.listenRemovedVacanciesTopic("https://acme.example/1");
+        vacancyListener.dropVacancy(new RemovedVacancyDTO("https://acme.example/1"));
 
         assertThat(vacancyRepository.findAll()).extracting(Vacancy::getLink)
                 .containsExactly("https://acme.example/2");
     }
 
     @Test
-    void ListenRemovedVacanciesTopic_UnknownLink_ShouldDoNothing() {
-        newVacancyListener.listenNewVacanciesTopic(
+    void DropVacancy_UnknownLink_ShouldDoNothing() {
+        vacancyListener.storeVacancy(
                 createVacancy("https://acme.example/1", ACME_ID, "Acme", "https://acme.example"));
 
-        removedVacancyListener.listenRemovedVacanciesTopic("https://acme.example/never-stored");
+        vacancyListener.dropVacancy(new RemovedVacancyDTO("https://acme.example/never-stored"));
 
         assertThat(vacancyRepository.count()).isEqualTo(1);
     }

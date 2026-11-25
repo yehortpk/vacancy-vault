@@ -89,8 +89,7 @@ services:
       - "8083:8080"
       - "5008:5008"
     environment:
-      KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
-      KAFKA_REMOVED_VACANCIES_TOPIC: removed_vacancies
+      KAFKA_VACANCIES_TOPIC: vacancies
       # Optional database credentials, see README. Keep the defaults in sync with the postgres
       # service below
       POSTGRES_USERNAME: ${POSTGRES_USERNAME:-notifier}
