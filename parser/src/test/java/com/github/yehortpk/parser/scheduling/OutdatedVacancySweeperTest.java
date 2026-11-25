@@ -1,7 +1,8 @@
 package com.github.yehortpk.parser.scheduling;
 
 import com.github.yehortpk.parser.PostgresContainerTest;
-import com.github.yehortpk.parser.models.NewVacancyDTO;
+import com.github.yehortpk.parser.models.RemovedVacancyDTO;
+import com.github.yehortpk.parser.models.VacancyMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -37,11 +39,8 @@ class OutdatedVacancySweeperTest extends PostgresContainerTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @MockitoBean(name = "newVacancyKafkaTemplate")
-    private KafkaTemplate<String, NewVacancyDTO> newVacancyKafkaTemplate;
-
-    @MockitoBean(name = "removedVacancyKafkaTemplate")
-    private KafkaTemplate<String, String> removedVacancyKafkaTemplate;
+    @MockitoBean
+    private KafkaTemplate<String, VacancyMessage> vacancyKafkaTemplate;
 
     private void clearData() {
         jdbcTemplate.update("DELETE FROM parsed_vacancy");
@@ -53,7 +52,7 @@ class OutdatedVacancySweeperTest extends PostgresContainerTest {
         clearData();
         jdbcTemplate.update("INSERT INTO company (company_id, title, parsing_enabled) VALUES (?, 'Acme', true)",
                 COMPANY_ID);
-        when(removedVacancyKafkaTemplate.sendDefault(anyString(), anyString()))
+        when(vacancyKafkaTemplate.sendDefault(anyString(), any()))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mock(SendResult.class)));
     }
 
@@ -82,7 +81,7 @@ class OutdatedVacancySweeperTest extends PostgresContainerTest {
 
         outdatedVacancySweeper.dropExpiredVacancies();
 
-        verify(removedVacancyKafkaTemplate).sendDefault(createLink("expired"), createLink("expired"));
+        verify(vacancyKafkaTemplate).sendDefault(createLink("expired"), new RemovedVacancyDTO(createLink("expired")));
         assertThat(findParsedLinks()).containsExactly(createLink("listed"));
     }
 
@@ -92,14 +91,14 @@ class OutdatedVacancySweeperTest extends PostgresContainerTest {
 
         outdatedVacancySweeper.dropExpiredVacancies();
 
-        verify(removedVacancyKafkaTemplate, never()).sendDefault(anyString(), anyString());
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), any());
         assertThat(findParsedLinks()).containsExactly(createLink("waiting"));
     }
 
     @Test
     void DropExpiredVacancies_RemovedLinkNotAcknowledged_ShouldKeepTheVacancyForTheNextSweep() {
         insertParsedVacancy("expired", LocalDateTime.now().minusMinutes(1));
-        when(removedVacancyKafkaTemplate.sendDefault(anyString(), anyString()))
+        when(vacancyKafkaTemplate.sendDefault(anyString(), any()))
                 .thenAnswer(invocation -> CompletableFuture.failedFuture(new IllegalStateException("Broker is down")));
 
         outdatedVacancySweeper.dropExpiredVacancies();

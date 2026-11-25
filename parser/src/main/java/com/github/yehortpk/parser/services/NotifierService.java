@@ -2,7 +2,9 @@ package com.github.yehortpk.parser.services;
 
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.NewVacancyDTO;
+import com.github.yehortpk.parser.models.RemovedVacancyDTO;
 import com.github.yehortpk.parser.models.VacancyDTO;
+import com.github.yehortpk.parser.models.VacancyMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -17,8 +19,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Publishes what a parsing run found: new vacancies to {@code new_vacancies}, and the links of
- * vacancies dropped for good to {@code removed_vacancies}. Both are keyed by the link.
+ * Publishes to the {@code vacancies} topic what a parsing run found: new vacancies, and the links
+ * of vacancies dropped for good. Both are keyed by the link, so the changes of one vacancy keep
+ * their order.
  *
  * <p>A vacancy is remembered as published only after the broker acknowledged it. If the parser
  * dies in between, the next run publishes it again, and the consumers skip a link they already
@@ -30,8 +33,7 @@ import java.util.concurrent.TimeoutException;
 public class NotifierService {
     private static final long ACK_TIMEOUT_SEC = 30;
 
-    private final KafkaTemplate<String, NewVacancyDTO> newVacancyKafkaTemplate;
-    private final KafkaTemplate<String, String> removedVacancyKafkaTemplate;
+    private final KafkaTemplate<String, VacancyMessage> vacancyKafkaTemplate;
     private final VacancyService vacancyService;
 
     /**
@@ -95,10 +97,10 @@ public class NotifierService {
                 unpublishedVacancies.stream().map(VacancyDTO::getLink).toList());
 
         // Everything is sent before the first ack is awaited, so the producer can batch
-        Map<VacancyDTO, CompletableFuture<SendResult<String, NewVacancyDTO>>> sends = new LinkedHashMap<>();
+        Map<VacancyDTO, CompletableFuture<SendResult<String, VacancyMessage>>> sends = new LinkedHashMap<>();
         for (VacancyDTO vacancy : unpublishedVacancies) {
             if (!earlierPublishedLinks.contains(vacancy.getLink())) {
-                sends.put(vacancy, newVacancyKafkaTemplate.sendDefault(
+                sends.put(vacancy, vacancyKafkaTemplate.sendDefault(
                         vacancy.getLink(), createNewVacancy(vacancy, company)));
             }
         }
@@ -122,9 +124,9 @@ public class NotifierService {
      *                               must then keep the vacancies, so the next sweep reports them again
      */
     public void notifyRemovedVacancies(Collection<String> links) {
-        Map<String, CompletableFuture<SendResult<String, String>>> sends = new LinkedHashMap<>();
+        Map<String, CompletableFuture<SendResult<String, VacancyMessage>>> sends = new LinkedHashMap<>();
         for (String link : links) {
-            sends.put(link, removedVacancyKafkaTemplate.sendDefault(link, link));
+            sends.put(link, vacancyKafkaTemplate.sendDefault(link, new RemovedVacancyDTO(link)));
         }
         sends.forEach((link, send) -> awaitAck(send, link));
     }

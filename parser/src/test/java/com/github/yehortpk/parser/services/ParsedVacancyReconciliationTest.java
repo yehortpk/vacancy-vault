@@ -5,7 +5,9 @@ import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.NewVacancyDTO;
 import com.github.yehortpk.parser.models.PageDTO;
 import com.github.yehortpk.parser.models.ParsedVacancy;
+import com.github.yehortpk.parser.models.RemovedVacancyDTO;
 import com.github.yehortpk.parser.models.VacancyDTO;
+import com.github.yehortpk.parser.models.VacancyMessage;
 import com.github.yehortpk.parser.parser.SiteParser;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
 import com.github.yehortpk.parser.repositories.ParsedVacancyRepository;
@@ -30,6 +32,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -44,7 +47,7 @@ import static org.mockito.Mockito.withSettings;
  * {@code OutdatedVacancySweeperTest}.
  *
  * <p>The site is replaced by a crawler that returns one page of fixed vacancies, and Kafka by
- * templates that acknowledge at once, so what would be published is what is asserted. Each
+ * a template that acknowledges at once, so what would be published is what is asserted. Each
  * test runs its own {@link ParserRunnerService}, built over the real vacancy service.
  */
 @SpringBootTest
@@ -62,11 +65,8 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @MockitoBean(name = "newVacancyKafkaTemplate")
-    private KafkaTemplate<String, NewVacancyDTO> newVacancyKafkaTemplate;
-
-    @MockitoBean(name = "removedVacancyKafkaTemplate")
-    private KafkaTemplate<String, String> removedVacancyKafkaTemplate;
+    @MockitoBean
+    private KafkaTemplate<String, VacancyMessage> vacancyKafkaTemplate;
 
     private final ApplicationContext applicationContext = mock(ApplicationContext.class);
     private final CompanyService companyService = mock(CompanyService.class);
@@ -85,9 +85,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
         jdbcTemplate.update("INSERT INTO company (company_id, title, main_page_url, parsing_enabled)"
                 + " VALUES (?, 'Acme', 'https://acme.example', true)", COMPANY_ID);
 
-        when(newVacancyKafkaTemplate.sendDefault(anyString(), any()))
-                .thenAnswer(invocation -> CompletableFuture.completedFuture(mock(SendResult.class)));
-        when(removedVacancyKafkaTemplate.sendDefault(anyString(), anyString()))
+        when(vacancyKafkaTemplate.sendDefault(anyString(), any()))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mock(SendResult.class)));
 
         when(applicationContext.getBean(CRAWLER_BEAN)).thenReturn(crawler);
@@ -133,7 +131,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
                 .toList());
 
         NotifierService notifierService =
-                new NotifierService(newVacancyKafkaTemplate, removedVacancyKafkaTemplate, vacancyService);
+                new NotifierService(vacancyKafkaTemplate, vacancyService);
         ParserRunnerService parserRunnerService = new ParserRunnerService(applicationContext, companyService,
                 notifierService, new ParsingProgressService(), parsingHistoryService, vacancyService);
 
@@ -146,7 +144,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
 
     private List<NewVacancyDTO> capturePublishedVacancies(int count) {
         ArgumentCaptor<NewVacancyDTO> vacancies = ArgumentCaptor.forClass(NewVacancyDTO.class);
-        verify(newVacancyKafkaTemplate, times(count)).sendDefault(anyString(), vacancies.capture());
+        verify(vacancyKafkaTemplate, times(count)).sendDefault(anyString(), vacancies.capture());
         return vacancies.getAllValues();
     }
 
@@ -162,7 +160,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
         assertThat(published.getCompany().getId()).isEqualTo(COMPANY_ID);
         assertThat(published.getCompany().getTitle()).isEqualTo("Acme");
         assertThat(published.getCompany().getUrl()).isEqualTo("https://acme.example");
-        verify(newVacancyKafkaTemplate).sendDefault(createLink("fresh"), published);
+        verify(vacancyKafkaTemplate).sendDefault(createLink("fresh"), published);
 
         assertThat(findParsedLinks()).containsExactlyInAnyOrder(createLink("known"), createLink("fresh"));
         assertThat(progress.getNewVacanciesTotalCount()).isEqualTo(1);
@@ -183,7 +181,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
     @Test
     void RunParsing_BrokerDoesNotAcknowledge_ShouldNotRecordTheVacancy() throws Exception {
         // Left unrecorded, the next run finds it new again and retries
-        when(newVacancyKafkaTemplate.sendDefault(anyString(), any()))
+        when(vacancyKafkaTemplate.sendDefault(anyString(), any()))
                 .thenAnswer(invocation -> CompletableFuture.failedFuture(new IllegalStateException("Broker is down")));
 
         runParsing("fresh");
@@ -203,7 +201,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
                 .isBetween(LocalDateTime.now().plusDays(6), LocalDateTime.now().plusDays(8));
         assertThat(progress.getOutdatedVacanciesTotalCount()).isEqualTo(1);
         // Nobody outside the parser hears about it while the grace period lasts
-        verify(removedVacancyKafkaTemplate, never()).sendDefault(anyString(), anyString());
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), isA(RemovedVacancyDTO.class));
     }
 
     @Test
@@ -213,8 +211,8 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
         runParsing("back");
 
         assertThat(findParsedVacancy("back").getDeleteAt()).isNull();
-        verify(newVacancyKafkaTemplate, never()).sendDefault(anyString(), any());
-        verify(removedVacancyKafkaTemplate, never()).sendDefault(anyString(), anyString());
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), isA(NewVacancyDTO.class));
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), isA(RemovedVacancyDTO.class));
     }
 
     @Test
@@ -227,7 +225,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
 
         assertThat(findParsedVacancy("waiting").getDeleteAt()).isEqualTo(deleteAt);
         assertThat(progress.getOutdatedVacanciesTotalCount()).isZero();
-        verify(removedVacancyKafkaTemplate, never()).sendDefault(anyString(), anyString());
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), isA(RemovedVacancyDTO.class));
     }
 
     @Test
@@ -238,7 +236,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
         runParsing("listed");
 
         assertThat(findParsedLinks()).containsExactlyInAnyOrder(createLink("listed"), createLink("expired"));
-        verify(removedVacancyKafkaTemplate, never()).sendDefault(anyString(), anyString());
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), isA(RemovedVacancyDTO.class));
     }
 
     @Test
@@ -250,7 +248,7 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
 
         runParsing("shared");
 
-        verify(newVacancyKafkaTemplate, never()).sendDefault(anyString(), any());
+        verify(vacancyKafkaTemplate, never()).sendDefault(anyString(), isA(NewVacancyDTO.class));
         assertThat(parsedVacancyRepository.count()).isEqualTo(1);
     }
 }

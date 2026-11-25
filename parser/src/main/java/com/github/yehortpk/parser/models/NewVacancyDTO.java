@@ -5,7 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * A vacancy as it is published to the {@code new_vacancies} topic, keyed by its link. The
+ * A new vacancy as it is published to the {@code vacancies} topic, keyed by its link. The
  * company travels with it, so a consumer needs no company table of its own.
  */
 @Getter
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class NewVacancyDTO {
+public final class NewVacancyDTO implements VacancyMessage {
     @EqualsAndHashCode.Include
     private String link;
     private String title;

@@ -13,8 +13,7 @@ services:
       - "5005:5005"
       - "8082:8080"
     environment:
-      KAFKA_NEW_VACANCIES_TOPIC: new_vacancies
-      KAFKA_REMOVED_VACANCIES_TOPIC: removed_vacancies
+      KAFKA_VACANCIES_TOPIC: vacancies
       # How many Chromium instances may run at once: a number, or "max" for as many as the
       # host's CPUs and memory allow. See README
       PARSER_BROWSER_POOL_SIZE: ${PARSER_BROWSER_POOL_SIZE:-2}

@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Drops the vacancies whose one-week grace period has expired, see
- * {@link VacancyService#markOutdated}, and reports their links to {@code removed_vacancies}.
+ * {@link VacancyService#markOutdated}, and reports them as removed to {@code vacancies}.
  *
  * <p>Runs at a fixed time of the week rather than a week after the parser started, so restarts
  * do not keep putting it off. A vacancy therefore leaves between one and two weeks after it
