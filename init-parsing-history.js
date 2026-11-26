@@ -158,7 +158,11 @@ db.createView('parsers', 'parsing-history', [
       new_vacancies: 1,
       outdated_vacancies: 1,
       finished_at: {
-        $dateToString: { format: '%m:%d:%H:%M:%S', date: '$finished_at' }
+        $dateToString: {
+          format: '%d-%m-%Y %H:%M:%S',
+          date: '$finished_at',
+          timezone: 'Europe/Kyiv'
+        }
       },
       parsers: { $arrayToObject: '$parsers' }
     }
