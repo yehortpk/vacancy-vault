@@ -132,9 +132,9 @@ class VacancySearchTest extends PostgresContainerTest {
 
     @Test
     void GetVacancies_FrontendOrigin_ShouldAllowTheCrossOriginRead() throws Exception {
-        mockMvc.perform(get("/vacancy").param("page", "0").header("Origin", "http://notifier-frontend:4200"))
+        mockMvc.perform(get("/vacancy").param("page", "0").header("Origin", "http://vv-frontend:4200"))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getHeader("Access-Control-Allow-Origin"))
-                        .isEqualTo("http://notifier-frontend:4200"));
+                        .isEqualTo("http://vv-frontend:4200"));
     }
 }

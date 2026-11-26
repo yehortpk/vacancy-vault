@@ -21,7 +21,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * <p>The datasource is pointed at the container by {@code @DynamicPropertySource} rather
  * than {@code @ServiceConnection}, because these properties must override the production
  * {@code application.properties}, which is still on the test classpath and whose
- * {@code notifier-postgres} url would otherwise be used.
+ * {@code vv-postgres} url would otherwise be used.
  */
 @ActiveProfiles("test")
 public abstract class PostgresContainerTest {

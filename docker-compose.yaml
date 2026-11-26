@@ -1,6 +1,6 @@
 services:
   parser:
-    container_name: notifier-parser
+    container_name: vv-parser
     build:
       dockerfile: ./parser/Dockerfile
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
@@ -8,7 +8,7 @@ services:
       - ./:/opt/app
       - maven-home:/home/ubuntu
     networks:
-      - notifier-network
+      - vv-network
     ports:
       - "5005:5005"
       - "8082:8080"
@@ -38,7 +38,7 @@ services:
         condition: service_started
 
   router:
-    container_name: notifier-router
+    container_name: vv-router
     build:
       dockerfile: ./router/Dockerfile
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
@@ -46,7 +46,7 @@ services:
       - ./:/opt/app
       - maven-home:/home/ubuntu
     networks:
-      - notifier-network
+      - vv-network
     ports:
       - "8081:8080"
       - "5006:5006"
@@ -76,7 +76,7 @@ services:
         condition: service_healthy
 
   dashboard:
-    container_name: notifier-dashboard
+    container_name: vv-dashboard
     build:
       dockerfile: ./dashboard/Dockerfile
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
@@ -84,7 +84,7 @@ services:
       - ./:/opt/app
       - maven-home:/home/ubuntu
     networks:
-      - notifier-network
+      - vv-network
     ports:
       - "8083:8080"
       - "5008:5008"
@@ -107,7 +107,7 @@ services:
         condition: service_healthy
 
   telegram-bot:
-    container_name: notifier-telegram-bot
+    container_name: vv-telegram-bot
     build:
       dockerfile: ./providers/telegram-bot/Dockerfile
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
@@ -115,7 +115,7 @@ services:
       - ./:/opt/app
       - maven-home:/home/ubuntu
     networks:
-      - notifier-network
+      - vv-network
     ports:
       - "5007:5007"
     environment:
@@ -129,7 +129,7 @@ services:
         condition: service_healthy
 
   frontend:
-    container_name: notifier-frontend
+    container_name: vv-frontend
     image: node:20-alpine
     working_dir: /app
     volumes:
@@ -138,13 +138,13 @@ services:
     ports:
       - "4200:4200"
     networks:
-      - notifier-network
+      - vv-network
     command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
 
   # The parser's own admin panel. Its dev server proxies /parser, /login and /logout to the
   # parser, so the browser sees one origin and the session cookie just works
   parser-admin-ui:
-    container_name: notifier-parser-admin-ui
+    container_name: vv-parser-admin-ui
     image: node:20-alpine
     working_dir: /app
     volumes:
@@ -153,26 +153,26 @@ services:
     ports:
       - "4201:4201"
     networks:
-      - notifier-network
+      - vv-network
     command: sh -c "npm install && npm start -- --host 0.0.0.0 --poll 2000"
 
   kafka:
     image: apache/kafka:4.3.2
-    container_name: notifier-kafka
+    container_name: vv-kafka
     ports:
       - "29092:29092"
       - "9092"
     networks:
-      - notifier-network
+      - vv-network
     # No volume on purpose: the broker keeps its data only while its container lives. Nothing is
     # lost with it, since every consumer skips a link it has already seen
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@notifier-kafka:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@vv-kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://notifier-kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://vv-kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_LOG_DIRS: /var/lib/kafka/data
@@ -190,13 +190,13 @@ services:
 
   postgres:
     image: postgres:16.2
-    container_name: notifier-postgres
+    container_name: vv-postgres
     volumes:
-      - notifier-postgres-data:/var/lib/postgresql/data
+      - vv-postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - notifier-network
+      - vv-network
     environment:
       POSTGRES_DB: notifier
       POSTGRES_USER: ${POSTGRES_USERNAME:-notifier}
@@ -209,7 +209,7 @@ services:
 
   mongo:
     image: mongo:8.0
-    container_name: notifier-mongo
+    container_name: vv-mongo
     ports:
       - "27017:27017"
     environment:
@@ -217,18 +217,18 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS:-progress}
       MONGO_INITDB_DATABASE: parser-progress
     networks:
-      - notifier-network
+      - vv-network
     volumes:
-      - notifier-mongo-data:/data/db
+      - vv-mongo-data:/data/db
       - ./init-parsing-history.js:/docker-entrypoint-initdb.d/init-parsing-history.js:ro
 
 networks:
-  notifier-network:
+  vv-network:
     driver: bridge
 
 volumes:
-  notifier-postgres-data:
-  notifier-mongo-data:
+  vv-postgres-data:
+  vv-mongo-data:
   frontend-node-modules:
   parser-admin-ui-node-modules:
   maven-home:
