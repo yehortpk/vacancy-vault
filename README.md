@@ -16,6 +16,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 ## Table of Contents
 - [Installation](#installation)
   - [Ports](#ports)
+  - [Access levels](#access-levels)
 - [Architecture](#architecture)
 - [Usage](#usage)
   - [Code Usage](#code-usage)
