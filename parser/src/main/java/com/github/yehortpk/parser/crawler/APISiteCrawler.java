@@ -44,7 +44,7 @@ public abstract class APISiteCrawler extends SiteScrapperImpl implements SiteMet
 
     @Override
     protected PageScrapper generatePageScrapper(int pageID) {
-        return new JsoupPageScrapper();
+        return new HttpClientPageScrapper();
     }
 
     /**

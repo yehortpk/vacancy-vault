@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Default pages scrapper. Scrap page with Jsoup library
+ * Pages scrapper based on the Jsoup library. Note Jsoup truncates response bodies over 2MB by default.
+ * {@link HttpClientPageScrapper} is the default for static pages
  */
 @Component
 @Slf4j

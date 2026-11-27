@@ -40,7 +40,7 @@ public abstract class StaticSiteCrawler extends SiteScrapperImpl implements Site
 
     @Override
     protected PageScrapper generatePageScrapper(int pageID) {
-        return new JsoupPageScrapper();
+        return new HttpClientPageScrapper();
     }
 
     /**
