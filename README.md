@@ -15,6 +15,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 
 ## Table of Contents
 - [Installation](#installation)
+  - [Ports](#ports)
 - [Architecture](#architecture)
 - [Usage](#usage)
   - [Code Usage](#code-usage)
@@ -125,6 +126,24 @@ docker compose up --build
 ```
 The parser does not parse on its own: every run is started from its admin panel at http://localhost:4201 (see
 [Access levels](#access-levels)).
+
+### Ports
+Docker compose publishes these ports on the host:
+
+| Port | Service |
+|---|---|
+| 4200 | Vacancy dashboard web app (Angular dev server, reloads on change) |
+| 4201 | Parser admin panel (Angular dev server, reloads on change) |
+| 8081 | Router API |
+| 8082 | Parser API |
+| 8083 | Dashboard API |
+| 5005 | Parser remote debugging (JDWP) |
+| 5006 | Router remote debugging (JDWP) |
+| 5007 | Telegram bot remote debugging (JDWP) |
+| 5008 | Dashboard remote debugging (JDWP) |
+| 5432 | PostgreSQL |
+| 27017 | MongoDB |
+| 29092 | Kafka, for clients on the host |
 
 ### Access levels
 - <b>Guests</b> (not logged in) browse the vacancy dashboard at http://localhost:4200.
