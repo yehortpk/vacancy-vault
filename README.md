@@ -29,7 +29,6 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
       - [Dynamic request parameters](#dynamic-request-parameters)
 - [Filters](#filters)
 - [Telegram bot](#telegram-bot)
-- [Frontend app](#frontend-app)
 
 ## Installation
 1. Create a new Telegram bot through <a href="https://t.me/BotFather">Bot Father</a>;
@@ -291,19 +290,3 @@ The bot only links chats and delivers notifications; filters are managed in the 
   delete messages.
 - <code>/status</code>: which account the chat is linked to, and how many of its filters notify it.
 - <code>/unlink</code>: stops notifications to the chat.
-
-### Frontend app
-Docker compose starts both web apps. To start the users' app by hand you have to run, in <code>frontend/</code>:
-
-```
-npm install
-npx ng serve
-```
-
-You can access it at the following URL: http://localhost:4200. In this application, you can view and search existing
-vacancies, narrow them to remote ones or to those with a salary, and manage your account and filters.
-
-The parser's admin panel is a separate app in <code>parser/admin-ui/</code>, served at http://localhost:4201. After
-logging in (see [Access levels](#access-levels)) you can start and stop parsing there, monitor the parsing progress
-in real time, and view statistics at the end. Its dev server forwards the API calls to the parser, so it is meant to
-run next to the parser, as docker compose runs it.
