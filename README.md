@@ -42,11 +42,11 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
    Services (only Telegram for now):
    ```env
-   # API token of the bot from step 2
    TG_BOT_API_KEY=
-   # Username of the bot from step 2
    TG_BOT_USERNAME=
    ```
+   - <code>TG_BOT_API_KEY</code> - API token of the bot from step 2.
+   - <code>TG_BOT_USERNAME</code> - username of the bot from step 2.
 
    **Optional**
 
@@ -54,45 +54,52 @@ git clone https://github.com/yehortpk/vacancy-vault.git
 
    Security:
    ```env
-   # Key the router signs the users' login tokens with; no other service holds it. At least 32
-   # bytes, either Base64 or raw text - generate one with `openssl rand -base64 32`. Changing it
-   # invalidates every existing session
    JWT_SECRET=bDGvjQnfBnIiGi8eLnKJds3Oka82zHhLO83YIcIp8Bs=
-   # Shared secret the bot presents to the router's /connector endpoints, the same for both
-   # services - generate one with `openssl rand -hex 32`
    SERVICE_CONNECTOR_TOKEN=SERVICE_CONNECTOR_TOKEN
    ```
+   - <code>JWT_SECRET</code> - key the router signs the users' login tokens with; no other service holds it.
+     At least 32 bytes, either Base64 or raw text - generate one with <code>openssl rand -base64 32</code>.
+     Changing it invalidates every existing session.
+   - <code>SERVICE_CONNECTOR_TOKEN</code> - shared secret the bot presents to the router's <code>/connector</code>
+     endpoints, the same for both services - generate one with <code>openssl rand -hex 32</code>.
+
    These defaults are public, so on a server reachable from the internet generate your own.
 
    Databases:
    ```env
-   # Credentials of the notifier PostgreSQL database, created as its superuser. The parser, the
-   # dashboard and the router share the database, each in a schema of its own
    POSTGRES_USERNAME=notifier
    POSTGRES_PASSWORD=notifier
-   # Root credentials of the parser-progress MongoDB database, where the parser keeps its runs
    MONGO_ROOT_USERNAME=progress
    MONGO_ROOT_PASS=progress
    ```
+   - <code>POSTGRES_USERNAME</code>, <code>POSTGRES_PASSWORD</code> - credentials of the notifier PostgreSQL
+     database, created as its superuser. The parser, the dashboard and the router share the database, each in a
+     schema of its own.
+   - <code>MONGO_ROOT_USERNAME</code>, <code>MONGO_ROOT_PASS</code> - root credentials of the parser-progress
+     MongoDB database, where the parser keeps its runs.
+
    The credentials are applied only when the database volumes are first created, so changing them
    later also means changing them inside the database. The database ports are published on the
    host, so pick your own passwords on a server reachable from the internet.
 
    Parser admin:
    ```env
-   # The first admin of the parser's own panel, created by the parser on startup. The password
-   # needs at least 8 characters. See Access levels below
    PARSER_ADMIN_USERNAME=admin
    PARSER_ADMIN_PASSWORD=PARSER_ADMIN_PASSWORD
    ```
+   The first admin of the parser's own panel, created by the parser on startup. The password needs at least 8
+   characters. See [Access levels](#access-levels).
+
    These defaults are public, so set your own password on a server reachable from the internet. Set
    both to empty values to create no admin account.
 
    Parser load:
    ```env
-   # How many Chromium instances may render dynamic sites at once, or max
    PARSER_BROWSER_POOL_SIZE=2
    ```
+   <code>PARSER_BROWSER_POOL_SIZE</code> is how many Chromium instances may render dynamic sites at once, or
+   <code>max</code>.
+
    Chromium dominates the parser's memory, at roughly 400MB per instance, so this is the main
    knob. Raise it to parse dynamic sites faster, or set <code>max</code> for as many as the host
    can afford: half of its CPUs, but no more than fit into its memory once about 3GB is left to
