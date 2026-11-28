@@ -60,6 +60,10 @@ public class ParserProgress {
         pages.get(page - 1).setStatus(PageProgressStatusEnum.STEP_ERROR);
     }
 
+    public void markAllPagesError() {
+        pages.forEach(page -> page.setStatus(PageProgressStatusEnum.STEP_ERROR));
+    }
+
     /**
      * Whether every page of this company was parsed successfully. Outdated vacancies may only be
      * reconciled when this holds: a company whose pages partly failed yields an incomplete parsed
