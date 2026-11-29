@@ -1,4 +1,4 @@
-package com.github.yehortpk.parser.scrapper.browser;
+package com.github.yehortpk.parser.scraper.browser;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;

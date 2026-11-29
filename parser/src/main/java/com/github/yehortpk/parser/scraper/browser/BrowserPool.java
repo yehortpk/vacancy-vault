@@ -1,4 +1,4 @@
-package com.github.yehortpk.parser.scrapper.browser;
+package com.github.yehortpk.parser.scraper.browser;
 
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
 import com.github.yehortpk.parser.services.ParsingProgressService;

@@ -1,8 +1,9 @@
 package com.github.yehortpk.parser.services;
 
+import com.github.yehortpk.parser.crawler.CompanyCrawler;
+import com.github.yehortpk.parser.exceptions.MetadataFetchException;
+import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.exceptions.NoVacanciesOnPageException;
-import com.github.yehortpk.parser.models.PageDTO;
-import com.github.yehortpk.parser.parser.SiteParser;
 import com.github.yehortpk.parser.exceptions.ParsingAlreadyStartedException;
 import com.github.yehortpk.parser.exceptions.ParsingNotRunningException;
 import com.github.yehortpk.parser.exceptions.ParsingStoppedException;
@@ -11,11 +12,9 @@ import com.github.yehortpk.parser.models.ParsedVacancy;
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.models.VacancyDTO;
-import com.github.yehortpk.parser.scrapper.site.SiteScrapper;
+import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,7 +33,10 @@ import static com.github.yehortpk.parser.utils.LogUtils.createErrorMessage;
 @Slf4j
 @RequiredArgsConstructor
 public class ParserRunnerService {
-    private final ApplicationContext applicationContext;
+    /**
+     * Every company crawler by its bean name, which is a company's {@code bean_class}
+     */
+    private final Map<String, CompanyCrawler> companyCrawlers;
     private final CompanyService companyService;
     private final NotifierService notifierService;
     private final ParsingProgressService parsingProgressService;
@@ -55,14 +57,14 @@ public class ParserRunnerService {
 
     /**
      * Stops the running parsing cooperatively: every company and page step that has not started
-     * yet is skipped and marked as failed, while pages already being scrapped are left to finish,
+     * yet is skipped and marked as failed, while pages already being scraped are left to finish,
      * since interrupting a borrowed browser mid-navigation would break the browser pool.
      */
     public synchronized void stopParsing() throws ParsingNotRunningException {
         if (runnerThread == null || !runnerThread.isAlive() || !parsingProgressService.requestStop()) {
             throw new ParsingNotRunningException("Parsing process is not running or is already stopping");
         }
-        log.info("Parsing stop requested, waiting for the pages already being scrapped");
+        log.info("Parsing stop requested, waiting for the pages already being scraped");
     }
 
     private void runParsers() {
@@ -111,14 +113,15 @@ public class ParserRunnerService {
     }
 
     /**
-     * Kicks off scrapping and parsing for a single company: scrap its pages, parse vacancies from
+     * Kicks off scraping and parsing for a single company: scrape its pages, parse vacancies from
      * each page in parallel, then reconcile parsed vacancies against what's already persisted.
-     * Returns null (instead of a future) if the company has no registered scrapper bean, or its
+     * Returns null (instead of a future) if the company has no registered crawler bean, or its
      * persisted vacancies could not be loaded.
      */
     private CompletableFuture<Void> parseCompanyAsync(CompanyDTO company, ExecutorService executor) {
-        SiteScrapper siteScrapper = resolveScrapper(company);
-        if (siteScrapper == null) {
+        CompanyCrawler crawler = companyCrawlers.get(company.getBeanClass());
+        if (crawler == null) {
+            log.error("{} crawler implementation doesn't exist", company.getBeanClass());
             return null;
         }
 
@@ -130,7 +133,7 @@ public class ParserRunnerService {
             persistedVacancies = vacancyService.getPersistedVacancies(companyId);
         } catch (RuntimeException ex) {
             // Handled here, since the companies before this one are already being parsed
-            handleCompanyScrapperException(ex, company);
+            handlePersistedVacanciesException(ex, company);
             parserProgress.setStatus(ParserProgressStatusEnum.ERROR);
             return null;
         }
@@ -149,21 +152,21 @@ public class ParserRunnerService {
                     if (parsingProgressService.isStopRequested()) {
                         throw new ParsingStoppedException();
                     }
-                    return siteScrapper.scrapCompanyVacancies(company);
+                    return crawler.scrapeCompanyVacancies(company);
                 }, executor)
                 .exceptionally(ex -> {
-                    handleCompanyScrapperException(ex, company);
+                    handleCompanyScraperException(ex, company);
                     return List.of();
                 })
                 .thenCompose(pageFutures ->
-                        parseAllPages(pageFutures, company, persistedLinks, claimedNewLinks, executor))
+                        parseAllPages(pageFutures, crawler, company, persistedLinks, claimedNewLinks, executor))
                 .thenAccept(parsedVacancies ->
                         reconcileOutdatedVacancies(parsedVacancies, persistedVacancies, company))
                 .handle((ignored, ex) -> {
                     if (ex != null) {
                         handleReconciliationException(ex, company);
                     }
-                    // Stays ERROR after a failed metadata precall. Failed pages don't affect it
+                    // Stays ERROR after a failed metadata call. Failed pages don't affect it
                     if (parserProgress.getStatus() == ParserProgressStatusEnum.RUNNING) {
                         parserProgress.setStatus(ParserProgressStatusEnum.FINISHED);
                     }
@@ -171,21 +174,13 @@ public class ParserRunnerService {
                 });
     }
 
-    private SiteScrapper resolveScrapper(CompanyDTO company) {
-        try {
-            return (SiteScrapper) applicationContext.getBean(company.getBeanClass());
-        } catch (BeansException ignored) {
-            log.error("{} scrapper implementation doesn't exist", company.getBeanClass());
-            return null;
-        }
-    }
-
     /**
-     * Parses every scrapped page of a company concurrently and joins the results once all pages
+     * Parses every scraped page of a company concurrently and joins the results once all pages
      * are done, without blocking a shared thread inside the async chain.
      */
     private CompletableFuture<List<VacancyDTO>> parseAllPages(
-            List<CompletableFuture<PageDTO>> pageFutures,
+            List<CompletableFuture<PageScraperResponse>> pageFutures,
+            CompanyCrawler crawler,
             CompanyDTO company,
             Set<String> persistedLinks,
             Set<String> claimedNewLinks,
@@ -197,13 +192,13 @@ public class ParserRunnerService {
             pageResultFutures.add(
                     pageFutures.get(i)
                             .exceptionally(ex -> {
-                                handlePageScrapperException(ex, company, pageID);
+                                handlePageScraperException(ex, company, pageID);
                                 return null;
                             })
                             .thenCompose(page -> page == null
                                     ? CompletableFuture.completedFuture(List.<VacancyDTO>of())
                                     : CompletableFuture.supplyAsync(
-                                            () -> parsePageVacancies(page, company, persistedLinks, claimedNewLinks),
+                                            () -> parsePageVacancies(page, crawler, company, persistedLinks, claimedNewLinks),
                                             executor)
                                             .exceptionally(ex -> {
                                                 handlePageParserException(ex, company, pageID);
@@ -220,7 +215,7 @@ public class ParserRunnerService {
                         .toList());
     }
 
-    private void handleCompanyScrapperException(Throwable ex, CompanyDTO company) {
+    private void handlePersistedVacanciesException(Throwable ex, CompanyDTO company) {
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         String errorLog = String.format("Company: %s, error: %s",
                 company.getTitle(), createStepErrorMessage(ex));
@@ -230,7 +225,28 @@ public class ParserRunnerService {
         parserProgress.addPageLog(1, ParserProgress.LogLevelEnum.ERROR, errorLog);
     }
 
-    private void handlePageScrapperException(Throwable ex, CompanyDTO company, int pageID) {
+    /**
+     * A failed metadata call, or a metadata response that can't be parsed, marks the company ERROR. Any other
+     * failure before the pages were scheduled, such as a placeholder without a value, fails every page and leaves
+     * the company to finish.
+     */
+    private void handleCompanyScraperException(Throwable ex, CompanyDTO company) {
+        ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
+        Throwable cause = ex instanceof CompletionException && ex.getCause() != null ? ex.getCause() : ex;
+        String errorLog = String.format("Company: %s, error: %s",
+                company.getTitle(), createStepErrorMessage(ex));
+        log.error(errorLog);
+
+        if (cause instanceof MetadataFetchException || cause instanceof MetadataParseException) {
+            parserProgress.setStatus(ParserProgressStatusEnum.ERROR);
+            parserProgress.markPageError(1);
+        } else {
+            parserProgress.markAllPagesError();
+        }
+        parserProgress.addPageLog(1, ParserProgress.LogLevelEnum.ERROR, errorLog);
+    }
+
+    private void handlePageScraperException(Throwable ex, CompanyDTO company, int pageID) {
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
         String errorLog = String.format("Company: %s, pageID:%s, error: %s",
                 company.getTitle(), pageID, createStepErrorMessage(ex));
@@ -330,7 +346,8 @@ public class ParserRunnerService {
     }
 
     private List<VacancyDTO> parsePageVacancies(
-            PageDTO page,
+            PageScraperResponse page,
+            CompanyCrawler crawler,
             CompanyDTO company,
             Set<String> persistedLinks,
             Set<String> claimedNewLinks
@@ -339,20 +356,14 @@ public class ParserRunnerService {
             throw new ParsingStoppedException();
         }
 
-        SiteParser siteParser = (SiteParser) applicationContext.getBean(company.getBeanClass());
         ParserProgress parserProgress = parsingProgressService.getParsers().get(company.getCompanyId());
 
-        int pageID = page.getPageID();
+        int pageID = page.getPageId();
 
-        List<VacancyDTO> parsedVacancies;
-        try {
-            parsedVacancies = siteParser.parseVacancies(page);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        List<VacancyDTO> parsedVacancies = crawler.parseVacancies(page, company);
 
         if (parsedVacancies.isEmpty()) {
-            throw new NoVacanciesOnPageException(page.getPageID());
+            throw new NoVacanciesOnPageException(page.getPageId());
         }
 
         for (VacancyDTO vacancy : parsedVacancies) {

@@ -1,24 +1,22 @@
 package com.github.yehortpk.parser.services;
 
 import com.github.yehortpk.parser.PostgresContainerTest;
+import com.github.yehortpk.parser.crawler.CompanyCrawler;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.NewVacancyDTO;
-import com.github.yehortpk.parser.models.PageDTO;
 import com.github.yehortpk.parser.models.ParsedVacancy;
 import com.github.yehortpk.parser.models.RemovedVacancyDTO;
 import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.models.VacancyMessage;
-import com.github.yehortpk.parser.parser.SiteParser;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
 import com.github.yehortpk.parser.repositories.ParsedVacancyRepository;
-import com.github.yehortpk.parser.scrapper.site.SiteScrapper;
+import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -27,11 +25,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -39,7 +39,6 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 
 /**
  * A parsing run against the migrated {@code parsed_vacancy} table: which vacancies it finds new
@@ -68,11 +67,9 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
     @MockitoBean
     private KafkaTemplate<String, VacancyMessage> vacancyKafkaTemplate;
 
-    private final ApplicationContext applicationContext = mock(ApplicationContext.class);
     private final CompanyService companyService = mock(CompanyService.class);
     private final ParsingHistoryService parsingHistoryService = mock(ParsingHistoryService.class);
-    /** One bean is both the scrapper and the parser of a company, as the real crawlers are. */
-    private final SiteScrapper crawler = mock(SiteScrapper.class, withSettings().extraInterfaces(SiteParser.class));
+    private final CompanyCrawler crawler = mock(CompanyCrawler.class);
 
     private void clearData() {
         jdbcTemplate.update("DELETE FROM parsed_vacancy");
@@ -88,7 +85,6 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
         when(vacancyKafkaTemplate.sendDefault(anyString(), any()))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mock(SendResult.class)));
 
-        when(applicationContext.getBean(CRAWLER_BEAN)).thenReturn(crawler);
         when(companyService.getCompaniesList()).thenReturn(List.of(CompanyDTO.builder()
                 .companyId(COMPANY_ID)
                 .beanClass(CRAWLER_BEAN)
@@ -123,16 +119,15 @@ class ParsedVacancyReconciliationTest extends PostgresContainerTest {
 
     /** Runs one parsing of the company whose site lists exactly these vacancies, and waits for it. */
     private ParsingProgressDTO runParsing(String... listedPaths) throws Exception {
-        PageDTO page = new PageDTO();
-        page.setPageID(1);
-        when(crawler.scrapCompanyVacancies(any())).thenReturn(List.of(CompletableFuture.completedFuture(page)));
-        when(((SiteParser) crawler).parseVacancies(page)).thenReturn(Arrays.stream(listedPaths)
+        PageScraperResponse page = new PageScraperResponse(1, createLink(""), Map.of(), Map.of(), "");
+        when(crawler.scrapeCompanyVacancies(any())).thenReturn(List.of(CompletableFuture.completedFuture(page)));
+        when(crawler.parseVacancies(eq(page), any())).thenReturn(Arrays.stream(listedPaths)
                 .map(path -> VacancyDTO.builder().link(createLink(path)).title("Java Developer").build())
                 .toList());
 
         NotifierService notifierService =
                 new NotifierService(vacancyKafkaTemplate, vacancyService);
-        ParserRunnerService parserRunnerService = new ParserRunnerService(applicationContext, companyService,
+        ParserRunnerService parserRunnerService = new ParserRunnerService(Map.of(CRAWLER_BEAN, crawler), companyService,
                 notifierService, new ParsingProgressService(), parsingHistoryService, vacancyService);
 
         parserRunnerService.runParsing();

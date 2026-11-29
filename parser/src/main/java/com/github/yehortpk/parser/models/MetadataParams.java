@@ -1,17 +1,33 @@
 package com.github.yehortpk.parser.models;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.Map;
 
+/**
+ * What a company's metadata call found out. Every map is empty unless set.
+ */
 @Getter
-@AllArgsConstructor
-@NoArgsConstructor
+@ToString
+@Builder
 public class MetadataParams {
-    private int pagesCount;
-    private Map<String, String> requestData;
-    private Map<String, String> requestHeaders;
-    private Map<String, String> requestCookies;
+    @Builder.Default
+    private final int pagesCount = 1;
+    /**
+     * Values by placeholder name, written without braces. {@code page} is always provided on top of these
+     */
+    @Builder.Default
+    private final Map<String, String> placeholders = Map.of();
+    /**
+     * Added to every page's headers, overriding by key
+     */
+    @Builder.Default
+    private final Map<String, String> requestHeaders = Map.of();
+    /**
+     * Added to every page's cookies, overriding by key
+     */
+    @Builder.Default
+    private final Map<String, String> requestCookies = Map.of();
 }

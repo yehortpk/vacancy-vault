@@ -1,15 +1,17 @@
 package com.github.yehortpk.parser.services;
 
-import com.github.yehortpk.parser.scrapper.browser.BrowserInstance;
-import com.github.yehortpk.parser.scrapper.browser.BrowserPool;
-import com.github.yehortpk.parser.scrapper.page.PageScrapperResponse;
+import com.github.yehortpk.parser.scraper.browser.BrowserInstance;
+import com.github.yehortpk.parser.scraper.browser.BrowserPool;
+import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -26,7 +28,7 @@ public class BrowserService {
 
     private final BrowserPool browserPool;
 
-    private Browser.NewContextOptions createContextOptions(Map<String, String> headers, String proxy) {
+    private Browser.NewContextOptions createContextOptions(Map<String, String> headers) {
         Browser.NewContextOptions newContextOptions = new Browser.NewContextOptions()
                 .setUserAgent(USER_AGENT)
                 .setViewportSize(1920, 1080)
@@ -37,38 +39,49 @@ public class BrowserService {
             newContextOptions.setExtraHTTPHeaders(headers);
         }
 
-        if (proxy != null) {
-            newContextOptions.setProxy(proxy);
-        }
-
         return newContextOptions;
     }
 
-    public PageScrapperResponse scrapPage(String pageURL, String dynamicQuerySelector, int timeout, Map<String, String> headers, String proxy) throws IOException {
-        Browser.NewContextOptions contextOptions = createContextOptions(headers, proxy);
+    /**
+     * Renders a page on a browser borrowed from the pool, returning the browser once done.
+     *
+     * Returns the response headers of the page's navigation, the context's cookies for the final URL and the
+     * rendered inner HTML of the body.
+     *
+     * @param postData the encoded body to navigate with POST, or {@code null} to navigate with GET
+     * @param postContentType the content type of {@code postData}
+     */
+    public PageScraperResponse scrapePage(int pageId, String pageURL, String readySelector, int timeoutSec,
+                                          Map<String, String> headers, String postData, String postContentType)
+            throws IOException {
+        Browser.NewContextOptions contextOptions = createContextOptions(headers);
 
         BrowserInstance browserInstance = browserPool.borrowInstance();
         try {
-            return scrapPage(browserInstance, pageURL, dynamicQuerySelector, timeout, contextOptions);
+            return scrapePage(browserInstance, pageId, pageURL, readySelector, timeoutSec, contextOptions,
+                    postData, postContentType);
         } finally {
             browserPool.returnInstance(browserInstance);
         }
     }
 
     /**
-     * Scraps a page in a context of its own, so cookies, headers and the proxy stay isolated per
-     * request while the browser itself is reused. The context is always closed, otherwise contexts
-     * would pile up inside a browser that now outlives the page.
+     * Scrapes a page in a context of its own, so cookies and headers stay isolated per request while the browser
+     * itself is reused. The context is always closed, otherwise contexts would pile up inside a browser that now
+     * outlives the page.
      * <p>
      * Redirects need no handling here: {@link Page#navigate} follows them and returns the response
      * of the final page.
      */
-    private PageScrapperResponse scrapPage(
+    private PageScraperResponse scrapePage(
             BrowserInstance browserInstance,
+            int pageId,
             String pageURL,
-            String dynamicQuerySelector,
-            int timeout,
-            Browser.NewContextOptions contextOptions
+            String readySelector,
+            int timeoutSec,
+            Browser.NewContextOptions contextOptions,
+            String postData,
+            String postContentType
     ) throws IOException {
         try (BrowserContext context = browserInstance.createContext(contextOptions);
              Page page = context.newPage()
@@ -81,6 +94,9 @@ public class BrowserService {
             page.route("**/ads*", Route::abort); // Block ads
 
             page.route("**/*", Route::resume);
+            if (postData != null) {
+                routeNavigationAsPost(page, postData, postContentType);
+            }
             Response response = page.navigate(pageURL);
 
             // Abort unnecessary awaiting if page response isn't 200 OK
@@ -89,8 +105,8 @@ public class BrowserService {
             }
 
             try {
-                page.waitForSelector(dynamicQuerySelector,
-                        new Page.WaitForSelectorOptions().setTimeout(timeout * 1000).setState(WaitForSelectorState.ATTACHED));
+                page.waitForSelector(readySelector,
+                        new Page.WaitForSelectorOptions().setTimeout(timeoutSec * 1000).setState(WaitForSelectorState.ATTACHED));
             } catch (TimeoutError e) {
                 throw new IOException(String.format("Dynamic element search timeout exception, page: %s", pageURL));
             } catch (PlaywrightException e) {
@@ -103,7 +119,33 @@ public class BrowserService {
                     .collect(Collectors.toMap(cookie -> cookie.name, cookie -> cookie.value, (first, duplicate) -> first));
             Map<String, String> headers = response.headers();
 
-            return new PageScrapperResponse(headers, cookies, body);
+            return new PageScraperResponse(pageId, pageURL, headers, cookies, body);
         }
+    }
+
+    /**
+     * Playwright only navigates with GET, so the page's first navigation request is resumed as a POST with the body.
+     * Registered last, so it is tried before the other routes; every other request falls back to them. A redirect
+     * after the POST is navigated as usual.
+     */
+    private void routeNavigationAsPost(Page page, String postData, String postContentType) {
+        AtomicBoolean isPostSent = new AtomicBoolean();
+        page.route("**/*", route -> {
+            Request request = route.request();
+            boolean isMainFrameNavigation = request.isNavigationRequest() && request.frame().parentFrame() == null;
+            if (!isMainFrameNavigation || !isPostSent.compareAndSet(false, true)) {
+                route.fallback();
+                return;
+            }
+
+            Map<String, String> headers = new HashMap<>(request.headers());
+            headers.keySet().removeIf("content-type"::equalsIgnoreCase);
+            headers.put("Content-Type", postContentType);
+
+            route.resume(new Route.ResumeOptions()
+                    .setMethod("POST")
+                    .setPostData(postData)
+                    .setHeaders(headers));
+        });
     }
 }
