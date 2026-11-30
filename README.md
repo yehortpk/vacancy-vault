@@ -22,6 +22,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
   - [Code Usage](#code-usage)
   - [Parser structure](#parser-structure)
   - [Scraper structure](#scraper-structure)
+  - [Class diagram](#class-diagram)
   - [Database usage](#database-usage)
     - [Request parameters](#request-parameters)
       - [Dynamic request parameters](#dynamic-request-parameters)
@@ -261,6 +262,13 @@ Both scrapers are plain classes created with <code>new</code>:
 
 <code>data</code> is the query string of a GET and the form body of a POST. If the request's <code>Content-Type</code> header is
 <code>application/json</code>, a POST sends <code>data</code> as a JSON object instead, with every value as a string.
+
+### Class diagram
+The detailed view of the same structure, as a UML 2 class diagram: attributes, operations, visibility, defaults and thrown
+exceptions, including the data classes (<code>FetchSettings</code>, <code>MetadataParams</code>,
+<code>PageScraperResponse</code>).
+
+![Parser class diagram](docs/parser-class-diagram.svg)
 
 ### Database usage
 To add a new site for analysis, all you have to do is add the entity to the <i>company</i> table in the 
