@@ -21,9 +21,7 @@ Available via Telegram Bot: https://t.me/vacancy_notification_bot
 - [Usage](#usage)
   - [Code Usage](#code-usage)
   - [Parser structure](#parser-structure)
-    - [Abstraction](#abstraction)
-  - [Scrapper structure](#scrapper-structure)
-    - [Scrapper decorators](#scrapper-decorators)
+  - [Scraper structure](#scraper-structure)
   - [Database usage](#database-usage)
     - [Request parameters](#request-parameters)
       - [Dynamic request parameters](#dynamic-request-parameters)
@@ -191,77 +189,110 @@ The only REST call between services is the Telegram bot reporting linked chats t
 The app needs the client to create parsing information for both sides - in the code itself and in the database. Let's look at the features of the code.
 
 ### Code usage
-There are 3 type of web apps that can be parsed by implementing the next abstract classes:
-- <b>StaticSiteParser</b> - default web apps with a common page design and pagination.
-- <b>DynamicSiteParser</b> - based on dynamic web apps, DOM structure of which is rendered in-time.
-  Can't be parsed by default request-based parser, so we use <b>Playwright</b> library here. You need to implement <i>createDynamicElementQuerySelector</i> method for specify
-  a query selector for the element that can only be available after the page rendering. Most widely used #root or #app sections
-- <b>APISiteParser</b> - based on web apps that used API requests to retrieve information from remote server in-time and update it on the page. You may also override
-  <i>getConnectionMethod</i> which by default is GET, but many sites use POST as well.
+Every company is crawled by a Spring bean that extends the abstract class <code>DefaultCompanyCrawler</code>. The base
+class runs the whole fetch flow, so a company crawler only describes its site. It implements two methods:
+- <code>configureFetchSettings(company, pageId)</code> - how the page is requested, as a <code>FetchSettings</code>.
+  Leave a field unset to take it from the company's config; most crawlers return <code>FetchSettings.builder().build()</code>.
+  A crawler that reads the site's API sets <code>pageURL(company.getApiVacanciesURL())</code>, and <code>connectionMethod(POST)</code> when the API needs it.
+- <code>parseVacancies(page, company)</code> - turns a fetched page into vacancies. Read HTML with <code>Jsoup.parse(page.getBody())</code>
+  and JSON with Gson.
+
+It may also override two hooks:
+- <code>configurePageScraper(pageId)</code> - the scraper the page is fetched with. Defaults to <code>new StaticPageScraper()</code>.
+  Return <code>new DynamicPageScraper(browserPool, readySelector)</code> for a site whose vacancies a browser has to render
+  (inject the <code>BrowserPool</code> bean into the crawler). See [Scraper structure](#scraper-structure) for choosing one.
+- <code>configureMetadataCrawler()</code> - the call made before the pages, to learn the page count or values the requests
+  need. Defaults to <code>NoMetadataCrawler</code>: no request, one page. See [Dynamic request parameters](#dynamic-request-parameters).
+
+The delay between pages defaults to 0, so every page of a company is sent at once. A site that needs pacing sets it per page
+in <code>configureFetchSettings</code>, e.g. <code>delay(Duration.ofSeconds(pageId - 1))</code> to start page N after N-1 seconds.
+
+```java
+@Component("acme-company")
+public class AcmeCrawler extends DefaultCompanyCrawler {
+    @Override
+    protected FetchSettings configureFetchSettings(CompanyDTO company, int pageId) {
+        return FetchSettings.builder().build();
+    }
+
+    @Override
+    public List<VacancyDTO> parseVacancies(PageScraperResponse page, CompanyDTO company) {
+        return Jsoup.parse(page.getBody()).select("a.vacancy").stream()
+                .map(link -> VacancyDTO.builder().title(link.text()).link(link.attr("href")).build())
+                .toList();
+    }
+}
+```
+
+The bean name (<code>acme-company</code> here) is the company's <code>bean_class</code> in the database, see [Database usage](#database-usage).
+Crawlers hold no state of a run, so one bean may serve several companies.
 
 ### Parser structure
-#### Abstraction
-![image](https://github.com/user-attachments/assets/54c5be98-6ab1-45d5-929b-71632f7efbb6)
-Diagram above shows parsers structure. There is <code>SiteParser</code> interface with <code>parseVacancies</code> method. It takes Company object as a parameter. Company object is loaded from <code>company</code> table.
-<code>SiteParserImpl</code> is abstract implementation of <code>SiteParser</code>. It implements <code>parseVacancies</code> method. For this purpose it required 3 additional methods to be implemented in specific
-parsers that will extend this one. These methods are:
-- <code>generatePageConnectionParams(pageID:int, company: Company)</code>. This method require from parsers to generate connection parameters necessary for connection to the parsing page. These parameters:
-    - <code>pageURL</code>. Final url to the page
-    - <code>data</code>. This is request data. In case of GET request transforms into query params (param1=val1&param2=val2). In case of POST request becomes request body. In case of Content-type=application/json in headers becomes json string in the request body.
-    - <code>headers</code>. Request headers
-    - <code>method</code>. Request method (e.g GET, POST, PUT, etc).
-    - <code>proxy</code>. Proxy object that will be used for sending request through proxy server.
-    - <code>timeout</code>. Timeout for page loading.
-- <code>parsePage(pageConnectionParams: PageConnectionParams): Page</code>. This method require from parsers to create its own way to create <code>Page</code> object from parsing web page with <code>pageConnectionParams</code> parameters.
-- <code>extractVacancyElementsFromPage(page: Document): List[Element]</code>. This method require logic from parser to
-  extract all similar blocks with vacancies from <code>page</code>. <code>Page</code> is a Jsoup object, so extracting comes down
-to create correct selector that extract all vacancy elements from the page.
-- <code>generateVacancyFromElement(element: Element): [VacancyDTO]</code>. This method requires logic from parser to dynamically create new vacancy object
-from every <code>vacancy</code> element. Its final point.
+![Parser structure](docs/parser-structure.svg)
 
-Additionally, you need to create new site parsers as Spring Beans with @Component and explicitly specify the 
-bean name in the db (this will be used to associate this Java bean class with an object inside the database, which will be mentioned later).
+<code>ParserRunnerService</code> receives every crawler bean as a map by bean name and looks up each company's crawler
+once. It calls <code>scrapeCompanyVacancies(company)</code>, which <code>DefaultCompanyCrawler</code> implements as:
+1. <b>Metadata call.</b> The crawler's <code>CompanyMetadataCrawler</code> makes its request (<code>extractMetadata</code>) and reads
+   the <code>MetadataParams</code> from the response (<code>parseMetadata</code>): the page count, placeholder values, and headers and
+   cookies to add to every page.
+2. <b>Every page's settings</b>, built before any page is sent: <code>configureFetchSettings(company, pageId)</code>, unset fields
+   filled from the company, the metadata headers and cookies added, and the placeholders filled.
+3. <b>Every page</b> waits out its <code>delay</code>, then is fetched on a virtual thread of its own with
+   <code>configurePageScraper(pageId)</code>. A stop request ends the wait at once.
 
-### Scrapper structure
-There are two types of page scrappers
-- <code>StaticPageScrapper</code> - page scrapper that used <code>Jsoup</code> library to scrap pages that not rendering in time and not need JavaScript to create 
-information on the page. So with simple GET/POST request scrapper can retrieve all necessary data.
-- <code>DynamicPageScrapper</code> - page scrapper that used <code>Playwright</code> library to load pages rendered in time. It uses headless browser to
-load the page and wait until page will be rendered. It requires implementing <code>createDynamicElementQuerySelector</code> method for speed up data load
-process (the parser will not wait until full page will be loaded, but rather for the selector to be visible). <b>Warning!</b> This scrapper is resource intensive, 
-so try to use it as a last possible solution in case of <code>StaticPageParser</code> not enough.
+The runner then parses each fetched page with <code>parseVacancies(page, company)</code>, publishes the new vacancies and,
+once every page was parsed, marks the vanished ones outdated.
 
-#### Scrapper decorators
-You may implement <code>PageScrapperDecorator</code> for add additional logic to page scrapping. For example, there is <code>ProxyPoolPageScrapper</code>
-that wrap all requests with pool of proxies that works in parallel (you could specify the pool size, default - 5 threads). It will help unnecessary webpage
-loading with your own IP address. <b>Warning!</b> It would be better not to use it with <code>DynamicPageScrapper</code> 
-unless you have enough memory in the system.
+A company crawler that needs a metadata call implements <code>CompanyMetadataCrawler</code> itself and returns
+<code>this</code> from <code>configureMetadataCrawler()</code>. Its <code>extractMetadata</code> builds the request and creates its scraper
+with <code>new</code>.
+
+A metadata call that fails, or whose response can't be parsed, marks the company ERROR.
+
+### Scraper structure
+A <code>PageScraper</code> fetches one page from a <code>FetchSettings</code> and returns a <code>PageScraperResponse</code>
+(the page's id and URL, the response headers and cookies, and the body). It does I/O only: no waiting and no retries.
+Both scrapers are plain classes created with <code>new</code>:
+- <code>StaticPageScraper</code> - the default. Based on Java's <code>HttpClient</code>, for pages whose vacancies are in the HTML or the
+  API response itself. Sends a GET or POST, follows redirects unless told not to, and decodes gzip and the response charset.
+- <code>DynamicPageScraper(browserPool, readySelector)</code> - for pages a browser has to render. Uses <b>Playwright</b>: it borrows a
+  headless Chromium from the <code>BrowserPool</code>, opens the page and waits until <code>readySelector</code> is on it, rather than for
+  the whole page. <b>Warning!</b> It is resource-intensive, so use it only when <code>StaticPageScraper</code> is not enough.
+
+<code>data</code> is the query string of a GET and the form body of a POST. If the request's <code>Content-Type</code> header is
+<code>application/json</code>, a POST sends <code>data</code> as a JSON object instead, with every value as a string.
 
 ### Database usage
 To add a new site for analysis, all you have to do is add the entity to the <i>company</i> table in the 
 <i>parser</i> schema of the <i>notifier</i> database (<code>parser.company</code>). The schema and the table will be
 created automatically after the first launch of the parser. Companies live only there: the dashboard and the router
 learn a company's title and URL from the vacancies the parser publishes. You must fill out the following fields:
-- company_id - id of the company
-- bean_class - name of the @Bean in the code that corresponds this db entity;
-- title - company title.
-- parsing_enabled - enable/disable specific parser;
-- main_page_url - URL to the site main page;
-- vacancies_url - URL to the page with the vacancies in the site;
-- api_vacancies_url - URL to the endpoint for API to retrieve vacancies (only for <i>APISiteParser</i>)
+- <code>company_id</code> - id of the company
+- <code>bean_class</code> - name of the @Bean in the code that corresponds this db entity;
+- <code>title</code> - company title.
+- <code>parsing_enabled</code> - enable/disable specific parser;
+- <code>main_page_url</code> - URL to the site main page;
+- <code>vacancies_url</code> - URL to the page with the vacancies in the site;
+- <code>api_vacancies_url</code> - URL to the endpoint for API to retrieve vacancies; used when the crawler sets it as <code>pageURL</code>
 
 #### Request parameters
 If you have request data that need to be sent with the request (e.g. GET request query data, or POST request body)
-you may add this data in the <code>company_data</code> table of the same schema. 
-Also, if you have special headers you want to send with every request, you may add them by creating new key-value pair in
-<code>company_headers</code> table.
+you may add this data in the <code>company_data</code> table of the same schema. Data becomes the query string of a GET
+and the form body of a POST; a POST whose <code>Content-Type</code> header is <code>application/json</code> sends it as a JSON
+object, with every value as a string.
+Also, if you have special headers or cookies you want to send with every request, you may add them by creating new key-value
+pairs in the <code>company_headers</code> and <code>company_cookies</code> tables.
 
 ##### Dynamic request parameters
-You may also add dynamic request parameters that will be different for every page in the parser, or may be generated 
-only by pre-accessing the page - like CSRF tokens or SESSION_ID parameters. To add them, you need to add this parameter in {} brackets,
-like key=page, val={page}. If you add these parameters in your <code>company_data</code> or <code>company_headers</code>
-table, you need to implement <code>parseSiteMetadata</code> method in your parser. Error will be thrown in case of the method not be implemented.
-
+Values may hold <code>{name}</code> placeholders, which are filled for every page: in the vacancies URL, in
+<code>company_data</code> values and in <code>company_headers</code> values.
+- <code>{page}</code> is provided automatically: the number of the page, starting from 1.
+- Any other placeholder, like a CSRF token or a session id that only a first request reveals, needs a
+  <code>CompanyMetadataCrawler</code>: the crawler returns it from <code>configureMetadataCrawler()</code>, and its
+  <code>parseMetadata</code> returns the value in <code>MetadataParams.placeholders</code>, under the name without braces.
+- A placeholder without a value fails all pages of that company before any of them is requested. The company still ends
+  FINISHED, with the error in its logs.
+- Headers and cookies the metadata call returns are added to every page, overriding configured ones by key.
 
 ### Filters
 Filters are created in the web app at <code>/filters</code>, after logging in. A filter has a title, an expression
