@@ -1,4 +1,4 @@
-package com.github.yehortpk.parser.scraper.browser;
+package com.github.yehortpk.parser.utils.browser;
 
 import com.github.yehortpk.parser.services.ParsingProgressService;
 import org.junit.jupiter.api.Test;

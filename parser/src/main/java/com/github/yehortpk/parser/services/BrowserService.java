@@ -1,7 +1,7 @@
 package com.github.yehortpk.parser.services;
 
-import com.github.yehortpk.parser.scraper.browser.BrowserInstance;
-import com.github.yehortpk.parser.scraper.browser.BrowserPool;
+import com.github.yehortpk.parser.utils.browser.BrowserInstance;
+import com.github.yehortpk.parser.utils.browser.BrowserPool;
 import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;

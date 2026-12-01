@@ -1,7 +1,7 @@
 package com.github.yehortpk.parser.scraper.page;
 
 import com.github.yehortpk.parser.models.FetchSettings;
-import com.github.yehortpk.parser.scraper.browser.BrowserPool;
+import com.github.yehortpk.parser.utils.browser.BrowserPool;
 import com.github.yehortpk.parser.services.BrowserService;
 import com.google.gson.GsonBuilder;
 import lombok.RequiredArgsConstructor;
