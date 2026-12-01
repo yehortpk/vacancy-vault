@@ -12,7 +12,7 @@ import com.github.yehortpk.parser.models.ParsedVacancy;
 import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.models.VacancyDTO;
-import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
+import com.github.yehortpk.parser.scraper.PageScraperResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

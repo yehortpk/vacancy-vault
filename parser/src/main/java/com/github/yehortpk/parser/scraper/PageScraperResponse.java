@@ -1,4 +1,4 @@
-package com.github.yehortpk.parser.scraper.page;
+package com.github.yehortpk.parser.scraper;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

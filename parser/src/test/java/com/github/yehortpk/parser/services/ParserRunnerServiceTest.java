@@ -11,7 +11,7 @@ import com.github.yehortpk.parser.progress.ParserProgress;
 import com.github.yehortpk.parser.progress.ParserProgressStatusEnum;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
 import com.github.yehortpk.parser.progress.ParsingStatusEnum;
-import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
+import com.github.yehortpk.parser.scraper.PageScraperResponse;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

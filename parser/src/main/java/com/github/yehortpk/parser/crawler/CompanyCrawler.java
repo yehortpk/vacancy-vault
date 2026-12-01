@@ -3,7 +3,7 @@ package com.github.yehortpk.parser.crawler;
 import com.github.yehortpk.parser.exceptions.VacanciesParseException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.VacancyDTO;
-import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
+import com.github.yehortpk.parser.scraper.PageScraperResponse;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

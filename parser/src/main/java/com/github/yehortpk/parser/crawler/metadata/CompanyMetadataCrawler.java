@@ -3,7 +3,7 @@ package com.github.yehortpk.parser.crawler.metadata;
 import com.github.yehortpk.parser.exceptions.MetadataParseException;
 import com.github.yehortpk.parser.models.CompanyDTO;
 import com.github.yehortpk.parser.models.MetadataParams;
-import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
+import com.github.yehortpk.parser.scraper.PageScraperResponse;
 
 import java.io.IOException;
 

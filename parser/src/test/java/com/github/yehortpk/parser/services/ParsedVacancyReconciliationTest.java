@@ -10,7 +10,7 @@ import com.github.yehortpk.parser.models.VacancyDTO;
 import com.github.yehortpk.parser.models.VacancyMessage;
 import com.github.yehortpk.parser.progress.ParsingProgressDTO;
 import com.github.yehortpk.parser.repositories.ParsedVacancyRepository;
-import com.github.yehortpk.parser.scraper.page.PageScraperResponse;
+import com.github.yehortpk.parser.scraper.PageScraperResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
