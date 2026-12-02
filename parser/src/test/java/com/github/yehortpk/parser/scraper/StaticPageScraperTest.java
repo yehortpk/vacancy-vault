@@ -5,7 +5,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import org.jsoup.Connection;
-import org.jsoup.HttpStatusException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,13 +88,13 @@ class StaticPageScraperTest {
     }
 
     @Test
-    void ScrapePage_ErrorStatus_ShouldThrowHttpStatusException() {
+    void ScrapePage_ErrorStatus_ShouldThrowIOExceptionWithStatus() {
         String url = registerHandler("/forbidden", exchange -> respond(exchange, 403, "blocked".getBytes()));
 
-        HttpStatusException exception = assertThrows(HttpStatusException.class,
+        IOException exception = assertThrows(IOException.class,
                 () -> pageScraper.scrapePage(createParams(url).build()));
 
-        assertEquals(403, exception.getStatusCode());
+        assertEquals("page: " + url + ", response status 403", exception.getMessage());
     }
 
     @Test

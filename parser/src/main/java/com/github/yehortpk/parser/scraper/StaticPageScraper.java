@@ -3,8 +3,6 @@ package com.github.yehortpk.parser.scraper;
 import com.github.yehortpk.parser.models.FetchSettings;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Connection;
-import org.jsoup.HttpStatusException;
 import org.springframework.http.MediaType;
 
 import java.io.ByteArrayInputStream;
@@ -39,13 +37,11 @@ import java.util.zip.InflaterInputStream;
 
 /**
  * Default scraper for pages whose content is in the HTML or the API response itself, based on {@link HttpClient}.
- * Keeps Jsoup's request semantics (status checks, default headers, query/body serialisation, gzip, charset), without
- * Jsoup's 2MB response body limit.
  */
 @Slf4j
 public class StaticPageScraper implements PageScraper {
     /**
-     * Sent when no User-Agent is configured. Keep it a recent browser version: some WAFs reject outdated ones, such as Jsoup's Chrome 79 default
+     * Sent when no User-Agent is configured. Keep it a recent browser version: some WAFs reject outdated ones
      */
     public static final String DEFAULT_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
@@ -88,7 +84,7 @@ public class StaticPageScraper implements PageScraper {
 
             int status = response.statusCode();
             if (status < 200 || status >= 400) {
-                throw new HttpStatusException("HTTP error fetching URL", status, response.uri().toString());
+                throw new IOException(String.format("page: %s, response status %d", response.uri(), status));
             }
 
             Map<String, String> responseHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -107,7 +103,7 @@ public class StaticPageScraper implements PageScraper {
     }
 
     /**
-     * Sends the request, bounding the whole exchange (connect, headers and body) by the timeout, like Jsoup does.
+     * Sends the request, bounding the whole exchange (connect, headers and body) by the timeout.
      * On timeout or interruption the client is shut down so the in-flight exchange is aborted.
      */
     private HttpResponse<byte[]> sendRequest(HttpClient client, HttpRequest request, int timeoutSec) throws IOException {
@@ -132,12 +128,12 @@ public class StaticPageScraper implements PageScraper {
 
     private HttpRequest buildRequest(FetchSettings settings, Map<String, String> data, Map<String, String> headers,
                                      Map<String, String> cookies) throws IOException {
-        boolean isPost = settings.getConnectionMethod() == Connection.Method.POST;
+        boolean isPost = "POST".equals(settings.getConnectionMethod().name());
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .timeout(Duration.ofSeconds(settings.getTimeoutSec()));
 
-        // Like Jsoup: data goes to the query string, unless it is a POST, where it becomes the body
+        // Data goes to the query string, unless it is a POST, where it becomes the body
         if (isPost) {
             String body = isJsonContentType(headers) ? convertToJson(data) : encodeParams(data);
             requestBuilder.uri(createURI(settings.getPageURL()))
@@ -158,7 +154,7 @@ public class StaticPageScraper implements PageScraper {
             requestBuilder.header(USER_AGENT, DEFAULT_USER_AGENT);
         }
         // HttpClient sends no Accept by default; some servers pick the
-        // response format from it, so send */* like Jsoup does
+        // response format from it, so send */*
         if (!hasHeader(headers, ACCEPT)) {
             requestBuilder.header(ACCEPT, "*/*");
         }
