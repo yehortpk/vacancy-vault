@@ -20,8 +20,8 @@ import java.util.stream.Collectors;
  * Scraper for pages a browser has to render, based on Playwright. Resource-intensive: each page holds a browser of
  * the {@link BrowserPool} until it is rendered. The page counts as ready once {@code readySelector} is attached.
  * <p>
- * A GET sends {@code data} as the query string. A POST is made by intercepting the page's navigation request and
- * resuming it with the method and body.
+ * A GET sends {@code data} as the query string, URL-encoded and appended to any query the URL already has. A POST
+ * is made by intercepting the page's navigation request and resuming it with the method and body.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -36,17 +36,19 @@ public class DynamicPageScraper implements PageScraper {
     public PageScraperResponse scrapePage(FetchSettings settings) throws IOException {
         Map<String, String> data = Optional.ofNullable(settings.getData()).orElse(Map.of());
         Map<String, String> headers = Optional.ofNullable(settings.getHeaders()).orElse(Map.of());
+        Map<String, String> cookies = Optional.ofNullable(settings.getCookies()).orElse(Map.of());
         boolean isPost = settings.getConnectionMethod() == Connection.Method.POST;
 
-        String pageURL = isPost ? settings.getPageURL() : constructURLWithData(settings.getPageURL(), data);
+        String pageURL = isPost ? settings.getPageURL() : appendQueryParams(settings.getPageURL(), data);
         String postContentType = isPost ? findPostContentType(headers) : null;
         String postData = isPost ? createPostData(data, postContentType) : null;
 
-        log.info("Connecting to the page {}, method: {}, data: {}, headers: {}",
-                settings.getPageURL(), settings.getConnectionMethod(), data, headers);
+        log.info("Connecting to the page {}, method: {}, data: {}, headers: {}, cookies: {}",
+                settings.getPageURL(), settings.getConnectionMethod(), data, headers, cookies);
 
         PageScraperResponse response = new BrowserService(browserPool).scrapePage(settings.getPageId(), pageURL,
-                readySelector, settings.getTimeoutSec(), headers, postData, postContentType);
+                readySelector, settings.getTimeoutSec(), settings.isFollowRedirects(), headers, cookies, postData,
+                postContentType);
 
         log.info("Connection to the page {}, method: {}, data: {}, headers: {} was established",
                 settings.getPageURL(), settings.getConnectionMethod(), data, headers);
@@ -68,11 +70,7 @@ public class DynamicPageScraper implements PageScraper {
             return new GsonBuilder().disableHtmlEscaping().create().toJson(data);
         }
 
-        return data.entrySet().stream()
-                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
-                        + "="
-                        + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
+        return encodeParams(data);
     }
 
     private boolean isJsonContentType(String contentType) {
@@ -83,28 +81,26 @@ public class DynamicPageScraper implements PageScraper {
         }
     }
 
+    private String encodeParams(Map<String, String> params) {
+        return params.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                        + "="
+                        + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+    }
+
     /**
-     * Construct GET url with the data map as query params
-     * @param pageUrl base url without query params
-     * @param data data for query params
+     * Appends URL-encoded params to the URL, keeping its existing query string if there is one
+     * @param pageUrl base url, with or without query params
+     * @param params params to append
      * @return final url
      */
-    private String constructURLWithData(String pageUrl, Map<String, String> data) {
-        if (!data.isEmpty()) {
-            StringBuilder pageUrlBuilder = new StringBuilder(pageUrl + "?");
-            for (Map.Entry<String, String> dataES : data.entrySet()) {
-                if (dataES.getKey().endsWith("[]")) {
-                    for (String valuePart : dataES.getValue().split(",")) {
-                        pageUrlBuilder.append(dataES.getKey()).append("=").append(valuePart).append("&");
-                    }
-                } else {
-                    pageUrlBuilder.append(dataES.getKey()).append("=").append(dataES.getValue()).append("&");
-                }
-
-            }
-            pageUrl = pageUrlBuilder.toString();
+    private String appendQueryParams(String pageUrl, Map<String, String> params) {
+        if (params.isEmpty()) {
+            return pageUrl;
         }
 
-        return pageUrl;
+        String separator = pageUrl.contains("?") ? "&" : "?";
+        return pageUrl + separator + encodeParams(params);
     }
 }

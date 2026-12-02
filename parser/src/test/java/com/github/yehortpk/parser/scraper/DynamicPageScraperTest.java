@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -39,7 +41,8 @@ class DynamicPageScraperTest {
     private final List<RecordedRequest> requests = new CopyOnWriteArrayList<>();
     private HttpServer server;
 
-    private record RecordedRequest(String method, String query, String contentType, String body) {}
+    private record RecordedRequest(String method, String query, String contentType, String cookie, String userAgent,
+                                   String body) {}
 
     @BeforeAll
     static void createBrowserPool() {
@@ -56,6 +59,8 @@ class DynamicPageScraperTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         server.createContext("/jobs", this::recordAndRespond);
+        server.createContext("/moved", this::redirectToJobs);
+        server.createContext("/slow", this::respondAfterDelay);
         server.start();
     }
 
@@ -69,6 +74,8 @@ class DynamicPageScraperTest {
                 exchange.getRequestMethod(),
                 exchange.getRequestURI().getRawQuery(),
                 exchange.getRequestHeaders().getFirst("Content-Type"),
+                exchange.getRequestHeaders().getFirst("Cookie"),
+                exchange.getRequestHeaders().getFirst("User-Agent"),
                 new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)
         ));
 
@@ -80,8 +87,27 @@ class DynamicPageScraperTest {
         }
     }
 
+    private void redirectToJobs(HttpExchange exchange) throws IOException {
+        exchange.getResponseHeaders().add("Location", "/jobs");
+        exchange.sendResponseHeaders(302, -1);
+        exchange.close();
+    }
+
+    private void respondAfterDelay(HttpExchange exchange) throws IOException {
+        try {
+            Thread.sleep(Duration.ofSeconds(10));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        recordAndRespond(exchange);
+    }
+
     private String createPageURL() {
-        return "http://127.0.0.1:" + server.getAddress().getPort() + "/jobs";
+        return createPageURL("/jobs");
+    }
+
+    private String createPageURL(String path) {
+        return "http://127.0.0.1:" + server.getAddress().getPort() + path;
     }
 
     private static Map<String, String> createData() {
@@ -142,6 +168,78 @@ class DynamicPageScraperTest {
 
         RecordedRequest request = requests.getFirst();
         assertEquals("GET", request.method());
-        assertEquals("page=2&", request.query());
+        assertEquals("page=2", request.query());
+    }
+
+    @Test
+    void ScrapePage_GetWithQueryInURL_ShouldAppendEncodedData() throws IOException {
+        DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
+
+        pageScraper.scrapePage(FetchSettings.builder()
+                .pageURL(createPageURL("/jobs?sort=new"))
+                .data(Map.of("city", "Київ"))
+                .timeoutSec(20)
+                .build());
+
+        assertEquals("sort=new&city=%D0%9A%D0%B8%D1%97%D0%B2", requests.getFirst().query());
+    }
+
+    @Test
+    void ScrapePage_Cookies_ShouldSendCookies() throws IOException {
+        DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
+
+        pageScraper.scrapePage(FetchSettings.builder()
+                .pageURL(createPageURL())
+                .cookies(Map.of("session", "abc"))
+                .timeoutSec(20)
+                .build());
+
+        assertEquals("session=abc", requests.getFirst().cookie());
+    }
+
+    @Test
+    void ScrapePage_UserAgentHeader_ShouldSendGivenUserAgent() throws IOException {
+        DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
+
+        pageScraper.scrapePage(FetchSettings.builder()
+                .pageURL(createPageURL())
+                .headers(Map.of("user-agent", "VacancyVaultTest/1.0"))
+                .timeoutSec(20)
+                .build());
+
+        assertEquals("VacancyVaultTest/1.0", requests.getFirst().userAgent());
+    }
+
+    @Test
+    void ScrapePage_RedirectWithFollowRedirects_ShouldRenderTarget() throws IOException {
+        DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
+
+        PageScraperResponse response = pageScraper.scrapePage(FetchSettings.builder()
+                .pageURL(createPageURL("/moved"))
+                .timeoutSec(20)
+                .build());
+
+        assertTrue(response.getBody().contains("rendered"));
+    }
+
+    @Test
+    void ScrapePage_RedirectWithoutFollowRedirects_ShouldFail() {
+        DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
+
+        assertThrows(IOException.class, () -> pageScraper.scrapePage(FetchSettings.builder()
+                .pageURL(createPageURL("/moved"))
+                .followRedirects(false)
+                .timeoutSec(20)
+                .build()));
+    }
+
+    @Test
+    void ScrapePage_NavigationSlowerThanTimeout_ShouldFail() {
+        DynamicPageScraper pageScraper = new DynamicPageScraper(browserPool, READY_SELECTOR);
+
+        assertThrows(IOException.class, () -> pageScraper.scrapePage(FetchSettings.builder()
+                .pageURL(createPageURL("/slow"))
+                .timeoutSec(1)
+                .build()));
     }
 }

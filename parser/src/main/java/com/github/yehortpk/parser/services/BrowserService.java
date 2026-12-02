@@ -4,12 +4,14 @@ import com.github.yehortpk.parser.utils.browser.BrowserInstance;
 import com.github.yehortpk.parser.utils.browser.BrowserPool;
 import com.github.yehortpk.parser.scraper.PageScraperResponse;
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.Cookie;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -20,6 +22,8 @@ public class BrowserService {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
 
+    private static final String USER_AGENT_HEADER = "User-Agent";
+
     private static final String STEALTH_INIT_SCRIPT =
             "Object.defineProperty(navigator, 'webdriver', { get: () => undefined }); " +
             "Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] }); " +
@@ -28,18 +32,36 @@ public class BrowserService {
 
     private final BrowserPool browserPool;
 
+    /**
+     * A {@code User-Agent} among the headers replaces the default one. It is set on the context rather than sent as
+     * an extra header, so {@code navigator.userAgent} reports it too.
+     */
     private Browser.NewContextOptions createContextOptions(Map<String, String> headers) {
+        Map<String, String> extraHeaders = new HashMap<>(headers);
+        String userAgent = headers.entrySet().stream()
+                .filter(header -> USER_AGENT_HEADER.equalsIgnoreCase(header.getKey()))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(USER_AGENT);
+        extraHeaders.keySet().removeIf(USER_AGENT_HEADER::equalsIgnoreCase);
+
         Browser.NewContextOptions newContextOptions = new Browser.NewContextOptions()
-                .setUserAgent(USER_AGENT)
+                .setUserAgent(userAgent)
                 .setViewportSize(1920, 1080)
                 .setLocale("en-US")
                 .setTimezoneId("Europe/Kyiv");
 
-        if (!headers.isEmpty()) {
-            newContextOptions.setExtraHTTPHeaders(headers);
+        if (!extraHeaders.isEmpty()) {
+            newContextOptions.setExtraHTTPHeaders(extraHeaders);
         }
 
         return newContextOptions;
+    }
+
+    private List<Cookie> createCookies(String pageURL, Map<String, String> cookies) {
+        return cookies.entrySet().stream()
+                .map(cookie -> new Cookie(cookie.getKey(), cookie.getValue()).setUrl(pageURL))
+                .toList();
     }
 
     /**
@@ -48,18 +70,21 @@ public class BrowserService {
      * Returns the response headers of the page's navigation, the context's cookies for the final URL and the
      * rendered inner HTML of the body.
      *
+     * @param timeoutSec bounds the navigation and, separately, the wait for {@code readySelector}
+     * @param followRedirects when {@code false}, a page that redirects fails instead of being rendered
      * @param postData the encoded body to navigate with POST, or {@code null} to navigate with GET
      * @param postContentType the content type of {@code postData}
      */
     public PageScraperResponse scrapePage(int pageId, String pageURL, String readySelector, int timeoutSec,
-                                          Map<String, String> headers, String postData, String postContentType)
+                                          boolean followRedirects, Map<String, String> headers,
+                                          Map<String, String> cookies, String postData, String postContentType)
             throws IOException {
         Browser.NewContextOptions contextOptions = createContextOptions(headers);
 
         BrowserInstance browserInstance = browserPool.borrowInstance();
         try {
-            return scrapePage(browserInstance, pageId, pageURL, readySelector, timeoutSec, contextOptions,
-                    postData, postContentType);
+            return scrapePage(browserInstance, pageId, pageURL, readySelector, timeoutSec, followRedirects,
+                    contextOptions, cookies, postData, postContentType);
         } finally {
             browserPool.returnInstance(browserInstance);
         }
@@ -70,8 +95,8 @@ public class BrowserService {
      * itself is reused. The context is always closed, otherwise contexts would pile up inside a browser that now
      * outlives the page.
      * <p>
-     * Redirects need no handling here: {@link Page#navigate} follows them and returns the response
-     * of the final page.
+     * {@link Page#navigate} always follows redirects and returns the response of the final page. A redirect can't be
+     * stopped in the browser, so with {@code followRedirects} off it is detected once the navigation is done.
      */
     private PageScraperResponse scrapePage(
             BrowserInstance browserInstance,
@@ -79,13 +104,18 @@ public class BrowserService {
             String pageURL,
             String readySelector,
             int timeoutSec,
+            boolean followRedirects,
             Browser.NewContextOptions contextOptions,
+            Map<String, String> cookies,
             String postData,
             String postContentType
     ) throws IOException {
         try (BrowserContext context = browserInstance.createContext(contextOptions);
              Page page = context.newPage()
         ) {
+            if (!cookies.isEmpty()) {
+                context.addCookies(createCookies(pageURL, cookies));
+            }
             page.addInitScript(STEALTH_INIT_SCRIPT);
 
             page.route("**/*.{png,jpg,jpeg,gif,webp}", Route::abort); // Block images
@@ -97,7 +127,12 @@ public class BrowserService {
             if (postData != null) {
                 routeNavigationAsPost(page, postData, postContentType);
             }
-            Response response = page.navigate(pageURL);
+            Response response = navigate(page, pageURL, timeoutSec);
+
+            if (!followRedirects && response.request().redirectedFrom() != null) {
+                throw new IOException(String.format("page: %s, redirected to %s while redirects are off",
+                        pageURL, response.url()));
+            }
 
             // Abort unnecessary awaiting if page response isn't 200 OK
             if (response.status() != 200) {
@@ -115,12 +150,29 @@ public class BrowserService {
 
             String body = page.innerHTML("body");
 
-            Map<String, String> cookies = context.cookies(response.url()).stream()
+            Map<String, String> responseCookies = context.cookies(response.url()).stream()
                     .collect(Collectors.toMap(cookie -> cookie.name, cookie -> cookie.value, (first, duplicate) -> first));
-            Map<String, String> headers = response.headers();
+            Map<String, String> responseHeaders = response.headers();
 
-            return new PageScraperResponse(pageId, pageURL, headers, cookies, body);
+            return new PageScraperResponse(pageId, pageURL, responseHeaders, responseCookies, body);
         }
+    }
+
+    private Response navigate(Page page, String pageURL, int timeoutSec) throws IOException {
+        Response response;
+        try {
+            response = page.navigate(pageURL, new Page.NavigateOptions().setTimeout(timeoutSec * 1000));
+        } catch (TimeoutError e) {
+            throw new IOException(String.format("page: %s, navigation timed out after %ds", pageURL, timeoutSec));
+        } catch (PlaywrightException e) {
+            throw new IOException(String.format("page: %s, playwright exception: %s", pageURL, e.getMessage()));
+        }
+
+        // Playwright returns no response for a navigation to the same document, such as an anchor change
+        if (response == null) {
+            throw new IOException(String.format("page: %s, navigation returned no response", pageURL));
+        }
+        return response;
     }
 
     /**
